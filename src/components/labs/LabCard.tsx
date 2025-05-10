@@ -8,10 +8,19 @@ import { useNavigate } from "react-router-dom";
 
 interface LabCardProps {
   lab: Lab;
+  onClick?: () => void;
 }
 
-export function LabCard({ lab }: LabCardProps) {
+export function LabCard({ lab, onClick }: LabCardProps) {
   const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(`/labs/${lab.id}`);
+    }
+  };
 
   return (
     <Card className="overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow">
@@ -40,7 +49,7 @@ export function LabCard({ lab }: LabCardProps) {
       <CardFooter className="pt-4">
         <Button 
           className="flex items-center gap-2 w-full"
-          onClick={() => navigate(`/labs/${lab.id}`)}
+          onClick={handleClick}
         >
           <Play className="h-4 w-4" />
           <span>Launch Lab</span>
