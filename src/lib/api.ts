@@ -3,10 +3,10 @@ import { AssessmentResult } from "@/types/assessments";
 import { LessonResult } from "@/types/lessons";
 import { Lab } from "@/types/labs";
 import { toast } from "sonner";
-import { generateWithOpenRouter, OpenRouterModel } from "./openrouter";
+import { generateWithOpenRouter, OpenRouterModel, sanitizeAndParseJSON } from "./openrouter";
 
 export async function generateLesson(data: any, model: OpenRouterModel = "qwen"): Promise<LessonResult> {
-  toast.info("Generating lesson plan with " + model + "...");
+  toast.info(`Generating lesson plan with ${model}...`);
   
   try {
     const prompt = `
@@ -34,18 +34,18 @@ export async function generateLesson(data: any, model: OpenRouterModel = "qwen")
         ],
         "tags": ["relevant", "tags", "for", "this", "lesson"]
       }
+
+      IMPORTANT: Your response must be a valid JSON object with no additional text before or after.
     `;
 
     const response = await generateWithOpenRouter(prompt, model);
     let parsedResponse: any;
     
     try {
-      // Extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : response;
-      parsedResponse = JSON.parse(jsonString);
+      parsedResponse = sanitizeAndParseJSON(response);
     } catch (error) {
       console.error("Failed to parse response:", error);
+      toast.error("Failed to parse the generated lesson plan. Trying again with a different format.");
       throw new Error("Failed to parse the generated lesson plan. Please try again.");
     }
     
@@ -66,13 +66,13 @@ export async function generateLesson(data: any, model: OpenRouterModel = "qwen")
     };
   } catch (error) {
     console.error("Failed to generate lesson:", error);
-    toast.error("Failed to generate lesson plan. Please try again.");
+    toast.error("Failed to generate lesson plan. Please try again with a different model.");
     throw error;
   }
 }
 
 export async function generateAssessment(data: any, model: OpenRouterModel = "qwen"): Promise<AssessmentResult> {
-  toast.info("Generating assessment with " + model + "...");
+  toast.info(`Generating assessment with ${model}...`);
   
   try {
     const prompt = `
@@ -98,18 +98,18 @@ export async function generateAssessment(data: any, model: OpenRouterModel = "qw
         ],
         "tags": ["relevant", "tags", "for", "this", "assessment"]
       }
+
+      IMPORTANT: Your response must be a valid JSON object with no additional text before or after.
     `;
 
     const response = await generateWithOpenRouter(prompt, model);
     let parsedResponse: any;
     
     try {
-      // Extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : response;
-      parsedResponse = JSON.parse(jsonString);
+      parsedResponse = sanitizeAndParseJSON(response);
     } catch (error) {
       console.error("Failed to parse response:", error);
+      toast.error("Failed to parse the generated assessment. Trying again with a different format.");
       throw new Error("Failed to parse the generated assessment. Please try again.");
     }
     
@@ -124,13 +124,13 @@ export async function generateAssessment(data: any, model: OpenRouterModel = "qw
     };
   } catch (error) {
     console.error("Failed to generate assessment:", error);
-    toast.error("Failed to generate assessment. Please try again.");
+    toast.error("Failed to generate assessment. Please try again with a different model.");
     throw error;
   }
 }
 
 export async function generateLab(data: any, model: OpenRouterModel = "qwen"): Promise<Lab> {
-  toast.info("Generating lab simulation with " + model + "...");
+  toast.info(`Generating lab simulation with ${model}...`);
   
   try {
     const prompt = `
@@ -159,18 +159,18 @@ export async function generateLab(data: any, model: OpenRouterModel = "qwen"): P
         ],
         "tags": ["relevant", "tags", "for", "this", "lab"]
       }
+
+      IMPORTANT: Your response must be a valid JSON object with no additional text before or after.
     `;
 
     const response = await generateWithOpenRouter(prompt, model);
     let parsedResponse: any;
     
     try {
-      // Extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : response;
-      parsedResponse = JSON.parse(jsonString);
+      parsedResponse = sanitizeAndParseJSON(response);
     } catch (error) {
       console.error("Failed to parse response:", error);
+      toast.error("Failed to parse the generated lab. Trying again with a different format.");
       throw new Error("Failed to parse the generated lab simulation. Please try again.");
     }
 
@@ -212,7 +212,23 @@ export async function generateLab(data: any, model: OpenRouterModel = "qwen"): P
     };
   } catch (error) {
     console.error("Failed to generate lab:", error);
-    toast.error("Failed to generate lab simulation. Please try again.");
+    toast.error("Failed to generate lab simulation. Please try again with a different model.");
     throw error;
+  }
+}
+
+// New function to provide a random educational fact or tip
+export async function generateTeachingTip(subject: string, model: OpenRouterModel = "qwen"): Promise<string> {
+  try {
+    const prompt = `
+      Provide a single, concise teaching tip or interesting fact related to teaching "${subject}".
+      Make it 1-2 sentences maximum, practical and directly useful for teachers in the classroom.
+    `;
+
+    const response = await generateWithOpenRouter(prompt, model);
+    return response;
+  } catch (error) {
+    console.error("Failed to generate teaching tip:", error);
+    return "Did you know? Regular use of AI tools can save teachers up to 5 hours of prep time per week.";
   }
 }

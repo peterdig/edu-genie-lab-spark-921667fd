@@ -13,10 +13,11 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader } from "lucide-react";
+import { AlertCircle, CircleHelp, Loader } from "lucide-react";
 import { LessonResult } from "@/types/lessons";
 import { generateLesson } from "@/lib/api";
 import { OpenRouterModel } from "@/lib/openrouter";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters"),
@@ -36,6 +37,8 @@ interface LessonGeneratorProps {
 
 export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retries, setRetries] = useState(0);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,22 +55,48 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
 
   async function onSubmit(data: FormData) {
     setIsGenerating(true);
+    setError(null);
     
     try {
-      toast.info("Generating lesson plan...");
+      if (retries > 0) {
+        toast.info(`Retrying with ${data.model} (Attempt ${retries + 1})...`);
+      } else {
+        toast.info(`Generating lesson plan with ${data.model}...`);
+      }
       
       // Call the API with the selected model
       const lesson = await generateLesson(data, data.model as OpenRouterModel);
       
+      setRetries(0);
       onLessonGenerated(lesson);
       toast.success("Lesson plan generated successfully!");
     } catch (error) {
       console.error("Failed to generate lesson:", error);
-      toast.error("Failed to generate lesson plan. Please try again.");
+      setError(error instanceof Error ? error.message : "Unknown error occurred");
+      toast.error("Failed to generate lesson plan. Please try a different model or topic.");
     } finally {
       setIsGenerating(false);
     }
   }
+
+  const handleRetry = () => {
+    setRetries(retries + 1);
+    
+    // Switch to a different model for automatic retry
+    const currentModel = form.getValues("model");
+    let newModel: OpenRouterModel = "qwen";
+    
+    if (currentModel === "qwen") {
+      newModel = "mistral";
+    } else if (currentModel === "mistral") {
+      newModel = "deepseek";
+    } else {
+      newModel = "qwen";
+    }
+    
+    form.setValue("model", newModel);
+    form.handleSubmit(onSubmit)();
+  };
 
   return (
     <Card>
@@ -78,6 +107,24 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-4" 
+                onClick={handleRetry}
+                disabled={isGenerating}
+              >
+                Try with {form.getValues("model")}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -151,7 +198,18 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
               name="model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>AI Model</FormLabel>
+                  <div className="flex justify-between">
+                    <FormLabel>AI Model</FormLabel>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="-mt-1"
+                      type="button"
+                      onClick={() => toast.info("Different models may excel at different subjects. If one fails, try another.")}
+                    >
+                      <CircleHelp className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -160,7 +218,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="qwen" id="lesson-qwen" />
-                        <Label htmlFor="lesson-qwen">Qwen</Label>
+                        <Label htmlFor="lesson-qwen">AllenAI</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="deepseek" id="lesson-deepseek" />

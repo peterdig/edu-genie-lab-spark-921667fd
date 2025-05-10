@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LessonResult } from "@/types/lessons";
 import { toast } from "sonner";
-import { Book, Calendar, CheckSquare, Download, Edit } from "lucide-react";
+import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2 } from "lucide-react";
+import { generateTeachingTip } from "@/lib/api";
 
 interface LessonDisplayProps {
   lesson: LessonResult;
@@ -14,6 +15,8 @@ interface LessonDisplayProps {
 
 export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [isLoading, setIsLoading] = useState(false);
+  const [teachingTip, setTeachingTip] = useState("");
   
   const handleDownload = () => {
     // In a real app, this would generate a PDF or other download format
@@ -52,15 +55,51 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
     
     toast.success("Lesson plan downloaded!");
   };
+
+  const handlePrint = () => {
+    toast.info("Preparing lesson plan for printing...");
+    window.print();
+  };
+
+  const handleShare = () => {
+    // In a production app, this could use the Web Share API or copy to clipboard
+    toast.info("Copying shareable link to clipboard...");
+    
+    // For demonstration, just copy current URL + imaginary lesson ID
+    navigator.clipboard.writeText(`${window.location.origin}/lessons/share/${lesson.id}`);
+    
+    toast.success("Shareable link copied to clipboard!");
+  };
+  
+  const fetchTeachingTip = async () => {
+    setIsLoading(true);
+    try {
+      const subject = lesson.subject || "education";
+      const tip = await generateTeachingTip(subject);
+      setTeachingTip(tip);
+    } catch (error) {
+      console.error("Failed to fetch teaching tip:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl">{lesson.title}</CardTitle>
-          <Button variant="ghost" size="icon" onClick={handleDownload}>
-            <Download className="h-5 w-5" />
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="icon" onClick={handleShare} title="Share">
+              <Share2 className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handlePrint} title="Print">
+              <Printer className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleDownload} title="Download">
+              <Download className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           <div className="bg-muted text-sm px-2 py-1 rounded-md inline-flex items-center">
@@ -96,6 +135,26 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                 ))}
               </ul>
             </div>
+
+            {!teachingTip && (
+              <div className="mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={fetchTeachingTip}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? "Loading..." : "Get Teaching Tip"}
+                </Button>
+              </div>
+            )}
+
+            {teachingTip && (
+              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mt-6">
+                <h4 className="font-medium text-sm mb-2">Teaching Tip</h4>
+                <p className="text-sm italic">{teachingTip}</p>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="plan">
