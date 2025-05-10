@@ -8,7 +8,7 @@ export interface LessonResult {
   overview: string;
   objectives: string[];
   materials: string[];
-  plan: string;
+  plan: string | any;  // Updated to handle non-string values
   assessment: string;
   questions?: {
     text: string;

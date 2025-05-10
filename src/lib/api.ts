@@ -1,4 +1,3 @@
-
 import { AssessmentResult } from "@/types/assessments";
 import { LessonResult } from "@/types/lessons";
 import { Lab } from "@/types/labs";
@@ -45,8 +44,29 @@ export async function generateLesson(data: any, model: OpenRouterModel = "qwen")
       parsedResponse = sanitizeAndParseJSON(response);
     } catch (error) {
       console.error("Failed to parse response:", error);
-      toast.error("Failed to parse the generated lesson plan. Trying again with a different format.");
-      throw new Error("Failed to parse the generated lesson plan. Please try again.");
+      toast.error("Failed to parse the generated lesson plan. Using raw response as fallback.");
+      
+      // Use the raw response as a fallback
+      return {
+        id: `lesson-${Date.now()}`,
+        title: data.topic || "Lesson Plan",
+        gradeLevel: data.gradeLevel,
+        subject: data.topic.split(" ")[0],
+        duration: data.duration,
+        overview: "The AI generated content that couldn't be properly formatted. You can still use the content below.",
+        objectives: ["Review and edit the generated content"],
+        materials: ["Materials to be added"],
+        plan: response, // Use the raw response as the plan
+        assessment: "Assessment to be added",
+        questions: [],
+        tags: [data.topic.split(" ")[0], data.gradeLevel, "Auto-generated"],
+        createdAt: new Date().toISOString()
+      };
+    }
+    
+    // Ensure the plan is a string
+    if (parsedResponse.plan && typeof parsedResponse.plan !== 'string') {
+      parsedResponse.plan = JSON.stringify(parsedResponse.plan);
     }
     
     return {
@@ -67,7 +87,23 @@ export async function generateLesson(data: any, model: OpenRouterModel = "qwen")
   } catch (error) {
     console.error("Failed to generate lesson:", error);
     toast.error("Failed to generate lesson plan. Please try again with a different model.");
-    throw error;
+    
+    // Return a minimal valid lesson plan as a fallback
+    return {
+      id: `lesson-${Date.now()}`,
+      title: `${data.topic} - Draft Lesson Plan`,
+      gradeLevel: data.gradeLevel,
+      subject: data.topic.split(" ")[0],
+      duration: data.duration,
+      overview: "This is a draft lesson plan. The AI encountered an error during generation.",
+      objectives: ["Review and edit this draft lesson"],
+      materials: ["Materials to be added"],
+      plan: "The AI was unable to generate a complete lesson plan. Please try again or edit this draft manually.",
+      assessment: "Assessment to be added",
+      questions: [],
+      tags: [data.topic.split(" ")[0], data.gradeLevel, "Draft"],
+      createdAt: new Date().toISOString()
+    };
   }
 }
 
@@ -229,6 +265,16 @@ export async function generateTeachingTip(subject: string, model: OpenRouterMode
     return response;
   } catch (error) {
     console.error("Failed to generate teaching tip:", error);
-    return "Did you know? Regular use of AI tools can save teachers up to 5 hours of prep time per week.";
+    
+    // Provide a fallback tip based on the subject
+    const fallbackTips = [
+      "Did you know? Regular use of AI tools can save teachers up to 5 hours of prep time per week.",
+      "Try breaking lessons into 10-minute segments with transitions to maintain student engagement.",
+      "Research shows that students retain information better when they teach it to someone else.",
+      "Using visual aids alongside verbal instruction can improve retention by up to 40%.",
+      "Regular brain breaks during lessons can improve focus and reduce classroom management issues."
+    ];
+    
+    return fallbackTips[Math.floor(Math.random() * fallbackTips.length)];
   }
 }

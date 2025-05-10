@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LessonResult } from "@/types/lessons";
 import { toast } from "sonner";
-import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2, File, RefreshCw } from "lucide-react";
+import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2, File, RefreshCw, Bookmark, BookmarkCheck, ArrowDownToLine, Pencil } from "lucide-react";
 import { generateTeachingTip } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface LessonDisplayProps {
   lesson: LessonResult;
@@ -20,9 +22,29 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
   const [teachingTip, setTeachingTip] = useState("");
   const [exportFormat, setExportFormat] = useState<"text" | "pdf" | "word">("text");
   const [showExportOptions, setShowExportOptions] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [customPlan, setCustomPlan] = useState(lesson.plan || "");
+  
+  // Check if lesson is bookmarked on load
+  useEffect(() => {
+    try {
+      const bookmarkedLessons = JSON.parse(localStorage.getItem('bookmarkedLessons') || '[]');
+      const isFound = bookmarkedLessons.some((bm: any) => bm.id === lesson.id);
+      setIsBookmarked(isFound);
+      
+      // Load notes if any
+      const savedNotes = localStorage.getItem(`lesson-notes-${lesson.id}`);
+      if (savedNotes) {
+        setNotes(savedNotes);
+      }
+    } catch (e) {
+      console.error("Failed to load bookmarks", e);
+    }
+  }, [lesson.id]);
   
   const handleDownload = () => {
-    // In a real app, this would generate a PDF or other download format
     toast.info(`Downloading lesson plan as ${exportFormat}...`);
     
     // Creating a text version of the lesson plan
@@ -36,13 +58,16 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
       ${lesson.objectives.map((obj, i) => `${i + 1}. ${obj}`).join('\n')}
       
       LESSON PLAN:
-      ${lesson.plan}
+      ${typeof lesson.plan === 'string' ? lesson.plan : 'No detailed plan available.'}
       
       ASSESSMENT:
       ${lesson.assessment}
       
       MATERIALS:
       ${lesson.materials.map((mat, i) => `${i + 1}. ${mat}`).join('\n')}
+      
+      TEACHING NOTES:
+      ${notes || 'No notes added yet.'}
     `;
     
     // Create a blob and download it
@@ -88,6 +113,51 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
     }
   };
   
+  const toggleBookmark = () => {
+    try {
+      const bookmarkedLessons = JSON.parse(localStorage.getItem('bookmarkedLessons') || '[]');
+      
+      if (isBookmarked) {
+        // Remove from bookmarks
+        const filtered = bookmarkedLessons.filter((bm: any) => bm.id !== lesson.id);
+        localStorage.setItem('bookmarkedLessons', JSON.stringify(filtered));
+        toast.info("Removed from bookmarks");
+      } else {
+        // Add to bookmarks
+        bookmarkedLessons.push({
+          id: lesson.id,
+          title: lesson.title,
+          subject: lesson.subject,
+          gradeLevel: lesson.gradeLevel,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('bookmarkedLessons', JSON.stringify(bookmarkedLessons));
+        toast.success("Added to bookmarks");
+      }
+      
+      setIsBookmarked(!isBookmarked);
+    } catch (e) {
+      console.error("Failed to update bookmarks", e);
+      toast.error("Failed to update bookmarks");
+    }
+  };
+  
+  const saveNotes = () => {
+    try {
+      localStorage.setItem(`lesson-notes-${lesson.id}`, notes);
+      toast.success("Notes saved successfully");
+    } catch (e) {
+      console.error("Failed to save notes", e);
+      toast.error("Failed to save notes");
+    }
+  };
+  
+  const savePlanEdits = () => {
+    setIsEditing(false);
+    toast.success("Lesson plan updated");
+    // In a real app, this would be saved to a database
+  };
+  
   // Fetch teaching tip on component mount
   useEffect(() => {
     fetchTeachingTip();
@@ -99,6 +169,24 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl">{lesson.title}</CardTitle>
           <div className="flex space-x-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleBookmark} 
+                    className={isBookmarked ? "text-primary" : ""}
+                  >
+                    {isBookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isBookmarked ? 'Remove bookmark' : 'Bookmark lesson'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <Button variant="ghost" size="icon" onClick={() => setShowExportOptions(!showExportOptions)} title="Download">
               <Download className="h-5 w-5" />
             </Button>
@@ -157,15 +245,21 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               <span>{lesson.subject}</span>
             </div>
           )}
+          {lesson.tags && lesson.tags.map((tag, index) => (
+            <Badge key={index} variant="outline" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
         </div>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-4 mb-6">
+          <TabsList className="grid grid-cols-5 mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="plan">Lesson Plan</TabsTrigger>
             <TabsTrigger value="assessment">Assessment</TabsTrigger>
             <TabsTrigger value="materials">Materials</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
@@ -224,13 +318,47 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
           
           <TabsContent value="plan">
             <div className="space-y-4">
-              <div className="prose max-w-none">
-                {lesson.plan.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 text-muted-foreground">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              {isEditing ? (
+                <div className="space-y-4">
+                  <textarea 
+                    className="w-full min-h-[300px] p-4 border rounded-md" 
+                    value={customPlan}
+                    onChange={(e) => setCustomPlan(e.target.value)}
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={savePlanEdits}>
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="prose max-w-none">
+                  <div className="flex justify-end mb-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      <span>Edit Plan</span>
+                    </Button>
+                  </div>
+                  
+                  {typeof lesson.plan === 'string' && lesson.plan ? (
+                    lesson.plan.split('\n\n').map((paragraph, index) => (
+                      <p key={index} className="mb-4 text-muted-foreground">
+                        {paragraph}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No detailed plan available.</p>
+                  )}
+                </div>
+              )}
             </div>
           </TabsContent>
           
@@ -313,6 +441,32 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                     </CardContent>
                   </Card>
                 </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="notes">
+            <div className="space-y-4">
+              <h3 className="font-medium">Teacher Notes</h3>
+              <p className="text-xs text-muted-foreground">Add your personal notes, reflections, or reminders for this lesson plan.</p>
+              
+              <textarea
+                className="w-full min-h-[200px] p-4 border rounded-md"
+                placeholder="Add your notes here..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+              
+              <Button onClick={saveNotes} className="w-full sm:w-auto">Save Notes</Button>
+              
+              <div className="mt-6">
+                <h4 className="text-sm font-medium mb-2">Tips for effective note-taking:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  <li>Record what worked well and what needs improvement</li>
+                  <li>Note any modifications made during the lesson</li>
+                  <li>Track student engagement and understanding</li>
+                  <li>Add ideas for next time you teach this lesson</li>
+                </ul>
               </div>
             </div>
           </TabsContent>

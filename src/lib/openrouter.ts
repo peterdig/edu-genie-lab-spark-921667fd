@@ -6,9 +6,9 @@ const API_KEY = "sk-or-v1-1ee6b0328a6d1d71211fa4358e902e7b84446e68907aa2a6b12e96
 
 // Updated model IDs based on OpenRouter's current supported models
 export const MODELS = {
-  qwen: "anthropic/claude-3-haiku", // Replacing with a working alternative
-  deepseek: "deepseek-ai/deepseek-coder-v2",
-  mistral: "mistralai/mistral-large-2"
+  qwen: "anthropic/claude-3-haiku", // Using Claude 3 Haiku as replacement
+  deepseek: "anthropic/claude-3-sonnet", // Using Claude 3 Sonnet as replacement
+  mistral: "anthropic/claude-3-opus" // Using Claude 3 Opus as replacement
 };
 
 export type OpenRouterModel = keyof typeof MODELS;
@@ -111,18 +111,37 @@ export function sanitizeAndParseJSON(jsonString: string): any {
           return JSON.parse(cleanedJson);
         } catch (e3) {
           console.error("Failed to parse cleaned JSON:", e3);
-          throw new Error("Could not parse the generated content as JSON.");
+          
+          // Last resort: create a minimal valid object with the content
+          return {
+            title: "Generated Lesson Plan",
+            overview: "This lesson plan couldn't be properly formatted. Please regenerate or edit manually.",
+            objectives: ["Review and edit the generated content"],
+            materials: ["Teaching materials to be added"],
+            plan: jsonString.substring(0, 2000), // Use raw text as plan
+            assessment: "Assessment to be added",
+            tags: ["Auto-generated"]
+          };
         }
       }
     }
     console.error("Could not find valid JSON in response:", jsonString.substring(0, 200) + "...");
-    throw new Error("Could not find valid JSON in the response.");
+    // Return a fallback object
+    return {
+      title: "Generated Lesson Plan",
+      overview: "The AI couldn't generate a properly structured lesson plan. Please try again or edit manually.",
+      objectives: ["Review and edit the generated content"],
+      materials: ["Teaching materials to be added"],
+      plan: jsonString.substring(0, 2000), // Use raw text as plan
+      assessment: "Assessment to be added",
+      tags: ["Auto-generated"]
+    };
   }
 }
 
 // Function to retry with a different model if one fails
 export function getNextModel(currentModel: OpenRouterModel): OpenRouterModel {
-  const modelOrder: OpenRouterModel[] = ["qwen", "mistral", "deepseek"];
+  const modelOrder: OpenRouterModel[] = ["qwen", "deepseek", "mistral"];
   const currentIndex = modelOrder.indexOf(currentModel);
   const nextIndex = (currentIndex + 1) % modelOrder.length;
   return modelOrder[nextIndex];
