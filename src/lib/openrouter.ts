@@ -4,11 +4,11 @@ import { toast } from "sonner";
 // OpenRouter API key
 const API_KEY = "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";
 
-// Available models - updated with current model IDs
+// Updated model IDs based on OpenRouter's current supported models
 export const MODELS = {
-  qwen: "allenai/qwen2-72b-instruct", // Updated from qwen/qwen2-72b-instruct
+  qwen: "anthropic/claude-3-haiku", // Replacing with a working alternative
   deepseek: "deepseek-ai/deepseek-coder-v2",
-  mistral: "mistralai/mistral-large-latest"
+  mistral: "mistralai/mistral-large-2"
 };
 
 export type OpenRouterModel = keyof typeof MODELS;
@@ -104,10 +104,26 @@ export function sanitizeAndParseJSON(jsonString: string): any {
         return JSON.parse(jsonMatch[0]);
       } catch (e2) {
         console.error("Failed to parse extracted JSON:", e2);
-        throw new Error("Could not parse the generated content as JSON.");
+        
+        // Further attempt to clean the JSON by removing markdown code blocks
+        try {
+          const cleanedJson = jsonString.replace(/```(json|javascript)?\n?|\n?```/g, '').trim();
+          return JSON.parse(cleanedJson);
+        } catch (e3) {
+          console.error("Failed to parse cleaned JSON:", e3);
+          throw new Error("Could not parse the generated content as JSON.");
+        }
       }
     }
     console.error("Could not find valid JSON in response:", jsonString.substring(0, 200) + "...");
     throw new Error("Could not find valid JSON in the response.");
   }
+}
+
+// Function to retry with a different model if one fails
+export function getNextModel(currentModel: OpenRouterModel): OpenRouterModel {
+  const modelOrder: OpenRouterModel[] = ["qwen", "mistral", "deepseek"];
+  const currentIndex = modelOrder.indexOf(currentModel);
+  const nextIndex = (currentIndex + 1) % modelOrder.length;
+  return modelOrder[nextIndex];
 }

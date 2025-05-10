@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { AlertCircle, CircleHelp, Loader } from "lucide-react";
 import { LessonResult } from "@/types/lessons";
 import { generateLesson } from "@/lib/api";
-import { OpenRouterModel } from "@/lib/openrouter";
+import { OpenRouterModel, getNextModel } from "@/lib/openrouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
@@ -39,6 +39,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retries, setRetries] = useState(0);
+  const [maxRetries] = useState(3);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,6 +53,14 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
       includeActivities: true,
     },
   });
+
+  // Load default model from localStorage if available
+  useEffect(() => {
+    const savedModel = localStorage.getItem("defaultModel");
+    if (savedModel && (savedModel === "qwen" || savedModel === "deepseek" || savedModel === "mistral")) {
+      form.setValue("model", savedModel as OpenRouterModel);
+    }
+  }, [form]);
 
   async function onSubmit(data: FormData) {
     setIsGenerating(true);
@@ -73,33 +82,43 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
     } catch (error) {
       console.error("Failed to generate lesson:", error);
       setError(error instanceof Error ? error.message : "Unknown error occurred");
-      toast.error("Failed to generate lesson plan. Please try a different model or topic.");
+      
+      // Only auto-retry if we haven't reached max retries
+      if (retries < maxRetries) {
+        const nextModel = getNextModel(form.getValues("model") as OpenRouterModel);
+        form.setValue("model", nextModel);
+        setRetries(retries + 1);
+        
+        // Auto-retry with next model after a short delay
+        setTimeout(() => {
+          form.handleSubmit(onSubmit)();
+        }, 1500);
+        
+        toast.error(`Failed with current model. Automatically trying ${nextModel} instead...`);
+      } else {
+        toast.error("Failed to generate lesson plan after multiple attempts. Please try again later.");
+      }
     } finally {
-      setIsGenerating(false);
+      if (retries >= maxRetries) {
+        setIsGenerating(false);
+        setRetries(0);
+      }
     }
   }
 
   const handleRetry = () => {
     setRetries(retries + 1);
     
-    // Switch to a different model for automatic retry
+    // Switch to a different model for manual retry
     const currentModel = form.getValues("model");
-    let newModel: OpenRouterModel = "qwen";
+    const nextModel = getNextModel(currentModel as OpenRouterModel);
     
-    if (currentModel === "qwen") {
-      newModel = "mistral";
-    } else if (currentModel === "mistral") {
-      newModel = "deepseek";
-    } else {
-      newModel = "qwen";
-    }
-    
-    form.setValue("model", newModel);
+    form.setValue("model", nextModel);
     form.handleSubmit(onSubmit)();
   };
 
   return (
-    <Card>
+    <Card className="animate-fade-in">
       <CardHeader>
         <CardTitle>Create a Lesson Plan</CardTitle>
         <CardDescription>
@@ -110,14 +129,13 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error}
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="ml-4" 
                 onClick={handleRetry}
-                disabled={isGenerating}
+                disabled={isGenerating || retries >= maxRetries}
               >
                 Try with {form.getValues("model")}
               </Button>
@@ -205,7 +223,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
                       size="sm" 
                       className="-mt-1"
                       type="button"
-                      onClick={() => toast.info("Different models may excel at different subjects. If one fails, try another.")}
+                      onClick={() => toast.info("Different models may excel at different subjects. If one fails, another will be tried automatically.")}
                     >
                       <CircleHelp className="h-4 w-4" />
                     </Button>
@@ -218,7 +236,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="qwen" id="lesson-qwen" />
-                        <Label htmlFor="lesson-qwen">AllenAI</Label>
+                        <Label htmlFor="lesson-qwen">Claude</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="deepseek" id="lesson-deepseek" />

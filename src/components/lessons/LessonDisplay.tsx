@@ -1,12 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LessonResult } from "@/types/lessons";
 import { toast } from "sonner";
-import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2 } from "lucide-react";
+import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2, File, RefreshCw } from "lucide-react";
 import { generateTeachingTip } from "@/lib/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface LessonDisplayProps {
   lesson: LessonResult;
@@ -17,10 +18,12 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(false);
   const [teachingTip, setTeachingTip] = useState("");
+  const [exportFormat, setExportFormat] = useState<"text" | "pdf" | "word">("text");
+  const [showExportOptions, setShowExportOptions] = useState(false);
   
   const handleDownload = () => {
     // In a real app, this would generate a PDF or other download format
-    toast.info("Downloading lesson plan...");
+    toast.info(`Downloading lesson plan as ${exportFormat}...`);
     
     // Creating a text version of the lesson plan
     const lessonText = `
@@ -53,7 +56,7 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    toast.success("Lesson plan downloaded!");
+    toast.success(`Lesson plan downloaded as ${exportFormat}!`);
   };
 
   const handlePrint = () => {
@@ -79,28 +82,67 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
       setTeachingTip(tip);
     } catch (error) {
       console.error("Failed to fetch teaching tip:", error);
+      setTeachingTip("Try breaking this lesson into 10-minute segments with transitions to maintain student engagement.");
     } finally {
       setIsLoading(false);
     }
   };
   
+  // Fetch teaching tip on component mount
+  useEffect(() => {
+    fetchTeachingTip();
+  }, []);
+  
   return (
-    <Card className="w-full">
+    <Card className="w-full animate-fade-in">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl">{lesson.title}</CardTitle>
           <div className="flex space-x-2">
-            <Button variant="ghost" size="icon" onClick={handleShare} title="Share">
-              <Share2 className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={() => setShowExportOptions(!showExportOptions)} title="Download">
+              <Download className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handlePrint} title="Print">
               <Printer className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleDownload} title="Download">
-              <Download className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={handleShare} title="Share">
+              <Share2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
+        
+        {showExportOptions && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button 
+              size="sm" 
+              variant={exportFormat === "text" ? "default" : "outline"} 
+              onClick={() => { setExportFormat("text"); handleDownload(); }}
+              className="flex items-center gap-2"
+            >
+              <File className="h-4 w-4" />
+              Text
+            </Button>
+            <Button 
+              size="sm" 
+              variant={exportFormat === "pdf" ? "default" : "outline"} 
+              onClick={() => { setExportFormat("pdf"); handleDownload(); }}
+              className="flex items-center gap-2"
+            >
+              <File className="h-4 w-4" />
+              PDF
+            </Button>
+            <Button 
+              size="sm" 
+              variant={exportFormat === "word" ? "default" : "outline"} 
+              onClick={() => { setExportFormat("word"); handleDownload(); }}
+              className="flex items-center gap-2"
+            >
+              <File className="h-4 w-4" />
+              Word
+            </Button>
+          </div>
+        )}
+        
         <div className="flex flex-wrap gap-2 mt-2">
           <div className="bg-muted text-sm px-2 py-1 rounded-md inline-flex items-center">
             <Calendar className="h-3 w-3 mr-1" />
@@ -110,6 +152,11 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
             <Book className="h-3 w-3 mr-1" />
             <span>Grade {lesson.gradeLevel}</span>
           </div>
+          {lesson.subject && (
+            <div className="bg-primary/10 text-sm px-2 py-1 rounded-md inline-flex items-center">
+              <span>{lesson.subject}</span>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -136,6 +183,24 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               </ul>
             </div>
 
+            {teachingTip && (
+              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mt-6">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-medium text-sm mb-2">Teaching Tip</h4>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 -mt-1" 
+                    onClick={fetchTeachingTip}
+                    disabled={isLoading}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <p className="text-sm italic">{teachingTip}</p>
+              </div>
+            )}
+
             {!teachingTip && (
               <div className="mt-6">
                 <Button 
@@ -148,13 +213,13 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                 </Button>
               </div>
             )}
-
-            {teachingTip && (
-              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mt-6">
-                <h4 className="font-medium text-sm mb-2">Teaching Tip</h4>
-                <p className="text-sm italic">{teachingTip}</p>
-              </div>
-            )}
+            
+            <Alert className="bg-accent/40 border-accent mt-4">
+              <AlertDescription>
+                <span className="font-medium">Standards alignment: </span>
+                This lesson helps meet standards for {lesson.subject} at the {lesson.gradeLevel} grade level.
+              </AlertDescription>
+            </Alert>
           </TabsContent>
           
           <TabsContent value="plan">
@@ -183,7 +248,7 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   <h3 className="font-medium mb-4">Sample Questions</h3>
                   <div className="space-y-4">
                     {lesson.questions.map((question, index) => (
-                      <div key={index} className="border rounded-lg p-4">
+                      <div key={index} className="border rounded-lg p-4 hover-lift">
                         <p className="font-medium mb-2">{index + 1}. {question.text}</p>
                         {question.options && (
                           <ul className="space-y-2 mt-2">
@@ -221,6 +286,34 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   </li>
                 ))}
               </ul>
+              
+              <div className="mt-8">
+                <h3 className="font-medium mb-4">Recommended Resources</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="hover-lift">
+                    <CardContent className="p-4">
+                      <h4 className="text-sm font-medium">Educational Videos</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Find subject-related videos from trusted educational sources.
+                      </p>
+                      <Button variant="link" className="px-0 py-1 h-auto text-xs" onClick={() => toast.info("This would open a resource finder dialog")}>
+                        Browse Videos
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  <Card className="hover-lift">
+                    <CardContent className="p-4">
+                      <h4 className="text-sm font-medium">Printable Worksheets</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Download ready-to-use worksheets for this lesson.
+                      </p>
+                      <Button variant="link" className="px-0 py-1 h-auto text-xs" onClick={() => toast.info("This would open a worksheet generator")}>
+                        Generate Worksheets
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

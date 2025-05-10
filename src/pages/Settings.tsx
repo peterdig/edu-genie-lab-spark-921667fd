@@ -8,13 +8,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DarkModeToggle } from "@/components/DarkModeToggle";
+import { getNextModel } from "@/lib/openrouter";
 
 export default function Settings() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [defaultModel, setDefaultModel] = useState("qwen");
+  
+  useEffect(() => {
+    // Check if dark mode is enabled
+    const theme = localStorage.getItem("theme");
+    setIsDarkMode(theme === "dark");
+    
+    // Get default model preference
+    const model = localStorage.getItem("defaultModel") || "qwen";
+    setDefaultModel(model);
+  }, []);
+  
+  const toggleDarkMode = () => {
+    const newValue = !isDarkMode;
+    setIsDarkMode(newValue);
+    
+    if (newValue) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
   
   const handleSave = () => {
     setIsLoading(true);
+    
+    // Save model preference
+    localStorage.setItem("defaultModel", defaultModel);
     
     // Simulate API request
     setTimeout(() => {
@@ -26,12 +57,21 @@ export default function Settings() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your account and application preferences
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your account and application preferences
+            </p>
+          </div>
+          <DarkModeToggle />
         </div>
+        
+        <Alert className="bg-primary/5 border-primary/20">
+          <AlertDescription>
+            We've updated our AI models to ensure more reliable content generation. If you experience any issues, try switching models in the AI Settings tab.
+          </AlertDescription>
+        </Alert>
         
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList>
@@ -121,13 +161,22 @@ export default function Settings() {
                       Switch between light and dark themes.
                     </p>
                   </div>
-                  <Switch />
+                  <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Lab Narration</Label>
                     <p className="text-sm text-muted-foreground">
                       Enable AI voice narration for labs by default.
+                    </p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Auto-save Content</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically save your content as you work.
                     </p>
                   </div>
                   <Switch defaultChecked />
@@ -146,54 +195,79 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle>AI Settings</CardTitle>
                 <CardDescription>
-                  Configure your AI models and API keys.
+                  Configure your AI models and defaults.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="openai-key">OpenAI API Key</Label>
-                  <Input id="openai-key" placeholder="sk-..." type="password" />
-                  <p className="text-xs text-muted-foreground">
-                    For GPT-4/Whisper functionality
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="huggingface-key">HuggingFace API Key</Label>
-                  <Input id="huggingface-key" placeholder="hf_..." type="password" />
-                  <p className="text-xs text-muted-foreground">
-                    For specialized models and embeddings
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Model Preferences</Label>
+                  <Label>Default AI Model</Label>
                   <div className="grid gap-2">
-                    <div className="flex items-center justify-between border p-3 rounded-md">
+                    <div 
+                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'qwen' ? 'bg-primary/10 border-primary' : ''}`}
+                      onClick={() => setDefaultModel('qwen')}
+                    >
                       <div>
-                        <p className="font-medium">GPT-4</p>
-                        <p className="text-xs text-muted-foreground">For lesson planning & assessments</p>
+                        <p className="font-medium">Claude Haiku</p>
+                        <p className="text-xs text-muted-foreground">Fast, reliable, balanced option</p>
+                      </div>
+                      <Switch checked={defaultModel === 'qwen'} />
+                    </div>
+                    <div 
+                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'mistral' ? 'bg-primary/10 border-primary' : ''}`}
+                      onClick={() => setDefaultModel('mistral')}
+                    >
+                      <div>
+                        <p className="font-medium">Mistral</p>
+                        <p className="text-xs text-muted-foreground">Great for detailed lesson plans</p>
+                      </div>
+                      <Switch checked={defaultModel === 'mistral'} />
+                    </div>
+                    <div 
+                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'deepseek' ? 'bg-primary/10 border-primary' : ''}`}
+                      onClick={() => setDefaultModel('deepseek')}
+                    >
+                      <div>
+                        <p className="font-medium">DeepSeek</p>
+                        <p className="text-xs text-muted-foreground">Best for code and technical content</p>
+                      </div>
+                      <Switch checked={defaultModel === 'deepseek'} />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="openai-key">Additional AI Settings</Label>
+                  <div className="grid gap-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Auto Retry Failed Generations</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically try a different model if generation fails
+                        </p>
                       </div>
                       <Switch defaultChecked />
                     </div>
-                    <div className="flex items-center justify-between border p-3 rounded-md">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">Mistral</p>
-                        <p className="text-xs text-muted-foreground">Local model for offline use</p>
+                        <Label>Model Fallback Order</Label>
+                        <p className="text-sm text-muted-foreground">
+                          If primary model fails, try in this order
+                        </p>
                       </div>
-                      <Switch />
-                    </div>
-                    <div className="flex items-center justify-between border p-3 rounded-md">
-                      <div>
-                        <p className="font-medium">Claude</p>
-                        <p className="text-xs text-muted-foreground">Alternative AI model</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">1. Claude</span>
+                        <span className="text-sm">→</span>
+                        <span className="text-sm">2. Mistral</span>
+                        <span className="text-sm">→</span>
+                        <span className="text-sm">3. DeepSeek</span>
                       </div>
-                      <Switch />
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save API Settings"}
+                  {isLoading ? "Saving..." : "Save AI Settings"}
                 </Button>
               </CardFooter>
             </Card>
