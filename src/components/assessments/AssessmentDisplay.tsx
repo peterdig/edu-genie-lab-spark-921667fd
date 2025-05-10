@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +75,36 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
   };
   
   const renderQuestion = (question: Question, index: number) => {
+    // Helper function to check if this option is the correct answer
+    const isCorrectAnswer = (option: string, optionIndex: number, answer?: string): boolean => {
+      if (!answer) return false;
+      
+      // Convert both to lowercase for case-insensitive comparison
+      const lowerOption = option.toLowerCase();
+      const lowerAnswer = answer.toLowerCase();
+      
+      // Direct match of the full option text (case insensitive)
+      if (lowerOption === lowerAnswer) return true;
+      
+      // Check if answer is just the option letter (a, b, c, etc.)
+      const optionLetter = String.fromCharCode(97 + optionIndex).toLowerCase();
+      if (lowerAnswer === optionLetter) return true;
+      
+      // Check if answer is a capitalized option letter (A, B, C, etc.)
+      if (lowerAnswer === String.fromCharCode(65 + optionIndex).toLowerCase()) return true;
+      
+      // Check if answer is numeric (1, 2, 3, etc.)
+      if (answer === (optionIndex + 1).toString()) return true;
+      
+      // Check if answer contains the option text (e.g. "The answer is Rome" contains "Rome")
+      if (lowerOption.length > 3 && lowerAnswer.includes(lowerOption)) return true;
+      
+      // Check if option contains the answer (e.g. "Ancient Rome" contains "Rome")
+      if (lowerAnswer.length > 3 && lowerOption.includes(lowerAnswer)) return true;
+      
+      return false;
+    };
+    
     return (
       <div key={index} className="mb-8">
         <div className="flex justify-between items-start mb-2">
@@ -92,11 +121,11 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
           <div className="ml-6 mt-3 space-y-2">
             {question.options.map((option, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border flex items-center justify-center text-sm">
+                <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-sm ${activeTab === 'answer-key' && isCorrectAnswer(option, i, question.answer) ? 'bg-primary text-primary-foreground border-primary' : ''}`}>
                   {String.fromCharCode(97 + i)}
                 </div>
                 <span>{option}</span>
-                {activeTab === 'answer-key' && option === question.answer && (
+                {activeTab === 'answer-key' && isCorrectAnswer(option, i, question.answer) && (
                   <CheckCircle className="h-4 w-4 text-primary ml-1" />
                 )}
               </div>
@@ -187,6 +216,15 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
           </TabsContent>
           
           <TabsContent value="answer-key">
+            {/* Warning about answers if needed */}
+            {assessment.questions.some(q => !q.answer) && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md mb-6">
+                <p className="text-sm">
+                  <span className="font-medium">Note:</span> Some questions may not have proper answer information. 
+                  Default or placeholder answers have been provided where needed.
+                </p>
+              </div>
+            )}
             <div className="space-y-1">
               {assessment.questions.map((question, index) => renderQuestion(question, index))}
             </div>

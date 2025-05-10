@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -15,7 +14,6 @@ import { toast } from "sonner";
 import { Loader } from "lucide-react";
 import { generateLab } from "@/lib/api";
 import { Lab } from "@/types/labs";
-import { OpenRouterModel } from "@/lib/openrouter";
 
 const formSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters"),
@@ -49,7 +47,7 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
     try {
       toast.info("Generating lab simulation...");
       
-      const lab = await generateLab(data, data.model as OpenRouterModel);
+      const lab = await generateLab(data, data.model);
       
       onLabGenerated(lab);
       toast.success("Lab simulation generated successfully!");

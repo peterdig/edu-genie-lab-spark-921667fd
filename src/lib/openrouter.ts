@@ -1,148 +1,376 @@
-
 import { toast } from "sonner";
 
-// OpenRouter API key
-const API_KEY = "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";
+// API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// Updated model IDs based on OpenRouter's current supported models
-export const MODELS = {
-  qwen: "anthropic/claude-3-haiku", // Using Claude 3 Haiku as replacement
-  deepseek: "anthropic/claude-3-sonnet", // Using Claude 3 Sonnet as replacement
-  mistral: "anthropic/claude-3-opus" // Using Claude 3 Opus as replacement
-};
-
-export type OpenRouterModel = keyof typeof MODELS;
-
-interface OpenRouterResponse {
+// Model interface
+export interface OpenRouterModel {
+  name: string;
   id: string;
-  choices: {
-    message: {
-      content: string;
-    };
-    finish_reason: string;
-  }[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+  input_cost: string;
+  output_cost: string;
+  context_length: number;
+  is_free?: boolean;
+}
+
+// Cache available models
+let availableModels: OpenRouterModel[] = [];
+let recommendedModels: string[] = [];
+
+/**
+ * Fetch available models from the API
+ */
+export async function fetchAvailableModels(): Promise<OpenRouterModel[]> {
+  try {
+    if (availableModels.length > 0) {
+      return availableModels;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/models`);
+    if (!response.ok) {
+      throw new Error(`Error fetching models: ${response.status} ${response.statusText}`);
+    }
+    
+    availableModels = await response.json();
+    return availableModels;
+  } catch (error) {
+    console.error("Failed to fetch available models:", error);
+    toast.error("Failed to fetch available models. Using default models instead.");
+    
+    // Return some default models if the API call fails
+    return [
+      {
+        name: "Meta: Llama 3.1 8B Instruct",
+        id: "meta-llama/llama-3.1-8b-instruct:free",
+        input_cost: "$0",
+        output_cost: "$0",
+        context_length: 131072,
+        is_free: true
+      },
+      {
+        name: "Mistral: Mistral 7B Instruct",
+        id: "mistralai/mistral-7b-instruct:free",
+        input_cost: "$0",
+        output_cost: "$0",
+        context_length: 32768,
+        is_free: true
+      },
+      {
+        name: "DeepSeek: DeepSeek V3",
+        id: "deepseek/deepseek-chat:free",
+        input_cost: "$0",
+        output_cost: "$0",
+        context_length: 163840,
+        is_free: true
+      }
+    ];
+  }
 }
 
 /**
- * Make a request to the OpenRouter API
- * @param prompt The prompt to send to the API
- * @param model The model to use (qwen, deepseek, or mistral)
- * @param temperature The temperature to use (0.0 - 1.0)
- * @returns The generated text
+ * Fetch recommended models from the API
  */
-export async function generateWithOpenRouter(
-  prompt: string, 
-  model: OpenRouterModel = "qwen",
-  temperature: number = 0.7
-): Promise<string> {
+export async function fetchRecommendedModels(): Promise<string[]> {
   try {
-    console.log(`Making request to OpenRouter with model: ${MODELS[model]}`);
+    if (recommendedModels.length > 0) {
+      return recommendedModels;
+    }
     
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch(`${API_BASE_URL}/models/recommended`);
+    if (!response.ok) {
+      throw new Error(`Error fetching recommended models: ${response.status} ${response.statusText}`);
+    }
+    
+    recommendedModels = await response.json();
+    return recommendedModels;
+  } catch (error) {
+    console.error("Failed to fetch recommended models:", error);
+    
+    // Return some default recommended models if the API call fails
+    return [
+      "meta-llama/llama-3.1-8b-instruct:free",
+      "mistralai/mistral-7b-instruct:free",
+      "deepseek/deepseek-chat:free"
+    ];
+  }
+}
+
+/**
+ * Get a model by ID
+ * @param modelId The model ID to look up
+ * @returns The model info, or undefined if not found
+ */
+export async function getModelById(modelId: string): Promise<OpenRouterModel | undefined> {
+  const models = await fetchAvailableModels();
+  return models.find(model => model.id === modelId);
+}
+
+/**
+ * Generate content via the backend API
+ * @param endpoint The API endpoint to call
+ * @param data The data to send to the API
+ * @returns The API response as JSON
+ */
+export async function generateContent(endpoint: string, data: any): Promise<any> {
+  try {
+    console.log(`Making API request to ${endpoint} with model: ${data.model}`);
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`,
-        "HTTP-Referer": window.location.href,
-        "X-Title": "AI-Powered Educator Companion"
       },
-      body: JSON.stringify({
-        model: MODELS[model],
-        messages: [
-          { role: "system", content: "You are an AI educator assistant focused on helping teachers create high-quality educational content." },
-          { role: "user", content: prompt }
-        ],
-        temperature: temperature,
-        max_tokens: 2000,
-      }),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenRouter API error:", errorData);
+      let errorMessage = `Error: ${response.status} ${response.statusText}`;
+      let errorDetail = '';
       
-      // More specific error message based on the response
-      if (errorData.error && errorData.error.message) {
-        toast.error(`API Error: ${errorData.error.message}`);
-        throw new Error(`Error: ${errorData.error.message}`);
-      } else {
-        toast.error(`Error: ${response.status} ${response.statusText}`);
-        throw new Error(`Error: ${response.status} ${response.statusText}`);
+      try {
+        const errorData = await response.json();
+        console.error(`API error (${response.status}):`, errorData);
+        
+        if (errorData.detail) {
+          errorDetail = errorData.detail;
+          errorMessage = errorData.detail;
+        }
+      } catch (parseError) {
+        console.error("Failed to parse error response:", parseError);
+        errorDetail = 'Unable to parse error response';
       }
+      
+      // Create a detailed error object
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).endpoint = endpoint;
+      (error as any).detail = errorDetail;
+      (error as any).model = data.model;
+      
+      throw error;
     }
 
-    const data: OpenRouterResponse = await response.json();
+    const result = await response.json();
     
-    // Log token usage for monitoring
-    console.log("Token usage:", data.usage);
+    // Validate the response has data
+    if (!result) {
+      throw new Error(`Received empty response from ${endpoint}`);
+    }
     
-    return data.choices[0].message.content;
+    return result;
   } catch (error) {
-    console.error("Failed to generate content:", error);
-    toast.error("Failed to generate content. Please try again.");
+    console.error(`Failed to generate content from ${endpoint}:`, error);
     throw error;
   }
 }
 
-// Helper function to detect if the JSON parsing failed and attempt to fix it
-export function sanitizeAndParseJSON(jsonString: string): any {
+/**
+ * Generate a lesson
+ * @param data Lesson parameters
+ * @param modelId The model ID to use
+ * @returns The generated lesson
+ */
+export async function generateLesson(data: any, modelId: string): Promise<any> {
+  const response = await generateContent("/generate/lesson", {
+    ...data,
+    model: modelId
+  });
+  
+  // Validate essential lesson fields
+  if (!response || typeof response !== 'object') {
+    throw new Error("Invalid lesson response format");
+  }
+  
+  if (!response.title || !response.overview || !response.objectives || !response.plan) {
+    throw new Error("Incomplete lesson plan received from AI");
+  }
+  
+  return response;
+}
+
+/**
+ * Generate an assessment
+ * @param data Assessment parameters
+ * @param modelId The model ID to use
+ * @returns The generated assessment
+ */
+export async function generateAssessment(data: any, modelId: string): Promise<any> {
+  const response = await generateContent("/generate/assessment", {
+    ...data,
+    model: modelId
+  });
+  
+  // Validate essential assessment fields
+  if (!response || typeof response !== 'object') {
+    throw new Error("Invalid assessment response format");
+  }
+  
+  if (!response.title || !response.questions || !Array.isArray(response.questions)) {
+    throw new Error("Incomplete assessment received from AI");
+  }
+  
+  return response;
+}
+
+/**
+ * Generate a lab
+ * @param data Lab parameters
+ * @param modelId The model ID to use
+ * @returns The generated lab
+ */
+export async function generateLab(data: any, modelId: string): Promise<any> {
+  const response = await generateContent("/generate/lab", {
+    ...data,
+    model: modelId
+  });
+  
+  // Validate essential lab fields
+  if (!response || typeof response !== 'object') {
+    throw new Error("Invalid lab response format");
+  }
+  
+  if (!response.title || !response.instructions || !response.materials) {
+    throw new Error("Incomplete lab received from AI");
+  }
+  
+  return response;
+}
+
+/**
+ * Generate a teaching tip
+ * @param subject The subject for the teaching tip
+ * @param modelId The model ID to use
+ * @returns The generated teaching tip
+ */
+export async function generateTeachingTip(subject: string, modelId: string): Promise<string> {
   try {
-    // First attempt to parse the response directly
-    return JSON.parse(jsonString);
-  } catch (e) {
-    console.log("Failed to parse JSON directly, attempting to extract JSON...");
+    console.log(`Making API request to /generate/teaching-tip for subject: ${subject} with model: ${modelId}`);
     
-    // Try to extract JSON from the response (in case the model added extra text)
-    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    const response = await fetch(`${API_BASE_URL}/generate/teaching-tip`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subject,
+        model: modelId
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Error: ${response.status} ${response.statusText}`;
+      let errorDetail = '';
+      
       try {
-        return JSON.parse(jsonMatch[0]);
-      } catch (e2) {
-        console.error("Failed to parse extracted JSON:", e2);
+        const errorData = await response.json();
+        console.error(`API error (${response.status}):`, errorData);
         
-        // Further attempt to clean the JSON by removing markdown code blocks
-        try {
-          const cleanedJson = jsonString.replace(/```(json|javascript)?\n?|\n?```/g, '').trim();
-          return JSON.parse(cleanedJson);
-        } catch (e3) {
-          console.error("Failed to parse cleaned JSON:", e3);
+        if (errorData.detail) {
+          errorDetail = errorData.detail;
+          errorMessage = errorData.detail;
           
-          // Last resort: create a minimal valid object with the content
-          return {
-            title: "Generated Lesson Plan",
-            overview: "This lesson plan couldn't be properly formatted. Please regenerate or edit manually.",
-            objectives: ["Review and edit the generated content"],
-            materials: ["Teaching materials to be added"],
-            plan: jsonString.substring(0, 2000), // Use raw text as plan
-            assessment: "Assessment to be added",
-            tags: ["Auto-generated"]
-          };
+          // Special handling for rate limit errors
+          if (response.status === 429 || errorMessage.toLowerCase().includes('rate limit')) {
+            throw new Error(`Rate limit exceeded: ${errorDetail}`);
+          }
         }
+      } catch (parseError) {
+        console.error("Failed to parse error response:", parseError);
+        errorDetail = 'Unable to parse error response';
+      }
+      
+      // Create a detailed error object
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).endpoint = '/generate/teaching-tip';
+      (error as any).detail = errorDetail;
+      (error as any).model = modelId;
+      
+      throw error;
+    }
+
+    const result = await response.json();
+    
+    // The API might return the tip in different formats:
+    // 1. Direct string in the response
+    if (typeof result === 'string') {
+      return result;
+    } 
+    // 2. Object with a tip property (normal case)
+    else if (result && typeof result === 'object') {
+      // Check if we got a fallback response and log it
+      if (result.source === 'fallback') {
+        console.log("Using fallback teaching tip from backend");
+      }
+      
+      // Return the tip if available
+      if (result.tip && typeof result.tip === 'string') {
+        return result.tip;
       }
     }
-    console.error("Could not find valid JSON in response:", jsonString.substring(0, 200) + "...");
-    // Return a fallback object
-    return {
-      title: "Generated Lesson Plan",
-      overview: "The AI couldn't generate a properly structured lesson plan. Please try again or edit manually.",
-      objectives: ["Review and edit the generated content"],
-      materials: ["Teaching materials to be added"],
-      plan: jsonString.substring(0, 2000), // Use raw text as plan
-      assessment: "Assessment to be added",
-      tags: ["Auto-generated"]
-    };
+    
+    throw new Error("Invalid response format from teaching tip API");
+  } catch (error) {
+    console.error("Error generating teaching tip:", error);
+    throw error;
   }
 }
 
-// Function to retry with a different model if one fails
-export function getNextModel(currentModel: OpenRouterModel): OpenRouterModel {
-  const modelOrder: OpenRouterModel[] = ["qwen", "deepseek", "mistral"];
-  const currentIndex = modelOrder.indexOf(currentModel);
-  const nextIndex = (currentIndex + 1) % modelOrder.length;
-  return modelOrder[nextIndex];
+/**
+ * Get a recommended model if the current one fails
+ * @param currentModelId The current model ID
+ * @returns An alternative model ID
+ */
+export async function getNextRecommendedModel(currentModelId: string): Promise<string> {
+  const recommended = await fetchRecommendedModels();
+  
+  // If current model is in the recommended list, get the next one
+  const currentIndex = recommended.indexOf(currentModelId);
+  if (currentIndex !== -1) {
+    const nextIndex = (currentIndex + 1) % recommended.length;
+    return recommended[nextIndex];
+  }
+  
+  // Otherwise, return the first recommended model
+  return recommended[0];
+}
+
+/**
+ * Check API and OpenRouter status
+ * @returns Status information about the API and OpenRouter service
+ */
+export async function checkApiStatus(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/status`);
+    if (!response.ok) {
+      throw new Error(`Error fetching API status: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to check API status:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get current model usage statistics 
+ * @returns Statistics about model usage and rate limits
+ */
+export async function getModelStats(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/models/stats`);
+    if (!response.ok) {
+      throw new Error(`Error fetching model stats: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get model stats:", error);
+    return { 
+      error: String(error),
+      usage: {},
+      errors: {}
+    };
+  }
 }

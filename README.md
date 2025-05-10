@@ -1,73 +1,184 @@
-# Welcome to your Lovable project
+# EduGenie - AI-Powered Educational Content Generator
 
-## Project info
+EduGenie is a powerful educational content generation platform that helps teachers create lesson plans, assessments, and other educational materials using AI models from OpenRouter.
 
-**URL**: https://lovable.dev/projects/479f8558-8376-41c7-aea9-f35479403279
+## Features
 
-## How can I edit this code?
+- Generate detailed lesson plans for any topic and grade level
+- Create assessments with customizable question types
+- Simulate virtual labs for science education
+- Get teaching tips and ideas
+- Select from a wide range of free AI models
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Python, FastAPI
+- **AI**: OpenRouter API with free models
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/479f8558-8376-41c7-aea9-f35479403279) and start prompting.
+## Setup Instructions
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 16+ and npm/yarn
+- Python 3.8+ and pip
+- OpenRouter API key (provided in .env files)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Clone the repository**
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+git clone <repository-url>
+cd edu-genie
 ```
 
-**Edit a file directly in GitHub**
+2. **Install frontend dependencies**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm install
+# or
+yarn install
+```
 
-**Use GitHub Codespaces**
+3. **Install backend dependencies**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+cd backend
+pip install -r requirements.txt
+cd ..
+```
 
-## What technologies are used for this project?
+### Configuration
 
-This project is built with:
+The project includes `.env` files with the OpenRouter API key. In a production environment, you should manage these secrets securely.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Starting the Application
 
-## How can I deploy this project?
+1. **Start the backend server**
 
-Simply open [Lovable](https://lovable.dev/projects/479f8558-8376-41c7-aea9-f35479403279) and click on Share -> Publish.
+```bash
+cd backend
+python run.py
+```
 
-## Can I connect a custom domain to my Lovable project?
+This will start the FastAPI server at http://localhost:8000
 
-Yes, you can!
+2. **Start the frontend development server**
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+In a new terminal:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+This will start the frontend at http://localhost:5173
+
+## Usage
+
+1. Navigate to http://localhost:5173 in your browser
+2. Use the "Lessons" tab to create new lesson plans
+3. Fill in the lesson details and select an AI model
+4. Click "Generate Lesson Plan" to create content
+
+## Available Models
+
+The application connects to OpenRouter's best free models for educational content generation:
+
+- **Meta: Llama 4 Scout** - Massive 512,000 token context length
+- **Google: Gemini 2.5 Pro Experimental** - Google's advanced model with 1M token context length
+- **DeepSeek: DeepSeek V3** - Excellent for detailed educational content
+- **NVIDIA: Llama 3.1 Nemotron Ultra 253B** - NVIDIA's 253B parameter model
+- **Mistral: Mistral Small 3.1 24B** - High-quality instruction model
+
+These models were selected for their large context windows and high-quality output capabilities, making them ideal for educational content generation.
+
+## API Documentation
+
+The backend provides a FastAPI interface with automatic Swagger documentation at:
+http://localhost:8000/docs
+
+## License
+
+This project is licensed under the MIT License.
+
+## Troubleshooting
+
+### Backend Issues
+If you encounter path issues when trying to run the backend:
+
+1. Make sure you're in the correct directory:
+   ```
+   cd D:\EdGenie\edu-genie-lab-spark-921667fd
+   ```
+
+2. Run the backend using the batch file:
+   ```
+   run_backend.bat
+   ```
+
+3. Or run it directly from the correct location:
+   ```
+   cd backend
+   python run.py
+   ```
+
+### Frontend Issues
+If you encounter port conflicts with the frontend:
+
+1. The Vite server is now configured to use port 8081 automatically
+
+2. You can start the frontend with:
+   ```
+   npm run dev
+   ```
+
+3. Access the application at: http://localhost:8081/
+
+## Handling OpenRouter Rate Limits
+
+The application uses OpenRouter API for AI content generation, which has rate limits on free tiers.
+
+### Rate Limit Error Handling
+
+When rate limits are reached:
+
+1. **Teaching Tips**: The application will automatically return fallback content specific to the subject area.
+2. **Lesson Plans/Assessments**: The API will return a clear error message with the 429 status code.
+
+### Monitoring and Diagnostics
+
+Run the test script to check rate limit status:
+```
+cd backend
+python test_openrouter.py
+```
+
+If you see a rate limit error, the script will display:
+- Current rate limit information
+- When the limit will reset
+- Options for resolving the issue
+
+### Solutions
+
+If you encounter rate limits:
+
+1. **Wait for Reset**: Rate limits typically reset daily
+2. **Add Credits**: Purchase credits on OpenRouter for higher limits
+3. **Use Fallback Content**: The application includes fallback content for critical features
+
+## Port Configuration
+
+The backend server runs on port 8888 by default. If you need to change this:
+
+1. Edit `run_backend.bat` or `run_backend.sh` to use a different port
+2. Update the `--port` parameter in `backend/run.py`
+3. Update API URL references in the frontend code if needed
+
+## Contact & Support
+
+For issues, questions, or contributions, please contact:
+- Email: support@edu-genie-app.com
+- GitHub: [Create an issue](https://github.com/your-repo/issues)

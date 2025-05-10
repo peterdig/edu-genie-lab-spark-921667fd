@@ -1,12 +1,54 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ContentCard } from "@/components/dashboard/ContentCard";
-import { Book, Calendar, Info, Plus, User } from "lucide-react";
+import { Book, Calendar, Info, Plus, User, LucideIcon, Zap, Calculator, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { lessons } from "@/data/mockData";
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { ReactNode } from 'react';
+
+// Feature card components from the provided style
+interface FeatureCardProps {
+  children: ReactNode;
+  className?: string;
+}
+
+const FeatureCard = ({ children, className }: FeatureCardProps) => (
+  <Card className={cn('group relative rounded-xl shadow-md transition-all hover:shadow-lg', className)}>
+    <CardDecorator />
+    {children}
+  </Card>
+);
+
+const CardDecorator = () => (
+  <>
+    <span className="border-primary absolute -left-px -top-px block size-2 border-l-2 border-t-2 rounded-tl"></span>
+    <span className="border-primary absolute -right-px -top-px block size-2 border-r-2 border-t-2 rounded-tr"></span>
+    <span className="border-primary absolute -bottom-px -left-px block size-2 border-b-2 border-l-2 rounded-bl"></span>
+    <span className="border-primary absolute -bottom-px -right-px block size-2 border-b-2 border-r-2 rounded-br"></span>
+  </>
+);
+
+interface CardHeadingProps {
+  icon: LucideIcon;
+  title: string;
+  value: string;
+  description: string;
+}
+
+const CardHeading = ({ icon: Icon, title, value, description }: CardHeadingProps) => (
+  <div className="p-4">
+    <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+      <Icon className="size-4 text-primary" />
+      {title}
+    </span>
+    <p className="mt-2 text-3xl font-bold">{value}</p>
+    <p className="text-muted-foreground text-sm mt-1">{description}</p>
+  </div>
+);
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -14,39 +56,58 @@ export default function Dashboard() {
   
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Welcome to your AI-Powered Educator Companion
           </p>
         </div>
         
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard 
-            title="Created Lessons" 
-            value="12" 
-            description="+2 this week"
-            icon={<Book className="h-5 w-5 text-primary" />}
-          />
-          <StatCard 
-            title="Assessments" 
-            value="8" 
-            description="+1 this week"
-            icon={<Calendar className="h-5 w-5 text-primary" />}
-          />
-          <StatCard 
-            title="Lab Simulations" 
-            value="5" 
-            description="3 recent views"
-            icon={<Info className="h-5 w-5 text-primary" />}
-          />
-          <StatCard 
-            title="Students" 
-            value="36" 
-            description="Active students"
-            icon={<User className="h-5 w-5 text-primary" />}
-          />
+          <FeatureCard>
+            <CardHeader className="pb-0 pt-4">
+              <CardHeading 
+                icon={Book} 
+                title="Created Lessons" 
+                value="12" 
+                description="+2 this week"
+              />
+            </CardHeader>
+          </FeatureCard>
+          
+          <FeatureCard>
+            <CardHeader className="pb-0 pt-4">
+              <CardHeading 
+                icon={Calendar} 
+                title="Assessments" 
+                value="8" 
+                description="+1 this week"
+              />
+            </CardHeader>
+          </FeatureCard>
+          
+          <FeatureCard>
+            <CardHeader className="pb-0 pt-4">
+              <CardHeading 
+                icon={Calculator} 
+                title="Lab Simulations" 
+                value="5" 
+                description="3 recent views"
+              />
+            </CardHeader>
+          </FeatureCard>
+          
+          <FeatureCard>
+            <CardHeader className="pb-0 pt-4">
+              <CardHeading 
+                icon={User} 
+                title="Students" 
+                value="36" 
+                description="Active students"
+              />
+            </CardHeader>
+          </FeatureCard>
         </div>
         
         <div>
@@ -54,71 +115,106 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold">Quick Actions</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <Button 
-              variant="outline" 
-              className="h-24 flex-col"
-              onClick={() => navigate('/lessons')}
-            >
-              <Book className="h-8 w-8 mb-2" />
-              <span>Create Lesson</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-24 flex-col"
-              onClick={() => navigate('/assessments')}
-            >
-              <Calendar className="h-8 w-8 mb-2" />
-              <span>Create Assessment</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-24 flex-col"
-              onClick={() => navigate('/labs')}
-            >
-              <Info className="h-8 w-8 mb-2" />
-              <span>Browse Labs</span>
-            </Button>
+            <FeatureCard className="p-0 overflow-hidden">
+              <Button 
+                variant="ghost" 
+                className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
+                onClick={() => navigate('/lessons')}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <Book className="h-8 w-8 mb-2 text-primary" />
+                </div>
+                <span className="font-medium">Create Lesson</span>
+              </Button>
+            </FeatureCard>
+            
+            <FeatureCard className="p-0 overflow-hidden">
+              <Button 
+                variant="ghost" 
+                className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
+                onClick={() => navigate('/assessments')}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <BarChart className="h-8 w-8 mb-2 text-primary" />
+                </div>
+                <span className="font-medium">Create Assessment</span>
+              </Button>
+            </FeatureCard>
+            
+            <FeatureCard className="p-0 overflow-hidden">
+              <Button 
+                variant="ghost" 
+                className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
+                onClick={() => navigate('/labs')}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <Zap className="h-8 w-8 mb-2 text-primary" />
+                </div>
+                <span className="font-medium">Browse Labs</span>
+              </Button>
+            </FeatureCard>
           </div>
         </div>
         
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Recent Lessons</h2>
-            <Button variant="outline" size="sm" onClick={() => navigate('/lessons')}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/lessons')}
+              className="rounded-lg border-primary/20 hover:bg-primary/5 hover:text-primary"
+            >
               View All
             </Button>
           </div>
           
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featuredLessons.map((lesson) => (
-              <ContentCard
-                key={lesson.id}
-                title={lesson.title}
-                description={`Grade ${lesson.gradeLevel} • ${lesson.duration}`}
-                tags={lesson.tags}
-                onClick={() => navigate(`/lessons/${lesson.id}`)}
-              >
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {lesson.overview}
-                </p>
-              </ContentCard>
+              <FeatureCard key={lesson.id} className="hover:border-primary transition-colors cursor-pointer overflow-hidden">
+                <CardContent className="p-4" onClick={() => navigate(`/lessons/${lesson.id}`)}>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">{lesson.title}</h3>
+                    <div className="flex items-center gap-1 mb-3 text-xs text-muted-foreground">
+                      <Book className="h-3 w-3" />
+                      <span>Grade {lesson.gradeLevel} • {lesson.duration}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {lesson.overview}
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-1 mt-4">
+                      {lesson.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </FeatureCard>
             ))}
             
-            <ContentCard
-              title="Create New Lesson"
-              description="Generate a new AI-powered lesson plan"
-              className="border-dashed flex flex-col items-center justify-center cursor-pointer h-[220px]"
-              onClick={() => navigate('/lessons')}
-            >
-              <div className="flex flex-col items-center">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                  <Plus className="h-6 w-6 text-primary" />
+            <FeatureCard className="border-dashed hover:border-primary transition-colors cursor-pointer overflow-hidden h-[250px]">
+              <div 
+                className="flex flex-col items-center justify-center h-full"
+                onClick={() => navigate('/lessons')}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_50%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  Click to create a new lesson
+                <span className="font-medium text-primary">Create New Lesson</span>
+                <p className="text-muted-foreground text-sm mt-2">
+                  Generate a new AI-powered lesson plan
                 </p>
               </div>
-            </ContentCard>
+            </FeatureCard>
           </div>
         </div>
       </div>

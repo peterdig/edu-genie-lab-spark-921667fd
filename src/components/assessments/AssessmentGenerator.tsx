@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -16,7 +15,6 @@ import { toast } from "sonner";
 import { Loader } from "lucide-react";
 import { AssessmentResult } from "@/types/assessments";
 import { generateAssessment } from "@/lib/api";
-import { OpenRouterModel } from "@/lib/openrouter";
 
 const questionTypes = [
   { id: "multiple-choice", label: "Multiple Choice" },
@@ -51,8 +49,8 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
       gradeLevel: "",
       numberOfQuestions: "5",
       questionTypes: ["multiple-choice"],
-      model: "qwen",
-      additionalInstructions: "",
+      model: "deepseek",
+      additionalInstructions: "Ensure all questions have clear and correct answers",
       bloomsLevels: ["remembering", "understanding"],
     },
   });
@@ -63,8 +61,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
     try {
       toast.info("Generating assessment...");
       
-      // Call the API with the selected model
-      const assessment = await generateAssessment(data, data.model as OpenRouterModel);
+      const assessment = await generateAssessment(data, data.model);
       
       onAssessmentGenerated(assessment);
       toast.success("Assessment generated successfully!");

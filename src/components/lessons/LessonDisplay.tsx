@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,11 +102,27 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
     setIsLoading(true);
     try {
       const subject = lesson.subject || "education";
-      const tip = await generateTeachingTip(subject);
+      // Try with the model specified, but use a fallback strategy
+      const tip = await generateTeachingTip(subject, "meta-llama/llama-4-scout:free");
       setTeachingTip(tip);
+      toast.success("Teaching tip generated successfully");
     } catch (error) {
       console.error("Failed to fetch teaching tip:", error);
-      setTeachingTip("Try breaking this lesson into 10-minute segments with transitions to maintain student engagement.");
+      
+      // Handle error with clear feedback
+      toast.error("Unable to load teaching tip. The AI model may be temporarily unavailable.", {
+        duration: 4000,
+        action: {
+          label: "Try Again",
+          onClick: () => fetchTeachingTip()
+        }
+      });
+      
+      // We don't set a fallback tip, but keep UI clean by not clearing existing tip if present
+      if (!teachingTip) {
+        // Only show this loading message if no tip is currently displayed
+        setTeachingTip("");
+      }
     } finally {
       setIsLoading(false);
     }
