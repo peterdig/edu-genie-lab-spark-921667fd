@@ -10,10 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader } from "lucide-react";
 import { AssessmentResult } from "@/types/assessments";
 import { generateAssessment } from "@/lib/api";
+import { OpenRouterModel } from "@/lib/openrouter";
 
 const questionTypes = [
   { id: "multiple-choice", label: "Multiple Choice" },
@@ -27,6 +30,7 @@ const formSchema = z.object({
   gradeLevel: z.string().min(1, "Please select a grade level"),
   numberOfQuestions: z.string().min(1, "Please select number of questions"),
   questionTypes: z.array(z.string()).min(1, "Select at least one question type"),
+  model: z.enum(["qwen", "deepseek", "mistral"]),
   additionalInstructions: z.string().optional(),
   bloomsLevels: z.array(z.string()).min(1, "Select at least one Bloom's level"),
 });
@@ -47,6 +51,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
       gradeLevel: "",
       numberOfQuestions: "5",
       questionTypes: ["multiple-choice"],
+      model: "qwen",
       additionalInstructions: "",
       bloomsLevels: ["remembering", "understanding"],
     },
@@ -58,8 +63,8 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
     try {
       toast.info("Generating assessment...");
       
-      // In a real implementation, this would call a backend API
-      const assessment = await generateAssessment(data);
+      // Call the API with the selected model
+      const assessment = await generateAssessment(data, data.model as OpenRouterModel);
       
       onAssessmentGenerated(assessment);
       toast.success("Assessment generated successfully!");
@@ -146,6 +151,37 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="model"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>AI Model</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="grid grid-cols-3 gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="qwen" id="assessment-qwen" />
+                        <Label htmlFor="assessment-qwen">Qwen</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="deepseek" id="assessment-deepseek" />
+                        <Label htmlFor="assessment-deepseek">DeepSeek</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="mistral" id="assessment-mistral" />
+                        <Label htmlFor="assessment-mistral">Mistral</Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

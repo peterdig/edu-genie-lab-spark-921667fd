@@ -1,133 +1,218 @@
 
 import { AssessmentResult } from "@/types/assessments";
 import { LessonResult } from "@/types/lessons";
+import { Lab } from "@/types/labs";
 import { toast } from "sonner";
+import { generateWithOpenRouter, OpenRouterModel } from "./openrouter";
 
-// In a real implementation, these would be API calls to a backend
-// For now, we'll simulate API responses
-
-export async function generateLesson(data: any): Promise<LessonResult> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
+export async function generateLesson(data: any, model: OpenRouterModel = "qwen"): Promise<LessonResult> {
+  toast.info("Generating lesson plan with " + model + "...");
   
-  // Generate a placeholder lesson result
-  return {
-    id: `lesson-${Date.now()}`,
-    title: `${data.topic} - Comprehensive Lesson Plan`,
-    gradeLevel: data.gradeLevel,
-    subject: data.topic.split(" ")[0],
-    duration: data.duration,
-    overview: `This lesson introduces students to ${data.topic} through interactive activities and discussions. Students will develop a fundamental understanding of key concepts and apply their knowledge through hands-on exercises.`,
-    objectives: [
-      `Understand the fundamental concepts of ${data.topic}`,
-      `Apply critical thinking skills to analyze ${data.topic}`,
-      `Demonstrate knowledge through practical examples`,
-      `Collaborate effectively in group activities related to ${data.topic}`
-    ],
-    materials: [
-      "Textbook or reading materials",
-      "Interactive whiteboard or presentation slides",
-      "Student worksheets",
-      "Assessment materials",
-      "Lab equipment (if applicable)"
-    ],
-    plan: `Introduction (5-10 minutes):\nBegin the lesson by activating prior knowledge about ${data.topic}. Ask open-ended questions to gauge student understanding and spark interest.\n\nDirect Instruction (15-20 minutes):\nPresent key concepts related to ${data.topic} using visual aids and examples. Explain how these concepts connect to real-world applications.\n\nGuided Practice (10-15 minutes):\nLead students through example problems or scenarios. Model the thinking process and gradually release responsibility to students.\n\nIndependent/Group Work (15-20 minutes):\nStudents work individually or in small groups on activities that reinforce understanding of ${data.topic}. Circulate to provide feedback and support.\n\nClosure (5-10 minutes):\nReview key concepts and address any questions. Have students reflect on their learning through exit tickets or brief summary activities.`,
-    assessment: `Formative assessment will occur throughout the lesson through questioning, observation, and guided practice. Summative assessment will include a combination of multiple-choice questions, short answer responses, and a performance task related to ${data.topic}.`,
-    questions: [
+  try {
+    const prompt = `
+      Create a detailed lesson plan about "${data.topic}" for grade level "${data.gradeLevel}" with a duration of "${data.duration}".
+      ${data.additionalNotes ? `Additional context: ${data.additionalNotes}` : ''}
+      
+      Format your response as a JSON object with the following structure:
       {
-        text: `What is the primary purpose of studying ${data.topic}?`,
-        options: [
-          "To memorize facts and figures",
-          "To develop critical thinking skills",
-          "To understand real-world applications",
-          "All of the above"
+        "title": "Descriptive title for the lesson",
+        "gradeLevel": "${data.gradeLevel}",
+        "subject": "Subject area",
+        "duration": "${data.duration}",
+        "overview": "Brief overview of the lesson (1-2 paragraphs)",
+        "objectives": ["learning objective 1", "learning objective 2", ...],
+        "materials": ["material 1", "material 2", ...],
+        "plan": "Detailed lesson plan with sections for introduction, instruction, practice, etc.",
+        "assessment": "Description of assessment methods",
+        "questions": [
+          {
+            "text": "Question text",
+            "options": ["option 1", "option 2", "option 3", "option 4"],
+            "answer": "Correct answer"
+          },
+          ...
         ],
-        answer: "All of the above"
-      },
-      {
-        text: `Which of the following best demonstrates application of knowledge in ${data.topic}?`,
-        options: [
-          "Reciting definitions",
-          "Solving a novel problem",
-          "Watching a video",
-          "Reading a textbook"
-        ],
-        answer: "Solving a novel problem"
-      },
-      {
-        text: `How does ${data.topic} connect to other subjects or disciplines?`,
-        answer: "Open-ended response"
+        "tags": ["relevant", "tags", "for", "this", "lesson"]
       }
-    ],
-    tags: [data.topic.split(" ")[0], data.gradeLevel, "Lesson Plan"],
-    createdAt: new Date().toISOString()
-  };
+    `;
+
+    const response = await generateWithOpenRouter(prompt, model);
+    let parsedResponse: any;
+    
+    try {
+      // Extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : response;
+      parsedResponse = JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Failed to parse response:", error);
+      throw new Error("Failed to parse the generated lesson plan. Please try again.");
+    }
+    
+    return {
+      id: `lesson-${Date.now()}`,
+      title: parsedResponse.title || `${data.topic} - Lesson Plan`,
+      gradeLevel: parsedResponse.gradeLevel || data.gradeLevel,
+      subject: parsedResponse.subject || data.topic.split(" ")[0],
+      duration: parsedResponse.duration || data.duration,
+      overview: parsedResponse.overview || "Overview not generated.",
+      objectives: parsedResponse.objectives || [],
+      materials: parsedResponse.materials || [],
+      plan: parsedResponse.plan || "Plan not generated.",
+      assessment: parsedResponse.assessment || "Assessment not generated.",
+      questions: parsedResponse.questions || [],
+      tags: parsedResponse.tags || [data.topic.split(" ")[0], data.gradeLevel, "Lesson Plan"],
+      createdAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Failed to generate lesson:", error);
+    toast.error("Failed to generate lesson plan. Please try again.");
+    throw error;
+  }
 }
 
-export async function generateAssessment(data: any): Promise<AssessmentResult> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
+export async function generateAssessment(data: any, model: OpenRouterModel = "qwen"): Promise<AssessmentResult> {
+  toast.info("Generating assessment with " + model + "...");
   
-  // Map Bloom's levels to question complexity
-  const bloomsMapping: Record<string, string[]> = {
-    "remembering": ["recall", "identify", "list", "define"],
-    "understanding": ["explain", "describe", "discuss", "summarize"],
-    "applying": ["apply", "demonstrate", "solve", "use"],
-    "analyzing": ["analyze", "compare", "contrast", "examine"],
-    "evaluating": ["evaluate", "judge", "critique", "assess"],
-    "creating": ["create", "design", "develop", "formulate"]
-  };
-  
-  // Generate questions based on selected Bloom's levels
-  const questions: any[] = [];
-  const selectedLevels = data.bloomsLevels;
-  const questionCount = parseInt(data.numberOfQuestions);
-  
-  // Distribute questions across selected levels and types
-  let qNumber = 0;
-  while (qNumber < questionCount) {
-    for (const level of selectedLevels) {
-      if (qNumber >= questionCount) break;
+  try {
+    const prompt = `
+      Create a detailed assessment about "${data.topic}" for grade level "${data.gradeLevel}" with ${data.numberOfQuestions} questions.
+      Question types to include: ${data.questionTypes.join(", ")}
+      Bloom's taxonomy levels to target: ${data.bloomsLevels.join(", ")}
+      ${data.additionalInstructions ? `Additional instructions: ${data.additionalInstructions}` : ''}
       
-      const verbs = bloomsMapping[level] || ["identify"];
-      const verb = verbs[Math.floor(Math.random() * verbs.length)];
-      
-      // Choose question type from selected types
-      const type = data.questionTypes[Math.floor(Math.random() * data.questionTypes.length)];
-      
-      let question: any = {
-        text: `${verb.charAt(0).toUpperCase() + verb.slice(1)} a key concept related to ${data.topic}.`,
-        type: type,
-        bloomsLevel: level.charAt(0).toUpperCase() + level.slice(1)
-      };
-      
-      if (type === 'multiple-choice') {
-        question.options = [
-          "First option related to the topic",
-          "Second option related to the topic",
-          "Third option related to the topic",
-          "Fourth option related to the topic"
-        ];
-        question.answer = question.options[0];
-      } else if (type === 'true-false') {
-        question.options = ["True", "False"];
-        question.answer = "True";
-      } else {
-        question.answer = "This is a sample answer that would demonstrate understanding of the concept.";
+      Format your response as a JSON object with the following structure:
+      {
+        "title": "Descriptive title for the assessment",
+        "gradeLevel": "${data.gradeLevel}",
+        "instructions": "Instructions for taking the assessment",
+        "questions": [
+          {
+            "text": "Question text",
+            "type": "one of: multiple-choice, true-false, short-answer, essay",
+            "options": ["option 1", "option 2", "option 3", "option 4"] (for multiple-choice and true-false only),
+            "answer": "Correct answer or sample answer",
+            "bloomsLevel": "Targeted Bloom's level"
+          },
+          ...
+        ],
+        "tags": ["relevant", "tags", "for", "this", "assessment"]
       }
-      
-      questions.push(question);
-      qNumber++;
+    `;
+
+    const response = await generateWithOpenRouter(prompt, model);
+    let parsedResponse: any;
+    
+    try {
+      // Extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : response;
+      parsedResponse = JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Failed to parse response:", error);
+      throw new Error("Failed to parse the generated assessment. Please try again.");
     }
+    
+    return {
+      id: `assessment-${Date.now()}`,
+      title: parsedResponse.title || `${data.topic} Assessment`,
+      gradeLevel: parsedResponse.gradeLevel || data.gradeLevel,
+      instructions: parsedResponse.instructions || `This assessment covers key concepts related to ${data.topic}.`,
+      questions: parsedResponse.questions || [],
+      tags: parsedResponse.tags || [data.topic.split(" ")[0], data.gradeLevel, ...data.bloomsLevels],
+      createdAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Failed to generate assessment:", error);
+    toast.error("Failed to generate assessment. Please try again.");
+    throw error;
   }
+}
+
+export async function generateLab(data: any, model: OpenRouterModel = "qwen"): Promise<Lab> {
+  toast.info("Generating lab simulation with " + model + "...");
   
-  return {
-    id: `assessment-${Date.now()}`,
-    title: `${data.topic} Assessment`,
-    gradeLevel: data.gradeLevel,
-    instructions: `This assessment covers key concepts related to ${data.topic}. Read each question carefully and provide your best response. You will have 45 minutes to complete this assessment.`,
-    questions: questions.slice(0, questionCount),
-    tags: [data.topic.split(" ")[0], data.gradeLevel, ...data.bloomsLevels],
-    createdAt: new Date().toISOString()
-  };
+  try {
+    const prompt = `
+      Create a detailed virtual lab about "${data.topic}" for grade level "${data.gradeLevel}".
+      
+      Format your response as a JSON object with the following structure:
+      {
+        "title": "Descriptive title for the lab",
+        "description": "Brief description of the lab (1-2 sentences)",
+        "category": "science category (physics, chemistry, biology, earth, etc.)",
+        "gradeLevel": "${data.gradeLevel}",
+        "objectives": ["learning objective 1", "learning objective 2", ...],
+        "steps": [
+          {
+            "title": "Step 1 title",
+            "description": "Detailed description of step 1"
+          },
+          ...
+        ],
+        "questions": [
+          {
+            "text": "Question to consider during the lab",
+            "hint": "Optional hint for the question"
+          },
+          ...
+        ],
+        "tags": ["relevant", "tags", "for", "this", "lab"]
+      }
+    `;
+
+    const response = await generateWithOpenRouter(prompt, model);
+    let parsedResponse: any;
+    
+    try {
+      // Extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : response;
+      parsedResponse = JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Failed to parse response:", error);
+      throw new Error("Failed to parse the generated lab simulation. Please try again.");
+    }
+
+    // For labs, we'll use preset thumbnails and URLs based on the category
+    const labResources: Record<string, { thumbnail: string, url: string }> = {
+      physics: {
+        thumbnail: "https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc-600.png",
+        url: "https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc_en.html"
+      },
+      chemistry: {
+        thumbnail: "https://phet.colorado.edu/sims/html/balancing-chemical-equations/latest/balancing-chemical-equations-600.png",
+        url: "https://phet.colorado.edu/sims/html/balancing-chemical-equations/latest/balancing-chemical-equations_en.html"
+      },
+      biology: {
+        thumbnail: "https://cdn.britannica.com/31/123131-050-8BA9CC21/animal-cell.jpg",
+        url: "https://learn.genetics.utah.edu/content/cells/insideacell/"
+      },
+      earth: {
+        thumbnail: "https://phet.colorado.edu/sims/html/plate-tectonics/latest/plate-tectonics-600.png",
+        url: "https://phet.colorado.edu/sims/html/plate-tectonics/latest/plate-tectonics_en.html"
+      }
+    };
+
+    const category = parsedResponse.category?.toLowerCase() || "physics";
+    const resources = labResources[category] || labResources.physics;
+    
+    return {
+      id: `lab-${Date.now()}`,
+      title: parsedResponse.title || `${data.topic} Lab`,
+      description: parsedResponse.description || `An interactive lab about ${data.topic}.`,
+      category: parsedResponse.category?.toLowerCase() || "physics",
+      gradeLevel: parsedResponse.gradeLevel || data.gradeLevel,
+      thumbnail: resources.thumbnail,
+      url: resources.url,
+      objectives: parsedResponse.objectives || [],
+      steps: parsedResponse.steps || [],
+      questions: parsedResponse.questions || [],
+      tags: parsedResponse.tags || [data.topic.split(" ")[0], data.gradeLevel, "Lab"]
+    };
+  } catch (error) {
+    console.error("Failed to generate lab:", error);
+    toast.error("Failed to generate lab simulation. Please try again.");
+    throw error;
+  }
 }

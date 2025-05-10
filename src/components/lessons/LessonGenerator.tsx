@@ -10,15 +10,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader } from "lucide-react";
 import { LessonResult } from "@/types/lessons";
 import { generateLesson } from "@/lib/api";
+import { OpenRouterModel } from "@/lib/openrouter";
 
 const formSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters"),
   gradeLevel: z.string().min(1, "Please select a grade level"),
   duration: z.string().min(1, "Please select a lesson duration"),
+  model: z.enum(["qwen", "deepseek", "mistral"]),
   additionalNotes: z.string().optional(),
   includeAssessment: z.boolean().default(true),
   includeActivities: z.boolean().default(true),
@@ -39,6 +43,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
       topic: "",
       gradeLevel: "",
       duration: "30min",
+      model: "qwen",
       additionalNotes: "",
       includeAssessment: true,
       includeActivities: true,
@@ -51,9 +56,8 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
     try {
       toast.info("Generating lesson plan...");
       
-      // In a real implementation, this would call a backend API
-      // For now, we'll simulate the API response 
-      const lesson = await generateLesson(data);
+      // Call the API with the selected model
+      const lesson = await generateLesson(data, data.model as OpenRouterModel);
       
       onLessonGenerated(lesson);
       toast.success("Lesson plan generated successfully!");
@@ -141,6 +145,37 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="model"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>AI Model</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="grid grid-cols-3 gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="qwen" id="lesson-qwen" />
+                        <Label htmlFor="lesson-qwen">Qwen</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="deepseek" id="lesson-deepseek" />
+                        <Label htmlFor="lesson-deepseek">DeepSeek</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="mistral" id="lesson-mistral" />
+                        <Label htmlFor="lesson-mistral">Mistral</Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
