@@ -1,7 +1,21 @@
-
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Book, Calendar, Home, LogOut, Settings, User } from "lucide-react";
+import { 
+  Book, 
+  Calendar, 
+  Home, 
+  LogOut, 
+  Settings, 
+  User, 
+  FolderOpen, 
+  PanelLeft, 
+  Users, 
+  FileSpreadsheet,
+  BarChart,
+  FileText,
+  Accessibility as AccessibilityIcon,
+  Share2
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -16,6 +30,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -75,7 +90,38 @@ export function AppSidebar() {
               <NavItem icon={Book} label="Lessons" to="/lessons" />
               <NavItem icon={Calendar} label="Assessments" to="/assessments" />
               <NavItem icon={User} label="Labs" to="/labs" />
-              <NavItem icon={Settings} label="Settings" to="/settings" />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel>Organization</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItem icon={FolderOpen} label="My Library" to="/my-library" />
+              <NavItem icon={PanelLeft} label="Curriculum Planner" to="/curriculum-planner" />
+              <NavItem icon={FileText} label="Templates" to="/templates" />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItem icon={Users} label="Differentiation" to="/differentiation" />
+              <NavItem icon={FileSpreadsheet} label="Rubric Generator" to="/rubric-generator" />
+              <NavItem icon={AccessibilityIcon} label="Accessibility" to="/accessibility" />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel>Insights & Collaboration</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItem icon={BarChart} label="Analytics" to="/analytics" />
+              <NavItem icon={Share2} label="Collaboration" to="/collaboration" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -92,6 +138,10 @@ export function AppSidebar() {
                   <p className="text-sm font-medium">{user.name}</p>
                   <p className="text-xs text-muted-foreground">{user.role}</p>
                 </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <NavItem icon={Settings} label="Settings" to="/settings" />
+                <ThemeToggle />
               </div>
             </div>
           </SidebarGroupContent>

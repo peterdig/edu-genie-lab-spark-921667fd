@@ -11,9 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateTeachingTip } from "@/lib/api";
+import { fetchRecommendedModels } from "@/lib/openrouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard, KeyboardShortcuts } from "lucide-react";
+import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard } from "lucide-react";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -178,11 +179,24 @@ export default function Lessons() {
     setGeneratedLesson(null);
   };
 
-  const fetchRandomTip = async (showToast = true) => {
+  const fetchRandomTip = async (showToast = true, selectedModel?: string) => {
     setIsLoadingTip(true);
     try {
-      // Use a recommended model - try Llama 4 Scout for education content
-      const tip = await generateTeachingTip("education", "meta-llama/llama-4-scout:free");
+      let modelToUse = selectedModel || localStorage.getItem("defaultModel");
+
+      if (!modelToUse) {
+        const recommended = await fetchRecommendedModels();
+        if (recommended && recommended.length > 0) {
+          modelToUse = recommended[0];
+          // Also save this newly fetched recommended model as the default for next time
+          localStorage.setItem("defaultModel", modelToUse);
+        } else {
+          modelToUse = "meta-llama/llama-3.1-8b-instruct:free"; 
+          console.warn("No default or recommended model found, using fallback for teaching tip:", modelToUse);
+        }
+      }
+      
+      const tip = await generateTeachingTip("education", modelToUse);
       setTeachingTip(tip);
       if (showToast) {
         toast.success("Teaching tip refreshed");
@@ -254,9 +268,27 @@ export default function Lessons() {
     }
   };
 
-  // Fetch teaching tip on component mount
+  // Fetch teaching tip on component mount and initialize default model if needed
   useEffect(() => {
-    fetchRandomTip(false);
+    const initializePage = async () => {
+      let currentModel = localStorage.getItem("defaultModel");
+      if (!currentModel) {
+        try {
+          const recommended = await fetchRecommendedModels();
+          if (recommended && recommended.length > 0) {
+            currentModel = recommended[0];
+            localStorage.setItem("defaultModel", currentModel);
+            console.log("Initialized defaultModel for session:", currentModel);
+          }
+        } catch (error) {
+          console.error("Failed to fetch recommended models for initial default:", error);
+          // If fetching recommended models fails, fetchRandomTip will use its internal fallback
+        }
+      }
+      fetchRandomTip(false, currentModel || undefined); // Pass the determined model
+    };
+
+    initializePage();
     loadBookmarks();
     
     // Check for previously generated lesson in localStorage

@@ -1,7 +1,7 @@
-
 import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +19,7 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-sm font-medium text-muted-foreground">
                 AI-Powered Educator Companion
               </span>
+              <ThemeToggle />
             </div>
           </div>
           <main className="p-4 md:p-6">

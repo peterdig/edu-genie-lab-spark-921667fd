@@ -1,0 +1,188 @@
+import { useState, useEffect } from 'react';
+import { supabase, useLocalStorageFallback } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
+
+// Generic hook for CRUD operations with Supabase with localStorage fallback
+export function useSupabaseData<T extends { id: string }>(
+  tableName: string,
+  localStorageKey: string,
+  defaultData: T[] = []
+) {
+  const [data, setData] = useState<T[]>(defaultData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const useFallback = useLocalStorageFallback();
+
+  // Load data from Supabase or localStorage
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (useFallback) {
+          // Use localStorage fallback
+          const storedData = localStorage.getItem(localStorageKey);
+          if (storedData) {
+            setData(JSON.parse(storedData));
+          } else {
+            // Initialize with default data if nothing found
+            setData(defaultData);
+            localStorage.setItem(localStorageKey, JSON.stringify(defaultData));
+          }
+        } else {
+          // Use Supabase
+          const { data: supabaseData, error } = await supabase
+            .from(tableName)
+            .select('*');
+
+          if (error) throw error;
+          setData(supabaseData || defaultData);
+        }
+      } catch (err) {
+        console.error(`Error fetching ${tableName}:`, err);
+        setError(err as Error);
+        
+        // Fallback to localStorage on error
+        const storedData = localStorage.getItem(localStorageKey);
+        if (storedData) {
+          setData(JSON.parse(storedData));
+        } else {
+          setData(defaultData);
+          localStorage.setItem(localStorageKey, JSON.stringify(defaultData));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [tableName, localStorageKey, useFallback]);
+
+  // Add new item
+  const addItem = async (item: Omit<T, 'id' | 'created_at'>) => {
+    try {
+      const newItem = {
+        ...item,
+        id: uuidv4(),
+        created_at: new Date().toISOString(),
+      } as T;
+
+      if (useFallback) {
+        // Use localStorage
+        const updatedData = [...data, newItem];
+        setData(updatedData);
+        localStorage.setItem(localStorageKey, JSON.stringify(updatedData));
+        return newItem;
+      } else {
+        // Use Supabase
+        const { data: insertedData, error } = await supabase
+          .from(tableName)
+          .insert(newItem)
+          .select();
+
+        if (error) throw error;
+        
+        const updatedData = [...data, insertedData[0] as T];
+        setData(updatedData);
+        return insertedData[0] as T;
+      }
+    } catch (err) {
+      console.error(`Error adding item to ${tableName}:`, err);
+      setError(err as Error);
+      throw err;
+    }
+  };
+
+  // Update existing item
+  const updateItem = async (id: string, updates: Partial<T>) => {
+    try {
+      if (useFallback) {
+        // Use localStorage
+        const updatedData = data.map(item => 
+          item.id === id 
+            ? { ...item, ...updates, updated_at: new Date().toISOString() } 
+            : item
+        );
+        setData(updatedData);
+        localStorage.setItem(localStorageKey, JSON.stringify(updatedData));
+        return updatedData.find(item => item.id === id);
+      } else {
+        // Use Supabase
+        const { data: updatedData, error } = await supabase
+          .from(tableName)
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select();
+
+        if (error) throw error;
+        
+        setData(prev => prev.map(item => 
+          item.id === id ? { ...item, ...updatedData[0] } as T : item
+        ));
+        return updatedData[0] as T;
+      }
+    } catch (err) {
+      console.error(`Error updating item in ${tableName}:`, err);
+      setError(err as Error);
+      throw err;
+    }
+  };
+
+  // Delete item
+  const deleteItem = async (id: string) => {
+    try {
+      if (useFallback) {
+        // Use localStorage
+        const updatedData = data.filter(item => item.id !== id);
+        setData(updatedData);
+        localStorage.setItem(localStorageKey, JSON.stringify(updatedData));
+      } else {
+        // Use Supabase
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        
+        setData(prev => prev.filter(item => item.id !== id));
+      }
+    } catch (err) {
+      console.error(`Error deleting item from ${tableName}:`, err);
+      setError(err as Error);
+      throw err;
+    }
+  };
+
+  // Query by field
+  const queryByField = async (field: keyof T, value: any) => {
+    try {
+      if (useFallback) {
+        // Use localStorage
+        return data.filter(item => item[field] === value);
+      } else {
+        // Use Supabase
+        const { data: queryData, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .eq(field as string, value);
+
+        if (error) throw error;
+        return queryData as T[];
+      }
+    } catch (err) {
+      console.error(`Error querying ${tableName} by ${String(field)}:`, err);
+      setError(err as Error);
+      throw err;
+    }
+  };
+
+  return { 
+    data, 
+    loading, 
+    error, 
+    addItem, 
+    updateItem, 
+    deleteItem, 
+    queryByField,
+    isUsingFallback: useFallback
+  };
+} 

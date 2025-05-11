@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader } from "lucide-react";
+import { Loader, Sparkles } from "lucide-react";
 import { generateLab } from "@/lib/api";
 import { Lab } from "@/types/labs";
 
@@ -60,8 +60,11 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-opacity-40 bg-opacity-30 backdrop-blur-md bg-gradient-to-br from-white/30 to-white/10 dark:from-gray-900/50 dark:to-gray-900/30 shadow-md">
+      <CardHeader className="relative">
+        <div className="absolute top-4 right-4 text-primary/50">
+          <Sparkles className="h-5 w-5" />
+        </div>
         <CardTitle>Create a Virtual Lab</CardTitle>
         <CardDescription>
           Provide details about your lab, and our AI will generate an interactive simulation.
@@ -77,7 +80,11 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
                 <FormItem>
                   <FormLabel>Lab Topic</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Circuit Building, Chemical Reactions, Cell Structure..." {...field} />
+                    <Input 
+                      placeholder="e.g. Circuit Building, Chemical Reactions, Cell Structure..." 
+                      {...field}
+                      className="bg-background/50 backdrop-blur-sm"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -93,11 +100,11 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
                     <FormLabel>Grade Level</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-background/50 backdrop-blur-sm">
                           <SelectValue placeholder="Select grade level" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="bg-background/80 backdrop-blur-md">
                         <SelectItem value="k-2">K-2</SelectItem>
                         <SelectItem value="3-5">3-5</SelectItem>
                         <SelectItem value="6-8">6-8</SelectItem>
@@ -124,15 +131,15 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="qwen" id="qwen" />
-                          <Label htmlFor="qwen">Qwen</Label>
+                          <Label htmlFor="qwen" className="cursor-pointer">Qwen</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="deepseek" id="deepseek" />
-                          <Label htmlFor="deepseek">DeepSeek</Label>
+                          <Label htmlFor="deepseek" className="cursor-pointer">DeepSeek</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="mistral" id="mistral" />
-                          <Label htmlFor="mistral">Mistral</Label>
+                          <Label htmlFor="mistral" className="cursor-pointer">Mistral</Label>
                         </div>
                       </RadioGroup>
                     </FormControl>
@@ -151,7 +158,7 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
                   <FormControl>
                     <Textarea 
                       placeholder="Add any specific requirements, learning objectives, or context..."
-                      className="min-h-[100px]"
+                      className="min-h-[100px] bg-background/50 backdrop-blur-sm"
                       {...field} 
                     />
                   </FormControl>
@@ -160,14 +167,21 @@ export function LabGenerator({ onLabGenerated }: LabGeneratorProps) {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isGenerating}>
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-300" 
+              disabled={isGenerating}
+            >
               {isGenerating ? (
                 <>
                   <Loader className="mr-2 h-4 w-4 animate-spin" />
                   Generating Lab Simulation...
                 </>
               ) : (
-                "Generate Lab Simulation"
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Lab Simulation
+                </>
               )}
             </Button>
           </form>
