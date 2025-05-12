@@ -45,4 +45,5 @@ app.*.map.json
 /android/app/release
 
 # Firebase/Google Service Account Key
-serviceaccountkey.json
+/backend/serviceAccountKey.json
+/backend/.env
