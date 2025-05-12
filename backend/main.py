@@ -64,6 +64,36 @@ class SummaryResponse(BaseModel):
     content_type: str
     created_at: datetime
 
+# Quiz generation models
+class QuizOption(BaseModel):
+    id: str  # A, B, C, D
+    text: str
+
+class QuizQuestion(BaseModel):
+    question: str
+    options: List[QuizOption]
+    correctAnswer: str  # A, B, C, D
+    bloomTag: str  # Knowledge, Understand, Apply, Analyze, Evaluate, Create
+
+class QuizGenerationRequest(BaseModel):
+    content: str
+    numQuestions: int
+    token: str
+    title: str
+
+class QuizGenerationResponse(BaseModel):
+    title: str
+    questions: List[QuizQuestion]
+    created_at: datetime
+
+# PDF related models
+class QuizPdfRequest(BaseModel):
+    file: Optional[UploadFile] = None
+    youtube_url: Optional[str] = None
+    numQuestions: int
+    token: str
+    title: Optional[str] = None
+
 async def verify_token(token: str):
     try:
         decoded_token = auth.verify_id_token(token)
@@ -419,6 +449,241 @@ async def summarize_resource(
                 content_type=content_type,
                 created_at=created_at
             )
+        else:
+            raise HTTPException(status_code=400, detail="Could not extract text from the provided resource")
+            
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the full error for debugging
+        import traceback
+        traceback.print_exc()
+        # Return a user-friendly error
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@app.post("/api/generate-quiz", response_model=QuizGenerationResponse)
+async def generate_quiz(request: QuizGenerationRequest):
+    # Verify Firebase token
+    user_id = await verify_token(request.token)
+    
+    try:
+        # Generate quiz using Gemini
+        prompt = f"""Generate {request.numQuestions} multiple-choice questions based on the following content. 
+Each question must be tagged according to Bloom's Taxonomy (e.g., Knowledge, Understand, Apply, Analyze, Evaluate, Create).
+
+Content: {request.content}
+
+Format your response in the following JSON structure:
+{{
+  "questions": [
+    {{
+      "question": "Question text here",
+      "options": [
+        {{ "id": "A", "text": "Option A text" }},
+        {{ "id": "B", "text": "Option B text" }},
+        {{ "id": "C", "text": "Option C text" }},
+        {{ "id": "D", "text": "Option D text" }}
+      ],
+      "correctAnswer": "A",
+      "bloomTag": "Knowledge"
+    }}
+  ]
+}}
+
+Ensure each question is challenging but fair, and the options are all plausible but with only one correct answer.
+Make sure to tag each question according to Bloom's Taxonomy level (Knowledge, Understand, Apply, Analyze, Evaluate, Create).
+"""
+
+        response = model.generate_content(prompt)
+        
+        # Parse the response
+        import json
+        import re
+        
+        # Extract JSON from the response
+        response_text = response.text
+        json_match = re.search(r'```json\n(.*?)\n```', response_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find any JSON-like structure
+            json_match = re.search(r'\{[\s\S]*"questions"[\s\S]*\}', response_text)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                json_str = response_text
+        
+        try:
+            parsed_response = json.loads(json_str)
+        except json.JSONDecodeError:
+            # If we can't parse JSON, create a structured response with an error message
+            parsed_response = {
+                "questions": [{
+                    "question": "Error generating quiz. Please try again.",
+                    "options": [
+                        {"id": "A", "text": "Try again"},
+                        {"id": "B", "text": "Use different content"},
+                        {"id": "C", "text": "Contact support"},
+                        {"id": "D", "text": "Report bug"}
+                    ],
+                    "correctAnswer": "A",
+                    "bloomTag": "Knowledge"
+                }]
+            }
+        
+        # Format questions to match our model
+        questions = []
+        for q in parsed_response.get("questions", []):
+            question = QuizQuestion(
+                question=q.get("question", ""),
+                options=[
+                    QuizOption(id=opt.get("id", ""), text=opt.get("text", ""))
+                    for opt in q.get("options", [])
+                ],
+                correctAnswer=q.get("correctAnswer", ""),
+                bloomTag=q.get("bloomTag", "Knowledge")
+            )
+            questions.append(question)
+        
+        created_at = datetime.now()
+        
+        # Save to Firestore
+        doc_ref = db.collection(f'users/{user_id}/quizzes').document()
+        doc_ref.set({
+            'title': request.title,
+            'questions': [q.dict() for q in questions],
+            'createdAt': created_at.isoformat(),
+            'userId': user_id,
+            'sourceType': 'manual',
+            'pdfExported': False
+        })
+        
+        return QuizGenerationResponse(
+            title=request.title,
+            questions=questions,
+            created_at=created_at
+        )
+    
+    except Exception as e:
+        # Log the full error for debugging
+        import traceback
+        traceback.print_exc()
+        # Return a user-friendly error
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@app.post("/api/generate-quiz-from-file", response_model=QuizGenerationResponse)
+async def generate_quiz_from_file(
+    file: Optional[UploadFile] = File(None),
+    youtube_url: Optional[str] = Form(None),
+    num_questions: int = Form(5),
+    token: str = Form(...),
+    title: Optional[str] = Form(None)
+):
+    # Verify Firebase token
+    user_id = await verify_token(token)
+    
+    try:
+        content_type = ""
+        file_path = None
+        file_url = ""
+        extracted_text = ""
+        
+        # Process file upload or YouTube URL
+        if file:
+            # Save uploaded file to temporary location
+            content_type = "pdf" if file.filename.lower().endswith('.pdf') else "video"
+            
+            # Create temp file with proper extension
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{content_type}") as temp_file:
+                file_path = temp_file.name
+            
+            # Write uploaded content to temp file
+            content = await file.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+            
+            # Generate unique filename for storage
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            storage_filename = f"{timestamp}_{file.filename}"
+            
+            # Upload to Firebase Storage
+            try:
+                blob = bucket.blob(f"users/{user_id}/{storage_filename}")
+                blob.upload_from_filename(file_path)
+                blob.make_public()
+                file_url = blob.public_url
+            except Exception as e:
+                # If storage upload fails, still try to process the file
+                print(f"Firebase storage upload error: {str(e)}")
+                file_url = f"local://{file.filename}"
+            
+            # Extract text based on content type
+            if content_type == "pdf":
+                try:
+                    extracted_text = extract_text_from_pdf(file_path)
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=422, 
+                        detail=f"Could not extract text from PDF: {str(e)}"
+                    )
+            else:
+                # For video, we'd need a different approach (not implemented)
+                extracted_text = "Video text extraction not implemented yet."
+                
+            # Clean up temporary file
+            try:
+                os.unlink(file_path)
+            except:
+                pass
+            
+            # Use filename as title if not provided
+            if not title:
+                title = file.filename
+            
+        elif youtube_url:
+            content_type = "video"
+            video_id = extract_youtube_id(youtube_url)
+            
+            if not video_id:
+                raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+            
+            # Get video metadata
+            try:
+                yt = YouTube(youtube_url)
+                if not title:
+                    title = yt.title
+            except Exception as e:
+                # If YouTube metadata retrieval fails, use URL as title
+                if not title:
+                    title = "YouTube Video"
+                
+            # Get transcript if available
+            try:
+                transcript = get_youtube_transcript(video_id)
+                if transcript:
+                    extracted_text = transcript
+                else:
+                    extracted_text = "No transcript available for this video."
+            except Exception as e:
+                extracted_text = f"Error retrieving transcript: {str(e)}"
+                
+            file_url = youtube_url
+        else:
+            raise HTTPException(status_code=400, detail="Either file or YouTube URL must be provided")
+        
+        # Generate quiz using the extracted text
+        if extracted_text:
+            # Create quiz generation request with extracted text
+            quiz_request = QuizGenerationRequest(
+                content=extracted_text,
+                numQuestions=num_questions,
+                token=token,
+                title=title
+            )
+            
+            # Use the existing quiz generation endpoint
+            return await generate_quiz(quiz_request)
         else:
             raise HTTPException(status_code=400, detail="Could not extract text from the provided resource")
             
