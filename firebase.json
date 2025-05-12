@@ -1,0 +1,29 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "eduprepai-ded1a",
+          "appId": "1:266477025524:android:4c486c8fc139ad7b3a06a1",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "eduprepai-ded1a",
+          "configurations": {
+            "android": "1:266477025524:android:4c486c8fc139ad7b3a06a1",
+            "web": "1:266477025524:web:d6bb2bbfef4c1b963a06a1",
+            "windows": "1:266477025524:web:a43a492ab32933ae3a06a1"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  }
+}

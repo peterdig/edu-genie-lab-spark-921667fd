@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "266477025524",
+    "project_id": "eduprepai-ded1a",
+    "storage_bucket": "eduprepai-ded1a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:266477025524:android:4c486c8fc139ad7b3a06a1",
+        "android_client_info": {
+          "package_name": "com.example.eduprepai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKEtXvKnN0cLhSAf6TOkiKjwUUwtXu1OI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
