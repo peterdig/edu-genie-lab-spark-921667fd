@@ -53,6 +53,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Make sure we don't exclude src/lib
+!src/lib/
+
 # Backend specific
 backend/.env
 backend/__pycache__/
