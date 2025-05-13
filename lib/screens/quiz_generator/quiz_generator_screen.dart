@@ -9,7 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 class QuizGeneratorScreen extends StatefulWidget {
   const QuizGeneratorScreen({super.key});
@@ -35,6 +35,35 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
   Uint8List? _selectedFileBytes;
   String? _youtubeUrl;
   bool _isPdfExporting = false;
+
+  // Helper to determine the correct base URL for the API
+  String get _apiBaseUrl {
+    // --- IMPORTANT FOR PHYSICAL DEVICE TESTING ---
+    // 1. Find your laptop's local network IP address (e.g., 192.168.1.101).
+    // 2. Replace "YOUR_LAPTOP_IP" with that address.
+    // 3. Ensure your phone and laptop are on the SAME Wi-Fi network.
+    // 4. Ensure your laptop's firewall allows connections on port 8000.
+    const String myLaptopIp = "YOUR_LAPTOP_IP"; // <<< REPLACE THIS!
+    // --- IMPORTANT FOR PHYSICAL DEVICE TESTING ---
+
+    if (kDebugMode && myLaptopIp != "YOUR_LAPTOP_IP" && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+        // When testing on a physical device, and you've set your IP
+        print("Using custom IP for physical device: http://$myLaptopIp:8000");
+        return 'http://$myLaptopIp:8000';
+    }
+
+    if (kIsWeb) {
+      return 'http://localhost:8000';
+    } else if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    } else if (Platform.isIOS) {
+      return 'http://localhost:8000';
+    } else {
+      print(
+          'Warning: Platform not explicitly handled for API URL. Defaulting to localhost. Consider setting myLaptopIp for physical devices.');
+      return 'http://localhost:8000';
+    }
+  }
 
   @override
   void dispose() {
@@ -113,7 +142,7 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
       
       if (_selectedInputType == 'text') {
         // Direct text input
-        final url = 'http://localhost:8000/api/generate-quiz';
+        final url = '$_apiBaseUrl/api/generate-quiz';
         final payload = {
           'content': _contentController.text,
           'numQuestions': _questionCount,
@@ -128,7 +157,7 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
         );
       } else {
         // File or YouTube URL
-        final url = 'http://localhost:8000/api/generate-quiz-from-file';
+        final url = '$_apiBaseUrl/api/generate-quiz-from-file';
         var request = http.MultipartRequest('POST', Uri.parse(url));
         
         // Add common fields

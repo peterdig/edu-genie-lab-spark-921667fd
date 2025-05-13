@@ -3,13 +3,30 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'dart:io' show Platform;
+
+// <<< IMPORTANT: SET YOUR LAPTOP'S IP HERE FOR PHYSICAL DEVICE TESTING >>>
+const String myLaptopIp = "192.168.0.101"; // <<<<<<< SET YOUR LAPTOP'S IP ADDRESS HERE FOR PHYSICAL DEVICE TESTING
 
 class LessonPlanService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // For Android Emulator, backend is typically at 10.0.2.2. For iOS Sim/Physical Device, use your computer's local IP.
-  final String _speechToPlanApiUrl = 'http://localhost:8000/api/v1/speech-to-plan'; 
+
+  String get _apiBaseUrl {
+    // Physical Android/iOS device in debug mode with a configured IP
+    if (kDebugMode && myLaptopIp != "YOUR_LAPTOP_IP" && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      return 'http://$myLaptopIp:8000';
+    }
+    // Android Emulator
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    }
+    // Default for web, iOS simulator, or other cases (e.g., release mode on physical device if IP not set for some reason)
+    return 'http://localhost:8000';
+  }
+
+  String get _dynamicSpeechToPlanApiUrl => '$_apiBaseUrl/api/v1/speech-to-plan';
 
   Future<String?> generateLessonPlan(String transcript) async {
     User? user = _auth.currentUser;
@@ -28,18 +45,17 @@ class LessonPlanService {
       return 'Error: Could not authenticate user. Please try logging in again.';
     }
 
-    if (_speechToPlanApiUrl == 'YOUR_BACKEND_API_ENDPOINT_HERE') { // This check is now less relevant but kept for safety
+    // Safety check for physical device configuration
+    if (kDebugMode && myLaptopIp == "YOUR_LAPTOP_IP" && !kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         if (kDebugMode) {
-            print('API endpoint not configured correctly.');
+            print('API endpoint not configured correctly for physical device. Please set `myLaptopIp` in lesson_plan_service.dart.');
         }
-        // Fallback to simulated if somehow the URL is still the placeholder
-        await Future.delayed(const Duration(seconds: 2));
-        return 'Simulated Lesson Plan based on: "$transcript"\n- Objective 1\n- Activity 1\n- Assessment 1';
+        return 'Error: Backend API endpoint not configured for physical device. Please set your laptop\'s IP address in the app code.';
     }
 
     try {
       final response = await http.post(
-        Uri.parse(_speechToPlanApiUrl),
+        Uri.parse(_dynamicSpeechToPlanApiUrl),
         headers: {
           'Content-Type': 'application/json',
         },

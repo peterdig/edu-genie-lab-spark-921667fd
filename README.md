@@ -1,59 +1,133 @@
-# EduPrep AI
+# EduPrepAI: Your Intelligent Teaching Assistant
 
-AI-powered teaching assistant platform for teachers and educators.
+EduPrepAI is a comprehensive platform designed to empower teachers and educators by leveraging the power of Artificial Intelligence. Our goal is to streamline lesson planning, quiz generation, and provide interactive learning simulations, ultimately saving educators valuable time and enhancing the learning experience.
 
-## Features
+## Key Features
 
-- **AI Lesson Planner**: Generate detailed lesson plans using AI
+- **AI Lesson Planner**: Automatically generate detailed and structured lesson plans based on topics or learning objectives. Utilizes AI to suggest activities, resources, and assessment methods.
+- **Quiz Generation**: Create quizzes effortlessly by uploading PDF documents or providing text content. The AI extracts relevant information and formulates questions.
+- **Interactive Lesson Simulator**: Simulate lesson scenarios to practice teaching strategies and classroom management in a controlled environment.
+- **Speech-to-Plan**: Dictate your lesson ideas, and our AI will convert your speech into a structured lesson plan, ready for review and refinement.
+- **User Authentication**: Secure access to features with Firebase Authentication.
+- **Cloud Storage**: Store and manage lesson plans, quizzes, and other educational materials using Firebase Firestore and Storage.
 
-## Setup
+## Tech Stack
 
-### Backend (FastAPI)
+- **Frontend**: Flutter (Cross-platform mobile, web, and desktop applications)
+- **Backend**: Python with FastAPI (High-performance API development)
+- **Database & Storage**: Firebase (Firestore, Firebase Storage, Firebase Authentication)
+- **AI Integration**: Gemini API (for content generation and analysis features)
 
-1. Navigate to the backend directory:
-   ```
-   cd backend
-   ```
+## Prerequisites
 
-2. Create a virtual environment:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+Before you begin, ensure you have the following installed:
+- Flutter SDK (latest stable version recommended)
+- Python (3.8+ recommended)
+- An active Firebase project.
+- Git (for cloning the repository)
 
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+## Project Setup
 
-4. Create a `.env` file with the following:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key_here
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd eduprepai
+    ```
 
-5. Run the server:
-   ```
-   uvicorn main:app --reload
-   ```
+### Backend Setup (FastAPI)
 
-### Frontend (Flutter)
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
 
-1. Ensure you have Flutter installed
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    # On Windows
+    .\venv\Scripts\activate
+    # On macOS/Linux
+    source venv/bin/activate
+    ```
 
-2. Install dependencies:
-   ```
-   flutter pub get
-   ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-3. Run the app:
-   ```
-   flutter run
-   ```
+4.  **Set up environment variables:**
+    Create a `.env` file in the `backend` directory with your Gemini API Key:
+    ```env
+    GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+    ```
 
-## Firebase Setup
+5.  **Firebase Admin SDK Setup:**
+    - Download your `serviceAccountKey.json` from your Firebase project settings (Project settings > Service accounts > Generate new private key).
+    - Place the `serviceAccountKey.json` file into the `backend` directory.
 
-1. Create a Firebase project
-2. Enable Firestore database
-3. Enable Authentication (email/password)
-4. Download and place your `serviceAccountKey.json` in the backend directory
-5. Configure Firebase for your Flutter app
+### Frontend Setup (Flutter)
+
+1.  **Navigate to the Flutter project root (if not already there):**
+    ```bash
+    # Assuming you are in the 'backend' directory from the previous step
+    cd ..
+    # Or if you are in the project root: cd eduprepai
+    ```
+
+2.  **Configure Firebase for your Flutter app:**
+    - Follow the instructions on the [FlutterFire overview](https://firebase.flutter.dev/docs/overview#installation) to add Firebase to your Flutter app.
+    - This typically involves using the FlutterFire CLI:
+      ```bash
+      flutterfire configure
+      ```
+    - Ensure the generated `lib/firebase_options.dart` is correctly configured and added to your project.
+
+3.  **Install Flutter dependencies:**
+    ```bash
+    flutter pub get
+    ```
+
+## How to Run the Application
+
+### 1. Start the Backend Server
+
+- Navigate to the `backend` directory.
+- Ensure your Python virtual environment is activated.
+- Run the FastAPI server:
+  ```bash
+  uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  ```
+  (Using `--host 0.0.0.0` makes the server accessible on your local network).
+
+### 2. Run the Flutter Application
+
+- Navigate to the Flutter project root (`eduprepai`).
+- Select your target device (Emulator, Simulator, Physical Device, or Web).
+- Run the app:
+  ```bash
+  flutter run
+  ```
+
+#### **Important for Physical Device Testing:**
+
+If you are running the Flutter app on a physical Android/iOS device and the backend is running on your laptop, you need to ensure the app can reach your laptop's IP address.
+
+1.  Find your laptop's local IP address (e.g., `192.168.1.X`).
+2.  In the Flutter app, specifically in files like `lib/services/lesson_simulator_service.dart` and `lib/screens/quiz_generator/quiz_generator_screen.dart`, update the `myLaptopIp` constant:
+    ```dart
+    // Example from lesson_simulator_service.dart
+    // const String myLaptopIp = "YOUR_LAPTOP_IP"; // Before
+    const String myLaptopIp = "192.168.1.X"; // After (replace with your actual IP)
+    ```
+3.  Ensure your laptop's firewall allows incoming connections on port 8000 (or the port your backend is running on).
+4.  Both your physical device and laptop must be on the **same Wi-Fi network**.
+
+## Firebase Usage Notes
+
+- **Authentication**: Email/Password sign-in is used. Ensure this is enabled in your Firebase project.
+- **Firestore Database**: Used for storing lesson plans, quiz metadata, etc.
+- **Firebase Storage**: Used for storing uploaded files (e.g., PDFs for quiz generation).
+
+---
+
+*This README provides a guide to setting up and running EduPrepAI. For specific feature development or contributions, please refer to the relevant source code and comments.*

@@ -3,9 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'home/home_screen.dart';
 import 'lesson_planning/lesson_planning_screen.dart';
 import 'quiz_generator/quiz_generator_screen.dart';
-import 'virtual_labs/virtual_labs_screen.dart';
 import 'resource_summarizer/resource_summarizer_screen.dart';
 import 'lesson_planning/speech_to_plan_screen.dart';
+import 'lesson_simulator/lesson_simulator_screen.dart'; // Added for Lesson Simulator
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -25,7 +25,7 @@ class _MainLayoutState extends State<MainLayout> {
     const LessonPlanningScreen(),
     const ResourceSummarizerScreen(),
     const QuizGeneratorScreen(),
-    const VirtualLabsScreen(),
+    const LessonSimulatorScreen(), // Replaced VirtualLabsScreen with LessonSimulatorScreen
   ];
 
   void _onItemTapped(int index) {
@@ -136,8 +136,8 @@ class _MainLayoutState extends State<MainLayout> {
               },
             ),
             _buildDrawerItem(
-              Icons.science_outlined,
-              'Virtual Labs',
+              Icons.videogame_asset_outlined,
+              'Lesson Simulator',
               4,
               theme,
             ),
@@ -213,9 +213,9 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'Quiz',
           ),
           NavigationDestination(
-            icon: Icon(Icons.science_outlined),
-            selectedIcon: Icon(Icons.science),
-            label: 'Labs',
+            icon: Icon(Icons.videogame_asset_outlined),
+            selectedIcon: Icon(Icons.videogame_asset),
+            label: 'Simulator',
           ),
         ],
       ),
@@ -243,7 +243,7 @@ class _MainLayoutState extends State<MainLayout> {
       case 3:
         return 'Quiz Generator';
       case 4:
-        return 'Virtual Labs';
+        return 'Lesson Simulator';
       default:
         return 'EduPrep AI';
     }
@@ -329,8 +329,8 @@ class _MainLayoutState extends State<MainLayout> {
                 },
               ),
               _buildQuickCreateButton(
-                Icons.science_outlined,
-                'Lab',
+                Icons.videogame_asset_outlined,
+                'Simulator',
                 () {
                   Navigator.pop(context);
                   setState(() {

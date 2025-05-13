@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import tempfile
 from pytube import YouTube
 from youtube_transcript_api import YouTubeTranscriptApi
+import json
 
 # Load environment variables
 load_dotenv()
@@ -94,6 +95,25 @@ class SpeechToPlanRequest(BaseModel):
 class SpeechToPlanResponse(BaseModel):
     plan: str
     generated_at: datetime
+
+# Lesson Simulator Models
+class LessonSimulationRequest(BaseModel):
+    lesson_plan: str
+    teacher_ideas: str
+    student_age: int
+    class_size: int
+    subject_complexity: str # e.g., "beginner", "intermediate", "advanced"
+    transcript: Optional[str] = None
+    token: str
+
+class SimulationFeedbackData(BaseModel):
+    student_reactions: List[str]
+    questions: List[str]
+    suggestions: List[str]
+    problem_areas: List[str]
+    tone_feedback: Optional[str] = None
+    improvement_tips: List[str]
+    timestamp: datetime
 
 # PDF related models
 class QuizPdfRequest(BaseModel):
@@ -195,6 +215,96 @@ If the transcript is too short, unclear, or lacks sufficient detail to create a 
     except Exception as e:
         print(f"Error in generate_speech_to_plan: {e}") # Log the error server-side
         raise HTTPException(status_code=500, detail=f"An error occurred while generating the lesson plan: {str(e)}")
+
+@app.post("/api/v1/simulate-lesson", response_model=SimulationFeedbackData)
+async def simulate_lesson_endpoint(request: LessonSimulationRequest):
+    user_id = await verify_token(request.token)
+    current_time = datetime.now()
+
+    # Prepare input for Firestore (excluding the token)
+    input_data_for_firestore = {
+        "lesson_plan": request.lesson_plan,
+        "teacher_ideas": request.teacher_ideas,
+        "student_age": request.student_age,
+        "class_size": request.class_size,
+        "subject_complexity": request.subject_complexity,
+        "transcript": request.transcript,
+    }
+
+    # Construct the prompt for Gemini
+    # This prompt needs to be carefully engineered to request JSON output.
+    prompt_parts = [
+        f"You are an AI simulating a classroom to evaluate a lesson plan.",
+        f"The lesson plan is: '{request.lesson_plan}'.",
+        f"Additional teacher ideas/comments for delivery: '{request.teacher_ideas}'.",
+        f"The target students are {request.student_age} years old.",
+        f"The class size is {request.class_size} students.",
+        f"The subject complexity is '{request.subject_complexity}'.",
+    ]
+    if request.transcript:
+        prompt_parts.append(f"The teacher's speech transcript for part of the lesson is: '{request.transcript}'. Analyze this for pacing and clarity.")
+    
+    prompt_parts.extend([
+        f"Based on this, simulate student interactions and provide feedback.",
+        f"Please format your entire response as a single JSON object with the following keys:",
+        f"  'student_reactions': A list of 3-5 diverse, typical student reactions or comments (e.g., 'This is engaging!', 'I'm a bit confused about X', 'Can we do an example?').",
+        f"  'questions': A list of 2-3 pertinent questions students might ask based on the plan.",
+        f"  'suggestions': A list of 2-3 actionable suggestions for improving the lesson's engagement, clarity, or structure.",
+        f"  'problem_areas': A list of 1-2 potential problem areas or parts of the lesson where students might struggle.",
+        f"  'tone_feedback': If a transcript was provided, a brief comment on the perceived tone, pacing, or clarity from the transcript (e.g., 'The explanation of the core concept seemed a bit fast.'). Otherwise, null.",
+        f"  'improvement_tips': A list of 2-3 general teaching improvement tips relevant to the lesson plan.",
+        f"Example of a student_reaction: 'The activity for XYZ seems fun!'",
+        f"Example of a question: 'What's the difference between A and B again?'",
+        f"Ensure all lists contain strings. Do not include any explanatory text outside of the JSON object itself."
+    ])
+    final_prompt = "\n".join(prompt_parts)
+
+    try:
+        gemini_response = model.generate_content(final_prompt)
+        
+        # Debug: Print raw Gemini response
+        print(f"Raw Gemini Response for simulation: {gemini_response.text}")
+
+        # Attempt to parse the response as JSON
+        # Gemini might sometimes include markdown backticks around the JSON, try to remove them.
+        cleaned_response_text = gemini_response.text.strip()
+        if cleaned_response_text.startswith('```json'):
+            cleaned_response_text = cleaned_response_text[7:]
+        if cleaned_response_text.endswith('```'):
+            cleaned_response_text = cleaned_response_text[:-3]
+        
+        feedback_json = json.loads(cleaned_response_text.strip())
+
+        # Validate and structure the feedback using Pydantic model
+        # The timestamp for the feedback itself is when it's processed by our server
+        feedback_data = SimulationFeedbackData(
+            student_reactions=feedback_json.get('student_reactions', []),
+            questions=feedback_json.get('questions', []),
+            suggestions=feedback_json.get('suggestions', []),
+            problem_areas=feedback_json.get('problem_areas', []),
+            tone_feedback=feedback_json.get('tone_feedback'),
+            improvement_tips=feedback_json.get('improvement_tips', []),
+            timestamp=current_time
+        )
+
+        # Save to Firestore
+        simulation_doc_ref = db.collection('simulations').document(user_id).collection('user_simulations').document()
+        simulation_doc_ref.set({
+            'input_data': input_data_for_firestore,
+            'feedback': feedback_data.model_dump(), # Use model_dump() for Pydantic v2
+            'userId': user_id,
+            'timestamp': current_time # Top-level timestamp for querying
+        })
+
+        return feedback_data
+
+    except json.JSONDecodeError as e:
+        print(f"JSONDecodeError parsing Gemini response: {e}")
+        print(f"Problematic Gemini response text: {gemini_response.text}")
+        raise HTTPException(status_code=500, detail="Error processing AI model's response: Invalid JSON format.")
+    except Exception as e:
+        print(f"Error in simulate_lesson_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred during lesson simulation: {str(e)}")
 
 # Helper functions for RAG
 def extract_text_from_pdf(file_path):

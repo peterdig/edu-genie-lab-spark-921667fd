@@ -32,22 +32,22 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.2
-  firebase_core: ^2.25.5
-  firebase_auth: ^4.17.6
-  firebase_database: ^10.4.6
-  cloud_firestore: ^4.15.6
-  firebase_storage: ^11.6.7
-  http: ^1.1.2
-  cloud_functions: ^4.6.6
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.3
+  firebase_database: ^11.0.3
+  cloud_firestore: ^5.6.7
+  firebase_storage: ^12.1.0
+  http: ^1.1.2 # Keep an eye on this, may need ^1.2.0 or similar if web conflict persists for http
+  cloud_functions: ^5.5.0
   flutter_markdown: ^0.6.18
   provider: ^6.1.1
-  file_picker: ^6.1.1
+  file_picker: ^10.1.7
   path: ^1.8.3
   url_launcher: ^6.2.5
   dio: ^5.4.1
   mime: ^1.0.4
   intl: ^0.19.0
-  speech_to_text: ^6.6.0 # Added for speech-to-plan feature
+  speech_to_text: ^7.0.0-beta.1 # Updated to beta with v2 embedding fix
   # PDF generation and printing
   pdf: ^3.10.7
   printing: ^5.11.1
