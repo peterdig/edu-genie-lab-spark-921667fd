@@ -6,18 +6,18 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import SupabaseSetup from "./pages/SupabaseSetup";
 import { AuthProvider } from "./lib/AuthContext.jsx";
-import { AuthGuard } from "./components/auth/AuthGuard";
-import AuthCallback from "./pages/AuthCallback";
-import { SidebarProvider } from "./components/ui/sidebar";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import AuthCallback from "@/pages/AuthCallback";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import LoadingFallback from "@/components/ui/loading-fallback";
 import { ThemeProvider } from "./lib/theme-provider";
 import { useLocalStorageFallback, checkConnectivity } from "./lib/supabase";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { initializeDatabase } from "./lib/database";
-import { NotificationsProvider } from "@/lib/NotificationContext";
-import OnlineProvider from './contexts/OnlineContext';
-import AccessibilityProvider from './contexts/AccessibilityContext';
-import { AccessibilitySettingsButton } from './components/accessibility/AccessibilitySettings';
+import { NotificationsProvider } from "@/lib/NotificationContext.tsx";
+import OnlineProvider from '@/contexts/OnlineContext';
+import AccessibilityProvider from '@/contexts/AccessibilityContext';
+import { AccessibilitySettingsButton } from '@/components/accessibility/AccessibilitySettings';
 
 // Lazy load pages for better initial load performance
 const DashboardPage = lazy(() => import('@/pages/Dashboard'));
