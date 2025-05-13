@@ -300,13 +300,13 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
             </Tooltip>
           </TooltipProvider>
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
                   size="sm"
                   variant="outline"
-                  onClick={toggleBookmark}
+                    onClick={toggleBookmark} 
                   className="h-8"
                 >
                   {isBookmarked ? (
@@ -314,18 +314,18 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   ) : (
                     <Bookmark className="h-4 w-4" />
                   )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
                 {isBookmarked ? "Remove bookmark" : "Bookmark lesson"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
                   size="sm"
                   variant="outline"
                   onClick={() => setShowExportOptions(!showExportOptions)}
@@ -333,12 +333,12 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Export
-                </Button>
-              </TooltipTrigger>
+                  </Button>
+                </TooltipTrigger>
               <TooltipContent>Export lesson plan</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
+              </Tooltip>
+            </TooltipProvider>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -349,7 +349,7 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   className="h-8"
                 >
                   <Printer className="h-4 w-4" />
-                </Button>
+            </Button>
               </TooltipTrigger>
               <TooltipContent>Print lesson plan</TooltipContent>
             </Tooltip>
@@ -365,50 +365,50 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   className="h-8"
                 >
                   <Share2 className="h-4 w-4" />
-                </Button>
+            </Button>
               </TooltipTrigger>
               <TooltipContent>Share lesson plan</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
-      </div>
-      
-      {showExportOptions && (
+        </div>
+        
+        {showExportOptions && (
         <Card className="mb-4">
           <CardContent className="pt-4">
             <div className="flex flex-col space-y-4">
               <div className="space-y-2 w-full">
                 <h3 className="text-sm font-medium">Export Format</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    size="sm"
-                    variant={exportFormat === "text" ? "default" : "outline"}
+            <Button 
+              size="sm" 
+              variant={exportFormat === "text" ? "default" : "outline"} 
                     onClick={() => setExportFormat("text")}
                     className="h-8"
-                  >
+            >
                     <File className="h-4 w-4 mr-1 sm:mr-2" />
                     <span>Text</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={exportFormat === "pdf" ? "default" : "outline"}
+            </Button>
+            <Button 
+              size="sm" 
+              variant={exportFormat === "pdf" ? "default" : "outline"} 
                     onClick={() => setExportFormat("pdf")}
                     className="h-8"
-                  >
+            >
                     <File className="h-4 w-4 mr-1 sm:mr-2" />
                     <span>PDF</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={exportFormat === "word" ? "default" : "outline"}
+            </Button>
+            <Button 
+              size="sm" 
+              variant={exportFormat === "word" ? "default" : "outline"} 
                     onClick={() => setExportFormat("word")}
                     className="h-8"
-                  >
+            >
                     <File className="h-4 w-4 mr-1 sm:mr-2" />
                     <span>Word</span>
-                  </Button>
-                </div>
-              </div>
+            </Button>
+          </div>
+          </div>
               <Button
                 size="sm"
                 onClick={handleDownload}
@@ -432,32 +432,32 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
         </div>
-        
-        <TabsContent value="overview" className="space-y-4">
+          
+          <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Lesson Overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
+            <div>
                   <h3 className="text-md font-medium mb-1">Description</h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-line">
                     {lesson.overview}
                   </p>
-                </div>
-                
-                <div>
+            </div>
+            
+            <div>
                   <h3 className="text-md font-medium mb-1">Learning Objectives</h3>
-                  <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-1">
                     {lesson.objectives.map((objective, i) => (
                       <li key={i} className="text-sm text-muted-foreground">
                         {objective}
                       </li>
-                    ))}
-                  </ul>
-                </div>
-                
+                ))}
+              </ul>
+            </div>
+
                 <div>
                   <h3 className="text-md font-medium mb-1">Tags</h3>
                   <div className="flex flex-wrap gap-2">
@@ -476,9 +476,9 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Teaching Tip</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
                   onClick={fetchTeachingTip}
                   disabled={isLoading}
                 >
@@ -504,8 +504,8 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   >
                     Generate Teaching Tip
                   </Button>
-                </div>
-              )}
+              </div>
+            )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -516,7 +516,7 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               <div className="flex justify-between items-center">
                 <CardTitle>Detailed Lesson Plan</CardTitle>
                 {/* Edit button */}
-                <Button
+                <Button 
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditing(!isEditing)}
@@ -570,8 +570,8 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-        
+          </TabsContent>
+          
         <TabsContent value="assessment" className="space-y-4">
           <Card>
             <CardHeader>
@@ -583,8 +583,8 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-        
+          </TabsContent>
+          
         <TabsContent value="materials" className="space-y-4">
           <Card>
             <CardHeader>
@@ -598,10 +598,10 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                   </li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
+                    </CardContent>
+                  </Card>
+          </TabsContent>
+          
         <TabsContent value="notes" className="space-y-4">
           <Card>
             <CardHeader>
@@ -623,8 +623,8 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
       
       <div className="flex justify-between">
         <Button
@@ -639,8 +639,8 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
           disabled={isSaved}
         >
           {isSaved ? "Saved to Library" : "Save to My Library"}
-        </Button>
-      </div>
+          </Button>
+        </div>
     </div>
   );
 }

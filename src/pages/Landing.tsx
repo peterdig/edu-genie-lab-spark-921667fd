@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import Spline from '@splinetool/react-spline';
 import { ShimmerLogo } from "@/components/ShimmerLogo";
 import { TextShimmer } from "@/components/TextShimmer";
-import { ChevronRight, Users, Clock, BookOpen, Sparkles, Brain, ArrowRight, Blocks, GraduationCap, Accessibility, FlaskConical, FileText, Zap, Smartphone, Download, Check, Shield, Wifi, WifiOff, Globe, Award, Layers } from "lucide-react";
+import { ChevronRight, Users, Clock, BookOpen, Sparkles, Brain, ArrowRight, Blocks, GraduationCap, Accessibility, FlaskConical, FileText, Zap, Smartphone, Download, Check, Shield, Wifi, WifiOff, Globe, Award, Layers, CheckCircle } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -142,13 +142,13 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-background" style={{minHeight: "calc(100vh - 6rem)", maxHeight: "800px"}}>
+      <div className="relative overflow-hidden bg-background" style={{minHeight: "calc(100vh - 6rem)"}}>
         <div className="absolute inset-0 z-0">
-          {/* Fallback gradient while Spline loads */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10" />
+          {/* Fallback gradient with better light/dark mode contrast */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-secondary/20 to-primary/30 dark:from-primary/10 dark:via-secondary/5 dark:to-primary/10" />
           
-          {/* Spline 3D background */}
-          <div className={`transition-opacity duration-1000 ${isSplineLoaded ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Spline 3D background - hide on small screens for better performance */}
+          <div className={`transition-opacity duration-1000 ${isSplineLoaded ? 'opacity-100' : 'opacity-0'} hidden md:block`}>
             <Spline 
               scene="https://prod.spline.design/hJ8WSiKIQDRgOe29/scene.splinecode" 
               onLoad={onSplineLoad}
@@ -156,30 +156,30 @@ export default function Landing() {
           </div>
         </div>
         
-        <div className="container mx-auto px-4 h-full flex items-center justify-center relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 h-full flex items-center justify-center relative z-10">
           <motion.div 
-            className="flex flex-col items-center text-center max-w-3xl mx-auto pt-10 md:pt-0"
+            className="flex flex-col items-center text-center max-w-3xl mx-auto pt-16 md:pt-0"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-6 flex items-center shadow-sm">
+            <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-4 md:mb-6 flex items-center shadow-sm">
               <GraduationCap className="w-4 h-4 mr-1" />
-              Built for educators, by educators
+              <span className="text-xs sm:text-sm">Built for educators, by educators</span>
             </div>
             
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6 drop-shadow-sm">
-              Empower Your Teaching With <ShimmerLogo variant="hero" size="xl" />
+            <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-4 md:mb-6 drop-shadow-sm px-2 text-foreground">
+              Empower Your Teaching With <br className="block sm:hidden" /><ShimmerLogo variant="hero" size="xl" />
             </h1>
             
-            <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl">
+            <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-6 md:mb-10 max-w-2xl px-4">
               The AI-powered education platform that helps you create engaging lessons, save time, and meet the needs of every student.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 w-full justify-center px-4 sm:px-0">
               <Button 
                 size="lg" 
-                className="gap-2 px-6 text-base w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md"
+                className="gap-2 px-4 md:px-6 text-sm md:text-base w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md text-white"
                 onClick={() => navigate("/signup")}
               >
                 Get Started
@@ -188,7 +188,7 @@ export default function Landing() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="gap-2 px-6 text-base border-primary/30 hover:bg-primary/10 shadow-sm"
+                className="gap-2 px-4 md:px-6 text-sm md:text-base border-primary/30 hover:bg-primary/10 shadow-sm text-foreground"
                 onClick={() => navigate("/login")}
               >
                 Sign In
@@ -205,7 +205,7 @@ export default function Landing() {
           transition={{ delay: 1.2, duration: 0.5 }}
         >
           <motion.div 
-            className="w-8 h-8 rounded-full flex items-center justify-center"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-foreground"
             animate={{ y: [0, 8, 0] }}
             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
           >
@@ -216,27 +216,48 @@ export default function Landing() {
         </motion.div>
       </div>
 
-      {/* Highlights banner */}
+      {/* Highlights banner - Added for mobile friendliness */}
+      <div className="bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/10 dark:to-secondary/10 py-8 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap justify-center gap-y-4 gap-x-8 md:gap-x-12">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="text-sm md:text-base font-medium text-foreground">Time-saving</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="text-sm md:text-base font-medium text-foreground">AI-Powered</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="text-sm md:text-base font-medium text-foreground">User-Friendly</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="text-sm md:text-base font-medium text-foreground">Research-Based</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-
-      {/* Features Section */}
-      <div className="container mx-auto px-4 py-16 md:py-20">
+      {/* Features Section - Improved for light mode */}
+      <div className="container mx-auto px-4 py-12 md:py-20">
         <motion.div 
-          className="text-center mb-10 md:mb-16"
+          className="text-center mb-8 md:mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           <span className="text-sm font-medium text-primary uppercase tracking-wider">Core Features</span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2">Designed for Modern Educators</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+          <h2 className="text-xl sm:text-2xl md:text-4xl font-bold mb-3 md:mb-4 mt-2 text-foreground">Designed for Modern Educators</h2>
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto px-2">
             <ShimmerLogo variant="header" size="sm" /> combines cutting-edge AI with proven pedagogy to create the ultimate teaching companion.
           </p>
         </motion.div>
 
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -245,44 +266,14 @@ export default function Landing() {
           {features.map((feature) => (
             <motion.div key={feature.id} variants={itemVariants}>
               <Card
-                className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1"
-                style={{
-                  backgroundColor: theme === "dark" ? "hsl(var(--card))" : "hsl(var(--card))",
-                  borderWidth: "1px",
-                  borderColor: feature.id === "ai-powered" ? "hsl(var(--primary) / 0.2)" : 
-                              feature.id === "content-generation" ? "hsl(var(--secondary) / 0.2)" :
-                              feature.id === "time-saving" ? "hsl(var(--primary) / 0.15)" :
-                              feature.id === "differentiation" ? "hsl(var(--secondary) / 0.15)" :
-                              feature.id === "curriculum" ? "hsl(var(--primary) / 0.1)" :
-                              "hsl(var(--secondary) / 0.1)"
-                }}
-                onMouseEnter={() => setHovered(feature.id)}
-                onMouseLeave={() => setHovered(null)}
+                className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20 border-border text-card-foreground"
               >
                 <div className="flex flex-col h-full">
-                  <div className={`p-3 rounded-full w-fit mb-4 ${
-                    feature.id === "ai-powered" ? "bg-primary/15" : 
-                    feature.id === "content-generation" ? "bg-secondary/15" :
-                    feature.id === "time-saving" ? "bg-primary-400/15" :
-                    feature.id === "differentiation" ? "bg-secondary-400/15" :
-                    feature.id === "curriculum" ? "bg-primary-300/15" :
-                    "bg-secondary-300/15"
-                  }`}>
+                  <div className="p-2 md:p-3 rounded-full w-fit mb-3 md:mb-4 bg-primary/15 text-primary">
                     {feature.icon}
                   </div>
-                  <h3 className="text-lg md:text-xl font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm md:text-base text-muted-foreground flex-grow">{feature.description}</p>
-                  <div className={`mt-4 flex items-center text-sm font-medium transition-opacity duration-300 ${
-                    feature.id === "ai-powered" ? "text-primary" : 
-                    feature.id === "content-generation" ? "text-secondary" :
-                    feature.id === "time-saving" ? "text-primary-500" :
-                    feature.id === "differentiation" ? "text-secondary-500" :
-                    feature.id === "curriculum" ? "text-primary-600" :
-                    "text-secondary-600"
-                  } ${hovered === feature.id ? 'opacity-100' : 'opacity-0'}`}>
-                    <span>Learn more</span>
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </div>
+                  <h3 className="text-base md:text-lg font-semibold mb-1 md:mb-2 text-foreground">{feature.title}</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground">{feature.description}</p>
                 </div>
               </Card>
             </motion.div>
@@ -290,25 +281,25 @@ export default function Landing() {
         </motion.div>
       </div>
 
-      {/* Advanced Features Section */}
-      <div className="bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/5 py-16 md:py-20">
+      {/* Advanced Features Section - Enhanced for light mode */}
+      <div className="bg-gradient-to-br from-primary/10 via-secondary/10 to-primary/10 dark:from-primary/5 dark:via-secondary/5 dark:to-primary/5 py-12 md:py-20">
         <div className="container mx-auto px-4">
           <motion.div 
-            className="text-center mb-10 md:mb-16"
+            className="text-center mb-8 md:mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
             <span className="text-sm font-medium text-secondary uppercase tracking-wider">Advanced Tools</span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2">Powerful Teaching Capabilities</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-bold mb-3 md:mb-4 mt-2 text-foreground">Powerful Teaching Capabilities</h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Unlock advanced features designed to enhance every aspect of your teaching experience.
             </p>
           </motion.div>
 
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 max-w-4xl mx-auto"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -317,14 +308,14 @@ export default function Landing() {
             {advancedFeatures.map((feature) => (
               <motion.div key={feature.id} variants={itemVariants}>
                 <Card
-                  className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1 border border-secondary/10"
+                  className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:border-secondary/20 border-border text-card-foreground"
                 >
                   <div className="flex flex-col h-full">
-                    <div className="p-3 rounded-full w-fit mb-4 bg-secondary/15">
+                    <div className="p-2 md:p-3 rounded-full w-fit mb-3 md:mb-4 bg-secondary/20 dark:bg-secondary/15 text-secondary-foreground">
                       {feature.icon}
                     </div>
-                    <h3 className="text-lg md:text-xl font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-sm md:text-base text-muted-foreground">{feature.description}</p>
+                    <h3 className="text-base md:text-xl font-semibold mb-1 md:mb-2 text-foreground">{feature.title}</h3>
+                    <p className="text-xs md:text-base text-muted-foreground">{feature.description}</p>
                   </div>
                 </Card>
               </motion.div>
@@ -333,8 +324,8 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Mobile App Section */}
-      <div className="py-16 md:py-20 bg-background">
+      {/* Mobile App Section - Improved for light mode */}
+      <div className="py-12 md:py-20 bg-background overflow-hidden">
         <div className="container mx-auto px-4">
           <motion.div
             className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
@@ -352,19 +343,19 @@ export default function Landing() {
               >
                 <TextShimmer
                   as="h2"
-                  className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2"
+                  className="text-xl sm:text-2xl md:text-4xl font-bold mb-3 md:mb-4 mt-2 text-foreground"
                   shimmerColor="rgba(var(--primary-rgb), 0.8)"
                   baseColor="rgba(var(--primary-rgb), 0.6)"
                 >
                   Mobile Experience
                 </TextShimmer>
-                <p className="text-muted-foreground mb-8 max-w-xl">
+                <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8 max-w-xl">
                   Take <ShimmerLogo variant="header" size="sm" /> with you wherever you go. Our mobile app provides all the tools you need for planning and teaching on the move.
                 </p>
               </motion.div>
               
               <motion.div 
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4"
                 variants={containerVariants}
                 initial="hidden"
                 whileInView="visible"
@@ -373,47 +364,17 @@ export default function Landing() {
                 {mobileFeatures.map((feature, index) => (
                   <motion.div key={feature.id} variants={itemVariants}>
                     <div 
-                      className="bg-card p-4 md:p-5 rounded-lg border border-border shadow-sm flex flex-col h-full"
+                      className="bg-card p-3 md:p-5 rounded-lg border border-border shadow-sm flex flex-col h-full text-card-foreground"
                     >
-                      <div className="p-2 rounded-full w-fit mb-3 bg-primary/10">
+                      <div className="p-2 rounded-full w-fit mb-2 md:mb-3 bg-primary/10 text-primary">
                         {feature.icon}
                       </div>
-                      <h3 className="text-lg font-semibold mb-1">{feature.title}</h3>
-                      <p className="text-sm text-muted-foreground">{feature.description}</p>
+                      <h3 className="text-base md:text-lg font-semibold mb-1 text-foreground">{feature.title}</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">{feature.description}</p>
                     </div>
                   </motion.div>
                 ))}
               </motion.div>
-              
-              <div className="mt-8 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <p className="text-sm">Compatible with Android 8.0+</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <p className="text-sm">Free download, no in-app purchases</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <p className="text-sm">Regular updates with new features</p>
-                </div>
-              </div>
-              
-              <Button 
-                className="mt-6 gap-2"
-                onClick={() => navigate("/download")}
-                size="lg"
-              >
-                <Download className="w-4 h-4 mr-1" />
-                Download APK
-              </Button>
             </div>
             
             <div className="order-1 lg:order-2 flex justify-center">
@@ -424,45 +385,25 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary/10 rounded-full"></div>
-                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-secondary/10 rounded-full"></div>
+                <div className="absolute -top-8 -right-8 w-16 sm:w-24 h-16 sm:h-24 bg-primary/10 rounded-full"></div>
+                <div className="absolute -bottom-4 -left-4 w-12 sm:w-16 h-12 sm:h-16 bg-secondary/10 rounded-full"></div>
                 <motion.div 
-                  className="relative bg-gradient-to-br from-background to-primary/5 rounded-[2.5rem] p-4 border-8 border-background shadow-xl" 
-                  style={{maxWidth: "280px"}}
+                  className="relative bg-gradient-to-br from-background to-primary/5 rounded-[2.5rem] p-3 md:p-4 border-8 border-background shadow-xl" 
+                  style={{maxWidth: "260px"}}
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300, damping: 15 }}
                 >
-                  <div className="rounded-[2rem] overflow-hidden border border-border/40 bg-card">
-                    <div className="bg-primary/10 p-4 flex items-center justify-center">
-                      <div className="flex items-center space-x-2">
-                        <Smartphone className="text-primary h-5 w-5" />
-                        <ShimmerLogo variant="header" size="sm" />
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-4">
-                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
-                        <Brain className="text-primary h-5 w-5" />
-                        <div>
-                          <div className="text-sm font-medium">AI Lessons</div>
-                          <div className="text-xs text-muted-foreground">Create on the go</div>
-                        </div>
-                      </div>
-                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
-                        <BookOpen className="text-secondary h-5 w-5" />
-                        <div>
-                          <div className="text-sm font-medium">Library</div>
-                          <div className="text-xs text-muted-foreground">Access anywhere</div>
-                        </div>
-                      </div>
-                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
-                        <Users className="text-primary h-5 w-5" />
-                        <div>
-                          <div className="text-sm font-medium">Collaborate</div>
-                          <div className="text-xs text-muted-foreground">Work with peers</div>
-                        </div>
-                      </div>
-                      <div className="mx-auto w-12 h-1 bg-border rounded-full mt-2"></div>
-                    </div>
+                  {/* Mobile device mockup */}
+                  <div className="rounded-[2rem] overflow-hidden bg-black">
+                    <img 
+                      src="/mobile-app-mockup.png" 
+                      alt="EduGenie Mobile App" 
+                      className="w-full h-auto"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "https://via.placeholder.com/250x500/1a1a2e/FFFFFF?text=EduGenie+Mobile";
+                      }}
+                    />
                   </div>
                 </motion.div>
               </motion.div>
@@ -471,8 +412,8 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 py-16 md:py-20">
+      {/* CTA Section - Enhanced for light mode */}
+      <div className="bg-gradient-to-br from-primary/20 via-secondary/15 to-primary/20 dark:from-primary/10 dark:via-secondary/5 dark:to-primary/10 py-16 md:py-20">
         <div className="container mx-auto px-4">
           <motion.div 
             className="max-w-3xl mx-auto text-center"
@@ -481,40 +422,37 @@ export default function Landing() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Teaching?</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-foreground">Ready to Transform Your Teaching?</h2>
             <p className="text-muted-foreground mb-8">
               Join thousands of educators who are saving time and creating better learning experiences with <ShimmerLogo variant="header" size="sm" />.
             </p>
             <Button 
               size="lg" 
-              className="gap-2 px-6 text-base bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md"
+              className="gap-2 px-6 text-base bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md text-white"
               onClick={() => navigate("/signup")}
             >
               Create Account
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <p className="text-sm text-muted-foreground mt-4">
-              
-            </p>
           </motion.div>
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer - Improved for light mode */}
       <footer className="bg-background border-t py-8 md:py-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
+            <div className="flex items-center mb-6 md:mb-0">
               <ShimmerLogo variant="footer" size="md" />
             </div>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-              <Button variant="ghost" className="hover:text-primary" onClick={() => navigate("/login")}>Log in</Button>
-              <Button variant="ghost" className="hover:text-secondary" onClick={() => navigate("/signup")}>Sign up</Button>
-              <Button variant="ghost" className="hover:text-secondary" onClick={() => navigate("/dashboard")}>Dashboard</Button>
-              <Button variant="ghost" className="hover:text-primary" onClick={() => navigate("/download")}>Mobile App</Button>
+            <div className="flex flex-wrap justify-center gap-3 md:gap-6">
+              <Button variant="ghost" className="hover:text-primary text-sm px-2 h-9 text-foreground" onClick={() => navigate("/login")}>Log in</Button>
+              <Button variant="ghost" className="hover:text-secondary text-sm px-2 h-9 text-foreground" onClick={() => navigate("/signup")}>Sign up</Button>
+              <Button variant="ghost" className="hover:text-secondary text-sm px-2 h-9 text-foreground" onClick={() => navigate("/dashboard")}>Dashboard</Button>
+              <Button variant="ghost" className="hover:text-primary text-sm px-2 h-9 text-foreground" onClick={() => navigate("/login")}>Mobile App</Button>
             </div>
           </div>
-          <div className="mt-6 md:mt-8 text-center text-sm text-muted-foreground">
+          <div className="mt-6 md:mt-8 text-center text-xs md:text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} <ShimmerLogo variant="footer" size="sm" />. All rights reserved.</p>
           </div>
         </div>

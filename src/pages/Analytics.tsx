@@ -409,22 +409,22 @@ export default function Analytics() {
         <MetricCards data={data} loading={loading} />
 
         <div className="overflow-x-auto -mx-4 px-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="h-10">
               <TabsTrigger value="overview" className="text-xs sm:text-sm h-8">Overview</TabsTrigger>
               <TabsTrigger value="engagement" className="text-xs sm:text-sm h-8">Student Engagement</TabsTrigger>
               <TabsTrigger value="content" className="text-xs sm:text-sm h-8">Content Analytics</TabsTrigger>
               <TabsTrigger value="assessments" className="text-xs sm:text-sm h-8">Assessment Results</TabsTrigger>
               <TabsTrigger value="insights" className="text-xs sm:text-sm h-8">Insights</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="col-span-2">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+          </TabsList>
+          
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                       <CardTitle className="text-base sm:text-lg">Student Engagement</CardTitle>
-                      <LineChartIcon className="h-4 w-4 text-muted-foreground" />
+                    <LineChartIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <CardDescription className="text-xs sm:text-sm">Daily active students over time</CardDescription>
                   </CardHeader>
@@ -436,15 +436,15 @@ export default function Analytics() {
                         data={memoizedStudentEngagement} 
                         key={`student-engagement-${filters.timeRange}`}
                       />
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                       <CardTitle className="text-base sm:text-lg">Content Usage</CardTitle>
-                      <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+                    <PieChartIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <CardDescription className="text-xs sm:text-sm">Distribution by content type</CardDescription>
                   </CardHeader>
@@ -456,17 +456,17 @@ export default function Analytics() {
                         data={memoizedContentUsage} 
                         key={`content-usage-${filters.timeRange}`}
                       />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                       <CardTitle className="text-base sm:text-lg">Assessment Performance</CardTitle>
-                      <BarChart className="h-4 w-4 text-muted-foreground" />
+                    <BarChart className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <CardDescription className="text-xs sm:text-sm">Average scores by subject</CardDescription>
                   </CardHeader>
@@ -478,29 +478,29 @@ export default function Analytics() {
                         data={memoizedAssessmentPerformance} 
                         key={`assessment-performance-${filters.timeRange}`}
                       />
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-                <InsightsCard 
-                  insights={insights} 
-                  isLoading={loading} 
-                  timestamp={data?.lastUpdated}
+              <InsightsCard 
+                insights={insights} 
+                isLoading={loading} 
+                timestamp={data?.lastUpdated}
                   key={`insights-${filters.timeRange}`}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="engagement" className="space-y-4">
-              <Card>
-                <CardHeader>
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="engagement" className="space-y-4">
+            <Card>
+              <CardHeader>
                   <CardTitle className="text-base sm:text-lg">Student Engagement Metrics</CardTitle>
                   <CardDescription className="text-xs sm:text-sm">
-                    Detailed analysis of student engagement over time
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
+                  Detailed analysis of student engagement over time
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
                     renderLoadingPlaceholder('h-96', 'line')
                   ) : (
                     <MemoizedLineChart 
@@ -508,22 +508,22 @@ export default function Analytics() {
                       height={400} 
                       key={`student-engagement-detailed-${filters.timeRange}`}
                     />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="content" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="content" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
                     <CardTitle className="text-base sm:text-lg">Content Usage Distribution</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
-                      Usage breakdown by content type
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
+                    Usage breakdown by content type
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
                       renderLoadingPlaceholder('h-72 sm:h-80', 'pie')
                     ) : (
                       <MemoizedPieChart 
@@ -532,19 +532,19 @@ export default function Analytics() {
                         outerRadius={100}
                         key={`content-usage-detailed-${filters.timeRange}`}
                       />
-                    )}
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader>
+              <Card>
+                <CardHeader>
                     <CardTitle className="text-base sm:text-lg">Content Distribution by Subject</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
-                      Subject area breakdown of content
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
+                    Subject area breakdown of content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
                       renderLoadingPlaceholder('h-72 sm:h-80', 'bar')
                     ) : (
                       <MemoizedBarChart 
@@ -553,22 +553,22 @@ export default function Analytics() {
                         vertical 
                         key={`content-distribution-${filters.timeRange}`}
                       />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="assessments" className="space-y-4">
-              <Card>
-                <CardHeader>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="assessments" className="space-y-4">
+            <Card>
+              <CardHeader>
                   <CardTitle className="text-base sm:text-lg">Assessment Performance by Subject</CardTitle>
                   <CardDescription className="text-xs sm:text-sm">
-                    Average assessment scores across different subjects
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
+                  Average assessment scores across different subjects
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
                     renderLoadingPlaceholder('h-96', 'bar')
                   ) : (
                     <MemoizedBarChart 
@@ -576,69 +576,69 @@ export default function Analytics() {
                       height={400}
                       key={`assessment-performance-detailed-${filters.timeRange}`}
                     />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="insights" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <InsightsCard 
-                  insights={insights} 
-                  isLoading={loading} 
-                  timestamp={data?.lastUpdated}
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="insights" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <InsightsCard 
+                insights={insights} 
+                isLoading={loading} 
+                timestamp={data?.lastUpdated}
                   key={`insights-detailed-${filters.timeRange}`}
-                />
-                
-                <Card>
-                  <CardHeader>
+              />
+              
+              <Card>
+                <CardHeader>
                     <CardTitle className="text-base sm:text-lg">Key Metrics Summary</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">
-                      Overview of the most important metrics
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {loading ? (
-                        <>
+                    Overview of the most important metrics
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {loading ? (
+                      <>
                           <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse opacity-70" />
                           <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse opacity-70" />
                           <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse opacity-70" />
-                        </>
-                      ) : data ? (
-                        <>
-                          {Object.values(data.metrics).map((metric, index) => (
+                      </>
+                    ) : data ? (
+                      <>
+                        {Object.values(data.metrics).map((metric, index) => (
                             <div key={`metric-${index}-${filters.timeRange}`} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-full bg-primary/10`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-full bg-primary/10`}>
                                   {metric.icon === "Users" && <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
                                   {metric.icon === "Clock" && <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
                                   {metric.icon === "BookOpen" && <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
                                   {metric.icon === "GraduationCap" && <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
-                                </div>
-                                <div>
+                              </div>
+                              <div>
                                   <p className="font-medium text-sm sm:text-base">{metric.title}</p>
                                 </div>
-                              </div>
-                              <div className="flex items-center">
+                            </div>
+                            <div className="flex items-center">
                                 <p className="font-bold text-lg sm:text-xl">{metric.value}</p>
                                 <div className="ml-2 flex items-center text-xs sm:text-sm">
                                   <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500 mr-1" />
-                                  <span className="text-emerald-500">{metric.changePercentage}%</span>
+                                <span className="text-emerald-500">{metric.changePercentage}%</span>
                                 </div>
-                              </div>
                             </div>
-                          ))}
-                        </>
-                      ) : (
-                        <p className="text-center py-8 text-muted-foreground">No metrics available</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <p className="text-center py-8 text-muted-foreground">No metrics available</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
         </div>
       </div>
     </Layout>

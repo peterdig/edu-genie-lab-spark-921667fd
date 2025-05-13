@@ -289,7 +289,7 @@ export default function Collaboration() {
       setIsRealTimeActive(false);
     }
   }, [isAuthenticated, usingFallback, teams, selectedTeam]);
-  
+
   // Error state
   if (error) {
     return (
@@ -362,8 +362,8 @@ export default function Collaboration() {
               <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-300">
                 <Activity className="w-3 h-3 mr-1 animate-pulse" />
                 Real-time active
-              </Badge>
-            )}
+            </Badge>
+          )}
             {lastUpdateTime && (
               <p className="text-xs text-muted-foreground">
                 Last update: {lastUpdateTime}
@@ -866,18 +866,18 @@ export default function Collaboration() {
                           <div key={i} className="flex items-start space-x-4 p-2 rounded-md hover:bg-muted/50 transition-colors">
                             <Avatar className="h-8 w-8 border shadow-sm">
                               <AvatarFallback className="bg-primary/10 text-primary">{getInitials(searchResults[i % searchResults.length]?.name || 'User')}</AvatarFallback>
-                            </Avatar>
+                          </Avatar>
                             <div className="space-y-1 flex-1">
-                              <p className="text-sm">
-                                <span className="font-medium">{searchResults[i % searchResults.length]?.name || 'User'}</span>
-                                {' '}
-                                {i === 0 ? 'shared a lesson plan' : i === 1 ? 'commented on your assessment' : i === 2 ? 'joined your team' : i === 3 ? 'edited a shared document' : 'added a new resource'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {`${i * 2 + 1} ${i === 0 ? 'hour' : 'hours'} ago`}
-                              </p>
-                            </div>
+                            <p className="text-sm">
+                              <span className="font-medium">{searchResults[i % searchResults.length]?.name || 'User'}</span>
+                              {' '}
+                              {i === 0 ? 'shared a lesson plan' : i === 1 ? 'commented on your assessment' : i === 2 ? 'joined your team' : i === 3 ? 'edited a shared document' : 'added a new resource'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {`${i * 2 + 1} ${i === 0 ? 'hour' : 'hours'} ago`}
+                            </p>
                           </div>
+                        </div>
                         ))
                       )}
                     </div>

@@ -12,6 +12,7 @@ export const signUp = async (userData: {
   password: string;
   name: string;
   terms: boolean;
+  role?: string;
 }): Promise<{ success: boolean; user?: any; error?: any }> => {
   try {
     // Validate required fields
@@ -33,7 +34,8 @@ export const signUp = async (userData: {
           data: {
             full_name: userData.name,
             terms_accepted: userData.terms,
-            signup_date: new Date().toISOString()
+            signup_date: new Date().toISOString(),
+            role: userData.role || 'user'
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -52,7 +54,7 @@ export const signUp = async (userData: {
               id: data.user.id,
               email: userData.email,
               full_name: userData.name,
-              role: 'user',
+              role: userData.role || 'user',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
               terms_accepted: userData.terms,
@@ -117,6 +119,7 @@ const createLocalUser = async (userData: {
   password: string;
   name: string;
   terms: boolean;
+  role?: string;
 }): Promise<{ success: boolean; user?: any; error?: any }> => {
   try {
     // Generate a local ID
@@ -130,6 +133,7 @@ const createLocalUser = async (userData: {
       password: userData.password, // Only stored locally
       created_at: new Date().toISOString(),
       isLocalOnly: true,
+      role: userData.role || 'user',
       preferences: {
         agreedToTerms: userData.terms,
         signupDate: new Date().toISOString(),
