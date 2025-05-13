@@ -28,19 +28,67 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-))
+>(({ className, children, ...props }, ref) => {
+  // Check if children includes AlertDialogTitle to ensure accessibility
+  const hasDialogTitle = React.Children.toArray(children).some(
+    (child) => 
+      React.isValidElement(child) && 
+      (child.type === AlertDialogHeader || 
+       (child.props?.children && 
+        React.Children.toArray(child.props.children).some(
+          (headerChild) => 
+            React.isValidElement(headerChild) && 
+            headerChild.type === AlertDialogTitle
+        ))
+      )
+  );
+
+  // Check if there's a description for accessibility
+  const hasDescription = React.Children.toArray(children).some(
+    (child) => 
+      React.isValidElement(child) && 
+      (child.type === AlertDialogDescription || 
+       (child.props?.children && 
+        React.Children.toArray(child.props.children).some(
+          (headerChild) => 
+            React.isValidElement(headerChild) && 
+            headerChild.type === AlertDialogDescription
+        ))
+      )
+  );
+
+  React.useEffect(() => {
+    if (!hasDialogTitle) {
+      console.warn(
+        '`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.\n\n' +
+        'If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.\n\n' +
+        'For more information, see https://radix-ui.com/primitives/docs/components/dialog'
+      );
+    }
+    
+    if (!hasDescription) {
+      console.warn(
+        'Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.'
+      );
+    }
+  }, [hasDialogTitle, hasDescription]);
+
+  return (
+    <AlertDialogPortal>
+      <AlertDialogOverlay />
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </AlertDialogPrimitive.Content>
+    </AlertDialogPortal>
+  );
+})
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
 const AlertDialogHeader = ({

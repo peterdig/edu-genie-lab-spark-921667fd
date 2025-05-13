@@ -107,12 +107,12 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
     
     return (
       <div key={index} className="mb-8">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{index + 1}.</span>
-            <span>{question.text}</span>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+          <div className="flex items-start gap-2 flex-1">
+            <span className="font-medium text-base min-w-[1.5rem]">{index + 1}.</span>
+            <span className="text-sm sm:text-base">{question.text}</span>
           </div>
-          <Badge variant="outline" className="ml-2 text-xs">
+          <Badge variant="outline" className="self-start text-xs">
             {question.bloomsLevel}
           </Badge>
         </div>
@@ -220,11 +220,19 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6">
-            <TabsTrigger value="preview">Questions & Answers</TabsTrigger>
-            <TabsTrigger value="answer-key">Answer Key</TabsTrigger>
-            <TabsTrigger value="export">Export Options</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 no-scrollbar">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="preview">
+                <span className="text-sm sm:text-base">Questions & Answers</span>
+              </TabsTrigger>
+              <TabsTrigger value="answer-key">
+                <span className="text-sm sm:text-base">Answer Key</span>
+              </TabsTrigger>
+              <TabsTrigger value="export">
+                <span className="text-sm sm:text-base">Export Options</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
           
           <TabsContent value="preview">
             <div className="space-y-1">
@@ -248,13 +256,13 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
           </TabsContent>
           
           <TabsContent value="export">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Export as PDF</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base sm:text-lg">Export as PDF</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-xs sm:text-sm mb-4">
                     Download the assessment as a PDF file, ready for printing or digital distribution.
                   </p>
                   <Button className="w-full" onClick={handleDownload}>
@@ -265,11 +273,11 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
               </Card>
               
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Print Assessment</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base sm:text-lg">Print Assessment</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-xs sm:text-sm mb-4">
                     Send directly to your printer with optimized formatting for classroom use.
                   </p>
                   <Button className="w-full" variant="outline" onClick={handlePrint}>
@@ -282,11 +290,11 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
           </TabsContent>
         </Tabs>
       </CardContent>
-      <CardFooter className="flex justify-between border-t pt-6 mt-6">
-        <Button variant="outline" onClick={onReset}>
+      <CardFooter className="flex flex-col sm:flex-row justify-between gap-3 border-t pt-6 mt-6">
+        <Button variant="outline" onClick={onReset} className="w-full sm:w-auto order-2 sm:order-1">
           Create New Assessment
         </Button>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
           <Edit className="h-4 w-4" />
           <span>Edit Assessment</span>
         </Button>

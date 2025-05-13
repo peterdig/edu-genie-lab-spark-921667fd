@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { Layout } from "@/components/Layout";
 
 const APP_CONFIG = {
-    version: "1.0.0",
-    size: "15.2 MB",
+    version: "2.0.1",
+    size: "56.6 MB",
     lastUpdated: "May 13, 2025",
     minAndroidVersion: "8.0",
     apkFileName: "EdGenie-mobile.apk",

@@ -1,5 +1,127 @@
 import { supabase } from "./supabase";
 
+// Global cache for table existence checks to prevent repeated queries
+const TABLE_EXISTENCE_CACHE: Record<string, boolean> = {};
+const CACHE_TIMESTAMP: Record<string, number> = {};
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache TTL
+
+/**
+ * Efficiently checks if required tables exist in the database
+ * Uses caching to minimize queries
+ */
+export async function checkTablesExist(): Promise<Record<string, boolean>> {
+  const requiredTables = [
+    'collaborative_documents',
+    'document_history',
+    'document_messages',
+    'document_collaborators'
+  ];
+  
+  // Check if we have fresh cached results for all tables
+  const now = Date.now();
+  const allCached = requiredTables.every(
+    table => TABLE_EXISTENCE_CACHE[table] !== undefined && 
+    now - (CACHE_TIMESTAMP[table] || 0) < CACHE_TTL
+  );
+  
+  if (allCached) {
+    // Return cached results if they're fresh
+    return requiredTables.reduce((acc, table) => {
+      acc[table] = TABLE_EXISTENCE_CACHE[table];
+      return acc;
+    }, {} as Record<string, boolean>);
+  }
+  
+  try {
+    // Query Supabase for information schema
+    const { data, error } = await supabase
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public');
+    
+    if (error) {
+      // For 42P01 error (relation does not exist), try direct table existence check
+      if (error.code === '42P01') {
+        console.warn('Using alternative method to check table existence');
+        
+        // Check each table directly
+        const results: Record<string, boolean> = {};
+        
+        for (const table of requiredTables) {
+          try {
+            // Try to query single row to check if table exists
+            const { error: tableError } = await supabase
+              .from(table)
+              .select('*', { count: 'exact', head: true })
+              .limit(1);
+              
+            // Table exists if no 42P01 error
+            const exists = !tableError || tableError.code !== '42P01';
+            results[table] = exists;
+            TABLE_EXISTENCE_CACHE[table] = exists;
+            CACHE_TIMESTAMP[table] = now;
+          } catch (e) {
+            results[table] = false;
+            TABLE_EXISTENCE_CACHE[table] = false;
+            CACHE_TIMESTAMP[table] = now;
+          }
+        }
+        
+        return results;
+      }
+      
+      // Check for specific recursive policy error
+      if (error.code === '42P17' && error.message?.includes('infinite recursion detected in policy')) {
+        console.warn('Detected infinite recursion in policy while checking tables. Using fallback approach.');
+        
+        // Mark all collaboration tables as not existing to enforce local storage use
+        const result: Record<string, boolean> = {};
+        for (const table of requiredTables) {
+          TABLE_EXISTENCE_CACHE[table] = false;
+          CACHE_TIMESTAMP[table] = now;
+          result[table] = false;
+        }
+        
+        return result;
+      }
+      
+      throw error;
+    }
+    
+    const existingTables = new Set(data?.map(row => row.table_name) || []);
+    
+    // Update our cache
+    const result: Record<string, boolean> = {};
+    for (const table of requiredTables) {
+      const exists = existingTables.has(table);
+      TABLE_EXISTENCE_CACHE[table] = exists;
+      CACHE_TIMESTAMP[table] = now;
+      result[table] = exists;
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('Error checking tables:', err);
+    
+    // On error, return what we have in cache or assume tables don't exist
+    return requiredTables.reduce((acc, table) => {
+      acc[table] = TABLE_EXISTENCE_CACHE[table] || false;
+      return acc;
+    }, {} as Record<string, boolean>);
+  }
+}
+
+/**
+ * Clears the table existence cache to force a fresh check
+ */
+export function invalidateTableCache() {
+  Object.keys(TABLE_EXISTENCE_CACHE).forEach(key => {
+    delete TABLE_EXISTENCE_CACHE[key];
+    delete CACHE_TIMESTAMP[key];
+  });
+  console.log('Table existence cache cleared');
+}
+
 /**
  * Saves user information to the database
  * @param userData User data to store
@@ -344,50 +466,6 @@ export const getDefaultPreferences = () => {
 };
 
 /**
- * Checks if required tables exist in the database
- * @returns Object with status of each table
- */
-export const checkTablesExist = async (): Promise<Record<string, boolean>> => {
-  const tables = {
-    profiles: false,
-    auth_events: false,
-    collaborative_documents: false,
-    document_history: false,
-    document_collaborators: false,
-    document_messages: false
-  };
-  
-  // Create a function to check a single table
-  const checkTable = async (tableName: string): Promise<boolean> => {
-    try {
-      const { count, error } = await supabase
-        .from(tableName)
-        .select('*', { count: 'exact', head: true });
-        
-      if (error && error.code === '42P01') {
-        // Table doesn't exist error code
-        console.warn(`Table ${tableName} doesn't exist`);
-        return false;
-      }
-      
-      return true;
-    } catch (err) {
-      console.error(`Error checking if table ${tableName} exists:`, err);
-      return false;
-    }
-  };
-  
-  // Check all tables in parallel
-  await Promise.all(
-    Object.keys(tables).map(async (tableName) => {
-      tables[tableName as keyof typeof tables] = await checkTable(tableName);
-    })
-  );
-  
-  return tables;
-};
-
-/**
  * Creates the profiles table if it doesn't exist
  */
 export const initializeProfilesTable = async (): Promise<boolean> => {
@@ -538,7 +616,7 @@ export const initializeCollaborativeDocsTables = async (): Promise<boolean> => {
       .select('*', { count: 'exact', head: true });
     
     if (checkError && checkError.code === '42P01') {
-      // Create the tables using SQL (truncated for brevity, would execute the full SQL file)
+      // Create the tables using SQL with fixed RLS policies
       const { error } = await supabase.rpc('execute_sql', {
         sql: `
           -- Create table for collaborative documents
@@ -567,7 +645,7 @@ export const initializeCollaborativeDocsTables = async (): Promise<boolean> => {
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
           
-          -- Create table for document collaborators
+          -- Create table for document collaborators with fixed policy
           CREATE TABLE IF NOT EXISTS public.document_collaborators (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             document_id UUID NOT NULL REFERENCES public.collaborative_documents(id) ON DELETE CASCADE,
@@ -588,6 +666,126 @@ export const initializeCollaborativeDocsTables = async (): Promise<boolean> => {
             metadata JSONB DEFAULT '{}',
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
           );
+          
+          -- Enable RLS for all tables
+          ALTER TABLE public.collaborative_documents ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.document_history ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.document_collaborators ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE public.document_messages ENABLE ROW LEVEL SECURITY;
+          
+          -- Fixed policies for collaborative_documents
+          CREATE POLICY "Users can view documents they own"
+            ON public.collaborative_documents
+            FOR SELECT
+            USING (created_by = auth.uid() OR is_public = true);
+          
+          CREATE POLICY "Users can edit documents they own"
+            ON public.collaborative_documents
+            FOR UPDATE
+            USING (created_by = auth.uid());
+          
+          CREATE POLICY "Users can delete documents they own"
+            ON public.collaborative_documents
+            FOR DELETE
+            USING (created_by = auth.uid());
+          
+          CREATE POLICY "Users can insert documents"
+            ON public.collaborative_documents
+            FOR INSERT
+            WITH CHECK (auth.uid() IS NOT NULL);
+            
+          -- Fixed policies for document_collaborators without circular reference
+          CREATE POLICY "Users can view collaborators for their documents"
+            ON public.document_collaborators
+            FOR SELECT
+            USING (
+              user_id = auth.uid() OR
+              document_id IN (
+                SELECT id FROM public.collaborative_documents 
+                WHERE created_by = auth.uid()
+              )
+            );
+            
+          CREATE POLICY "Users can add collaborators to their documents"
+            ON public.document_collaborators
+            FOR INSERT
+            WITH CHECK (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents 
+                WHERE created_by = auth.uid()
+              )
+            );
+            
+          CREATE POLICY "Users can edit collaborator permissions on their documents"
+            ON public.document_collaborators
+            FOR UPDATE
+            USING (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents 
+                WHERE created_by = auth.uid()
+              )
+            );
+            
+          CREATE POLICY "Users can delete collaborators from their documents"
+            ON public.document_collaborators
+            FOR DELETE
+            USING (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents 
+                WHERE created_by = auth.uid()
+              )
+            );
+            
+          -- Policies for document_history
+          CREATE POLICY "Users can view history for documents they own or collaborate on"
+            ON public.document_history
+            FOR SELECT
+            USING (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents WHERE created_by = auth.uid()
+              ) OR
+              document_id IN (
+                SELECT document_id FROM public.document_collaborators WHERE user_id = auth.uid()
+              )
+            );
+            
+          CREATE POLICY "Users can add history for documents they collaborate on"
+            ON public.document_history
+            FOR INSERT
+            WITH CHECK (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents WHERE created_by = auth.uid()
+              ) OR
+              document_id IN (
+                SELECT document_id FROM public.document_collaborators 
+                WHERE user_id = auth.uid() AND permission IN ('edit', 'admin')
+              )
+            );
+            
+          -- Policies for document_messages
+          CREATE POLICY "Users can view messages for documents they collaborate on"
+            ON public.document_messages
+            FOR SELECT
+            USING (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents WHERE created_by = auth.uid()
+              ) OR
+              document_id IN (
+                SELECT document_id FROM public.document_collaborators WHERE user_id = auth.uid()
+              )
+            );
+            
+          CREATE POLICY "Users can add messages for documents they collaborate on"
+            ON public.document_messages
+            FOR INSERT
+            WITH CHECK (
+              document_id IN (
+                SELECT id FROM public.collaborative_documents WHERE created_by = auth.uid()
+              ) OR
+              document_id IN (
+                SELECT document_id FROM public.document_collaborators WHERE user_id = auth.uid()
+              )
+          );
         `
       });
       
@@ -600,6 +798,90 @@ export const initializeCollaborativeDocsTables = async (): Promise<boolean> => {
       return true;
     }
     
+    // Table already exists, let's fix the policy if needed
+    try {
+      // Check if we're encountering the recursion error
+      const { error: testError } = await supabase
+        .from('document_collaborators')
+        .select('count', { count: 'exact', head: true });
+      
+      if (testError && testError.code === '42P17') {
+        console.warn('Detected recursive policy, attempting to fix...');
+        
+        // Drop and recreate problematic policies
+        const { error: fixError } = await supabase.rpc('execute_sql', {
+          sql: `
+            -- Drop existing policies that might cause recursion
+            DROP POLICY IF EXISTS "Users can view collaborators for their documents" 
+              ON public.document_collaborators;
+            DROP POLICY IF EXISTS "Users can edit collaborator permissions on their documents" 
+              ON public.document_collaborators;
+            DROP POLICY IF EXISTS "Users can delete collaborators from their documents" 
+              ON public.document_collaborators;
+            DROP POLICY IF EXISTS "Users can add collaborators to their documents" 
+              ON public.document_collaborators;
+              
+            -- Create fixed policies for document_collaborators without circular reference
+            CREATE POLICY "Users can view collaborators for their documents"
+              ON public.document_collaborators
+              FOR SELECT
+              USING (
+                user_id = auth.uid() OR
+                document_id IN (
+                  SELECT id FROM public.collaborative_documents 
+                  WHERE created_by = auth.uid()
+                )
+              );
+              
+            CREATE POLICY "Users can add collaborators to their documents"
+              ON public.document_collaborators
+              FOR INSERT
+              WITH CHECK (
+                document_id IN (
+                  SELECT id FROM public.collaborative_documents 
+                  WHERE created_by = auth.uid()
+                )
+              );
+              
+            CREATE POLICY "Users can edit collaborator permissions on their documents"
+              ON public.document_collaborators
+              FOR UPDATE
+              USING (
+                document_id IN (
+                  SELECT id FROM public.collaborative_documents 
+                  WHERE created_by = auth.uid()
+                )
+              );
+              
+            CREATE POLICY "Users can delete collaborators from their documents"
+              ON public.document_collaborators
+              FOR DELETE
+              USING (
+                document_id IN (
+                  SELECT id FROM public.collaborative_documents 
+                  WHERE created_by = auth.uid()
+                )
+              );
+          `
+        });
+        
+        if (fixError) {
+          console.error('Error fixing recursive policies:', fixError);
+          return false;
+        }
+        
+        console.log('Successfully fixed recursive policies');
+        
+        // Clear our table existence cache to force a refresh
+        invalidateTableCache();
+        
+        return true;
+      }
+    } catch (policyError) {
+      console.error('Error fixing policy:', policyError);
+      // Continue - the table exists, even if the policy fix failed
+    }
+    
     // Table already exists
     return true;
   } catch (error) {
@@ -609,43 +891,337 @@ export const initializeCollaborativeDocsTables = async (): Promise<boolean> => {
 };
 
 /**
+ * Initializes the collaboration tables in the database if they don't exist
+ */
+export const initializeCollaborationTables = async (): Promise<boolean> => {
+  console.log('Initializing collaboration tables...');
+  
+  try {
+    // First try direct table access to check if tables exist
+    try {
+      const { error: teamsCheckError } = await supabase
+        .from('teams')
+        .select('count', { count: 'exact', head: true })
+        .limit(1);
+      
+      // If no error, tables exist
+      if (!teamsCheckError) {
+        console.log('Collaboration tables already exist');
+        return true;
+      }
+    } catch (checkError) {
+      console.warn('Error checking if tables exist:', checkError);
+      // Continue with creation attempt
+    }
+    
+    // Try to create tables using RPC
+    try {
+      // Initialize teams table
+      const createTeamsTableSQL = `
+        CREATE TABLE IF NOT EXISTS teams (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name TEXT NOT NULL,
+          description TEXT,
+          created_by UUID NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ
+        );
+      `;
+      
+      // Initialize team_members table
+      const createTeamMembersTableSQL = `
+        CREATE TABLE IF NOT EXISTS team_members (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL,
+          role TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ,
+          UNIQUE(team_id, user_id)
+        );
+      `;
+      
+      // Initialize shared_resources table
+      const createSharedResourcesTableSQL = `
+        CREATE TABLE IF NOT EXISTS shared_resources (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          resource_id TEXT NOT NULL,
+          resource_type TEXT NOT NULL,
+          shared_by UUID NOT NULL,
+          shared_with UUID NOT NULL,
+          permission TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ
+        );
+      `;
+      
+      // Run table creation SQL
+      const { error: teamsError } = await supabase.rpc('execute_sql', { sql: createTeamsTableSQL });
+      if (teamsError) {
+        console.error('Error creating teams table:', teamsError);
+        // Continue with other tables, don't return early
+      }
+      
+      const { error: membersError } = await supabase.rpc('execute_sql', { sql: createTeamMembersTableSQL });
+      if (membersError) {
+        console.error('Error creating team_members table:', membersError);
+        // Continue with other tables, don't return early
+      }
+      
+      const { error: resourcesError } = await supabase.rpc('execute_sql', { sql: createSharedResourcesTableSQL });
+      if (resourcesError) {
+        console.error('Error creating shared_resources table:', resourcesError);
+        // Continue with policies, don't return early
+      }
+      
+      // Even if there were errors with table creation, try to apply policies
+      // as the tables might already exist
+      try {
+        // Create RLS policies for teams table
+        const teamsPoliciesSQL = `
+          -- Allow anyone to view teams they are a member of
+          CREATE POLICY IF NOT EXISTS teams_select_policy ON teams
+            FOR SELECT USING (
+              id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+            );
+          
+          -- Allow anyone to create teams
+          CREATE POLICY IF NOT EXISTS teams_insert_policy ON teams
+            FOR INSERT WITH CHECK (created_by = auth.uid());
+          
+          -- Allow team owner to update team
+          CREATE POLICY IF NOT EXISTS teams_update_policy ON teams
+            FOR UPDATE USING (created_by = auth.uid());
+          
+          -- Allow team owner to delete team
+          CREATE POLICY IF NOT EXISTS teams_delete_policy ON teams
+            FOR DELETE USING (created_by = auth.uid());
+        `;
+        
+        // Create RLS policies for team_members table
+        const membersPoliciesSQL = `
+          -- Allow members to see others in their teams
+          CREATE POLICY IF NOT EXISTS team_members_select_policy ON team_members
+            FOR SELECT USING (
+              team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+            );
+          
+          -- Allow team owners and admins to add members
+          CREATE POLICY IF NOT EXISTS team_members_insert_policy ON team_members
+            FOR INSERT WITH CHECK (
+              team_id IN (
+                SELECT team_id FROM team_members 
+                WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+              )
+            );
+          
+          -- Allow team owners and admins to update members
+          CREATE POLICY IF NOT EXISTS team_members_update_policy ON team_members
+            FOR UPDATE USING (
+              team_id IN (
+                SELECT team_id FROM team_members 
+                WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+              )
+            );
+          
+          -- Allow team owners and admins to remove members
+          CREATE POLICY IF NOT EXISTS team_members_delete_policy ON team_members
+            FOR DELETE USING (
+              team_id IN (
+                SELECT team_id FROM team_members 
+                WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+              )
+            );
+        `;
+        
+        // Create RLS policies for shared_resources table
+        const resourcesPoliciesSQL = `
+          -- Allow members to see resources shared with their teams
+          CREATE POLICY IF NOT EXISTS shared_resources_select_policy ON shared_resources
+            FOR SELECT USING (
+              shared_with IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+              OR shared_by = auth.uid()
+            );
+          
+          -- Allow users to share resources
+          CREATE POLICY IF NOT EXISTS shared_resources_insert_policy ON shared_resources
+            FOR INSERT WITH CHECK (
+              shared_by = auth.uid() AND
+              shared_with IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+            );
+          
+          -- Allow users to update shared resources they created
+          CREATE POLICY IF NOT EXISTS shared_resources_update_policy ON shared_resources
+            FOR UPDATE USING (shared_by = auth.uid());
+          
+          -- Allow users to delete shared resources they created
+          CREATE POLICY IF NOT EXISTS shared_resources_delete_policy ON shared_resources
+            FOR DELETE USING (shared_by = auth.uid());
+        `;
+        
+        // Apply RLS policies
+        const { error: teamsPoliciesError } = await supabase.rpc('execute_sql', { sql: teamsPoliciesSQL });
+        if (teamsPoliciesError) {
+          console.error('Error creating teams policies:', teamsPoliciesError);
+        }
+        
+        const { error: membersPoliciesError } = await supabase.rpc('execute_sql', { sql: membersPoliciesSQL });
+        if (membersPoliciesError) {
+          console.error('Error creating team_members policies:', membersPoliciesError);
+        }
+        
+        const { error: resourcesPoliciesError } = await supabase.rpc('execute_sql', { sql: resourcesPoliciesSQL });
+        if (resourcesPoliciesError) {
+          console.error('Error creating shared_resources policies:', resourcesPoliciesError);
+        }
+      } catch (policyError) {
+        console.error('Error applying RLS policies:', policyError);
+      }
+      
+      // Check if any tables were created successfully
+      const tablesCreated = !teamsError || !membersError || !resourcesError;
+      if (tablesCreated) {
+        console.log('Some collaboration tables initialized successfully');
+        return true;
+      } else {
+        throw new Error('Could not create any tables');
+      }
+    } catch (sqlError) {
+      console.error('SQL execution error:', sqlError);
+      // Fall through to the fetch method
+    }
+    
+    // If RPC fails, try direct fetch to see if tables exist already
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('count')
+        .limit(1);
+      
+      if (!error) {
+        console.log('Tables exist and are accessible');
+        return true;
+      }
+      
+      throw error;
+    } catch (fetchError) {
+      console.error('Error checking tables with fetch:', fetchError);
+      
+      // Set up localStorage fallback
+      console.log('Setting up localStorage fallback for collaboration tables');
+      
+      // Ensure we have default data in localStorage
+      try {
+        let defaultDataExists = false;
+        
+        // Check for teams
+        const localTeams = localStorage.getItem('edgenie_teams');
+        if (!localTeams) {
+          localStorage.setItem('edgenie_teams', JSON.stringify([]));
+        } else {
+          defaultDataExists = true;
+        }
+        
+        // Check for team members
+        const localMembers = localStorage.getItem('edgenie_team_members');
+        if (!localMembers) {
+          localStorage.setItem('edgenie_team_members', JSON.stringify([]));
+        }
+        
+        // Check for shared resources
+        const localResources = localStorage.getItem('edgenie_shared_resources');
+        if (!localResources) {
+          localStorage.setItem('edgenie_shared_resources', JSON.stringify([]));
+        }
+        
+        if (defaultDataExists) {
+          console.log('Using existing localStorage data for collaboration');
+        } else {
+          console.log('Initialized empty localStorage data for collaboration');
+        }
+        
+        // Return true to indicate we've set up a valid fallback
+        return true;
+      } catch (localStorageError) {
+        console.error('Failed to initialize localStorage fallback:', localStorageError);
+        return false;
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing collaboration tables:', error);
+    
+    // Ensure localStorage fallback exists even in case of errors
+    try {
+      if (!localStorage.getItem('edgenie_teams')) {
+        localStorage.setItem('edgenie_teams', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('edgenie_team_members')) {
+        localStorage.setItem('edgenie_team_members', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('edgenie_shared_resources')) {
+        localStorage.setItem('edgenie_shared_resources', JSON.stringify([]));
+      }
+      console.log('Emergency localStorage fallback initialized');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+/**
  * Initializes all database tables
  * This should be called early in the application lifecycle
  */
 export const initializeDatabase = async (): Promise<boolean> => {
   try {
-    const tableStatus = await checkTablesExist();
-    console.log('Database table status:', tableStatus);
+    console.log('Initializing database...');
     
-    // Initialize tables in sequence to handle dependencies
-    if (!tableStatus.profiles) {
-      await initializeProfilesTable();
+    // Enable the uuid-ossp extension for UUID generation
+    const { error: extensionError } = await supabase.rpc('execute_sql', {
+      sql: 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+    });
+    
+    if (extensionError) {
+      console.error('Error enabling uuid-ossp extension:', extensionError);
     }
     
-    if (!tableStatus.auth_events) {
-      await initializeAuthEventsTable();
+    // Initialize profiles table
+    const profilesInitialized = await initializeProfilesTable();
+    console.log('Profiles table initialized:', profilesInitialized);
+    
+    // Initialize auth_events table for tracking login/signup events
+    const authEventsInitialized = await initializeAuthEventsTable();
+    console.log('Auth events table initialized:', authEventsInitialized);
+    
+    // Initialize collaborative documents tables
+    const collaborativeDocsInitialized = await initializeCollaborativeDocsTables();
+    console.log('Collaborative documents tables initialized:', collaborativeDocsInitialized);
+    
+    // Initialize collaboration tables
+    const collaborationInitialized = await initializeCollaborationTables();
+    console.log('Collaboration tables initialized:', collaborationInitialized);
+    
+    // Enable row level security on all tables
+    const { error: rlsError } = await supabase.rpc('execute_sql', {
+      sql: `
+        ALTER TABLE IF EXISTS profiles ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS auth_events ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS collaborative_documents ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS document_history ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS document_messages ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS document_collaborators ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS teams ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS team_members ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS shared_resources ENABLE ROW LEVEL SECURITY;
+      `
+    });
+    
+    if (rlsError) {
+      console.error('Error enabling RLS:', rlsError);
     }
     
-    if (!tableStatus.collaborative_documents) {
-      await initializeCollaborativeDocsTables();
-    }
-    
-    // Verify again
-    const finalStatus = await checkTablesExist();
-    const allTablesExist = Object.values(finalStatus).every(exists => exists);
-    
-    if (allTablesExist) {
-      console.log('All required database tables exist');
-    } else {
-      console.warn('Some database tables could not be created:', 
-        Object.entries(finalStatus)
-          .filter(([_, exists]) => !exists)
-          .map(([table]) => table)
-          .join(', ')
-      );
-    }
-    
-    return allTablesExist;
+    return true;
   } catch (error) {
     console.error('Error initializing database:', error);
     return false;

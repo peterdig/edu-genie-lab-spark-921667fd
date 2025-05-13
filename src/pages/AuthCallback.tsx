@@ -13,10 +13,10 @@ export default function AuthCallback() {
 
       if (success) {
         toast({
-          title: "Successfully signed in",
-          description: "Welcome back!",
+          title: "Email verified successfully",
+          description: "You can now sign in with your credentials.",
         });
-        navigate('/dashboard');
+        navigate('/login');
       } else {
         console.error('Auth callback error:', error);
         toast({
@@ -34,8 +34,8 @@ export default function AuthCallback() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold mb-2">Completing sign in...</h2>
-        <p className="text-muted-foreground">Please wait while we finish setting up your account.</p>
+        <h2 className="text-2xl font-semibold mb-2">Verifying your email...</h2>
+        <p className="text-muted-foreground">Please wait while we complete the verification process.</p>
       </div>
     </div>
   );

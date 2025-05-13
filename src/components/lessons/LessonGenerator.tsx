@@ -266,10 +266,12 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
 
   // Organize models into categories
   const getModelByType = (type: string) => {
-    return availableModels.filter(model => {
+    const filtered = availableModels.filter(model => {
       const name = model.name.toLowerCase();
       return name.includes(type.toLowerCase());
     });
+    // Return a string for the model name, not the array of models
+    return filtered.length > 0 ? filtered[0].name : type.split('/')[1] || type;
   };
 
   // Get status badge for model
@@ -335,31 +337,30 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
   }, [form, isGenerating, onSubmit]);
 
   return (
-    <TooltipProvider>
-      <Card className="animate-fade-in border-primary/10 hover:shadow-md transition-all duration-300">
+    <Card className="animate-fade-in border-primary/10 hover:shadow-md transition-all duration-300">
       <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Create a Lesson Plan</span>
-            <Badge variant="outline" className="ml-2 font-normal">
-              Alt+G to generate
-            </Badge>
-          </CardTitle>
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+          <span>Create a Lesson Plan</span>
+          <Badge variant="outline" className="ml-2 font-normal">
+            Alt+G to generate
+          </Badge>
+        </CardTitle>
         <CardDescription>
           Provide details about your lesson, and our AI will generate a complete lesson plan.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
-            <Alert variant="destructive" className="mb-6 animate-pulse">
+          <Alert variant="destructive" className="mb-6 animate-pulse">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
+            <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>{error}</span>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleRetry}
                 disabled={isGenerating || retries >= maxRetries}
-                  className="ml-2 whitespace-nowrap"
+                className="whitespace-nowrap"
               >
                 Try with a different model
               </Button>
@@ -376,16 +377,16 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 <FormItem>
                   <FormLabel>Lesson Topic</FormLabel>
                   <FormControl>
-                      <Input 
-                        placeholder="e.g. Photosynthesis, World War II, Fractions..." 
-                        {...field} 
-                        className="focus-visible:ring-primary/50"
-                        autoFocus 
-                      />
+                    <Input 
+                      placeholder="e.g. Photosynthesis, World War II, Fractions..." 
+                      {...field} 
+                      className="focus-visible:ring-primary/50"
+                      autoFocus 
+                    />
                   </FormControl>
-                    <FormDescription>
-                      Enter the main topic for your lesson plan
-                    </FormDescription>
+                  <FormDescription>
+                    Enter the main topic for your lesson plan
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -398,23 +399,23 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Grade Level</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                          <SelectTrigger className="focus-visible:ring-primary/50">
-                            <SelectValue placeholder="Select a grade level" />
+                        <SelectTrigger className="focus-visible:ring-primary/50">
+                          <SelectValue placeholder="Select a grade level" />
                         </SelectTrigger>
                       </FormControl>
-                        <SelectContent position="popper" className="max-h-[200px]">
-                          <SelectItem value="k-2">Elementary (K-2)</SelectItem>
-                          <SelectItem value="3-5">Elementary (3-5)</SelectItem>
-                          <SelectItem value="6-8">Middle School (6-8)</SelectItem>
-                          <SelectItem value="9-12">High School (9-12)</SelectItem>
+                      <SelectContent position="popper" className="max-h-[200px]">
+                        <SelectItem value="K-2">Elementary (K-2)</SelectItem>
+                        <SelectItem value="3-5">Elementary (3-5)</SelectItem>
+                        <SelectItem value="6-8">Middle School (6-8)</SelectItem>
+                        <SelectItem value="9-12">High School (9-12)</SelectItem>
                         <SelectItem value="college">College</SelectItem>
                       </SelectContent>
                     </Select>
-                      <FormDescription>
-                        Select the grade level for your students
-                      </FormDescription>
+                    <FormDescription>
+                      Select the grade level for your students
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -426,13 +427,13 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lesson Duration</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                          <SelectTrigger className="focus-visible:ring-primary/50">
+                        <SelectTrigger className="focus-visible:ring-primary/50">
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                       </FormControl>
-                        <SelectContent position="popper">
+                      <SelectContent position="popper">
                         <SelectItem value="15min">15 minutes</SelectItem>
                         <SelectItem value="30min">30 minutes</SelectItem>
                         <SelectItem value="45min">45 minutes</SelectItem>
@@ -440,9 +441,9 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                         <SelectItem value="90min">90 minutes</SelectItem>
                       </SelectContent>
                     </Select>
-                      <FormDescription>
-                        How long will this lesson take?
-                      </FormDescription>
+                    <FormDescription>
+                      How long will this lesson take?
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -454,137 +455,68 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               name="model"
               render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        AI Model
-                        <Badge variant="outline" className="ml-2 font-normal text-xs">
-                          Alt+M to focus
-                        </Badge>
-                      </span>
+                  <FormLabel className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      AI Model
+                      <Badge variant="outline" className="ml-2 font-normal text-xs">
+                        Alt+M to focus
+                      </Badge>
+                    </span>
+                    <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-5 w-5" type="button">
-                      <HelpCircle className="h-4 w-4" />
+                            <HelpCircle className="h-4 w-4" />
                             <span className="sr-only">AI Model info</span>
-                    </Button>
+                          </Button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm" align="end">
                           <p>Select the AI model to use for generation. Models with larger context windows can generate more detailed content.</p>
                         </TooltipContent>
                       </Tooltip>
-                    </FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Save to localStorage
-                        localStorage.setItem("defaultModel", value);
-                      }}
-                      defaultValue={field.value}
-                      disabled={isLoadingModels}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="focus-visible:ring-primary/50">
-                          {isLoadingModels ? (
-                            <div className="flex items-center">
-                              <Loader className="h-3.5 w-3.5 mr-2 animate-spin" />
-                              <span>Loading models...</span>
-                            </div>
-                          ) : (
-                            <SelectValue placeholder="Select a model" />
-                          )}
-                      </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="max-h-[240px]" position="popper">
-                        <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="recommended">
-                            <AccordionTrigger className="py-2 text-sm font-semibold">
-                          Recommended Models
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              {recommendedModels.map(modelId => {
-                                const model = availableModels.find(m => m.id === modelId);
-                                if (!model) return null;
-                                
-                                return (
-                                  <SelectItem 
-                                    key={model.id} 
-                                    value={model.id}
-                                    disabled={modelStatus[model.id] === 'unavailable'}
-                                    className={modelStatus[model.id] === 'unavailable' ? 'opacity-50' : ''}
-                                  >
-                                    <div className="flex flex-col">
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{model.name}</span>
-                                        {getModelStatusBadge(model.id)}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                        <Zap className="h-3 w-3" />
-                                        <span>Context: {formatContextLength(model.context_length)}</span>
-                                      </div>
-                                    </div>
-                            </SelectItem>
-                                );
-                              })}
-                            </AccordionContent>
-                          </AccordionItem>
-                          
-                          {['Meta', 'Google', 'Mistral', 'DeepSeek'].map(provider => (
-                            <AccordionItem key={provider} value={provider.toLowerCase()}>
-                              <AccordionTrigger className="py-2 text-sm font-semibold">
-                                {provider} Models
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                {getModelByType(provider).map(model => (
-                                  <SelectItem 
-                                    key={model.id} 
-                                    value={model.id}
-                                    disabled={modelStatus[model.id] === 'unavailable'}
-                                    className={modelStatus[model.id] === 'unavailable' ? 'opacity-50' : ''}
-                                  >
-                                    <div className="flex flex-col">
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{model.name}</span>
-                                        {getModelStatusBadge(model.id)}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                        <Zap className="h-3 w-3" />
-                                        <span>Context: {formatContextLength(model.context_length)}</span>
-                                      </div>
-                                    </div>
-                              </SelectItem>
-                            ))}
-                              </AccordionContent>
-                            </AccordionItem>
-                            ))}
-                        </Accordion>
-                      </SelectContent>
-                    </Select>
-                  <FormDescription>
-                      <div className="flex items-center justify-between mt-1">
-                        <span>Select an AI model to generate your lesson plan</span>
-                        {field.value && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center cursor-help">
-                                <Info className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                                <span className="text-xs">Model Info</span>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Save to localStorage
+                      localStorage.setItem("defaultModel", value);
+                    }}
+                    defaultValue={field.value}
+                    disabled={isLoadingModels}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="focus-visible:ring-primary/50">
+                        {isLoadingModels ? (
+                          <div className="flex items-center">
+                            <Loader className="h-3.5 w-3.5 mr-2 animate-spin" />
+                            <span>Loading models...</span>
                           </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="end">
-                              <div className="space-y-1.5">
-                                <p className="font-medium">{availableModels.find(m => m.id === field.value)?.name || field.value}</p>
-                                <div className="flex items-center text-xs">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  <span>Context: {formatContextLength(availableModels.find(m => m.id === field.value)?.context_length || 0)}</span>
-                          </div>
-                                <div className="flex items-center text-xs">
-                                  <span>Status: {modelStatus[field.value] || 'Unknown'}</span>
-                          </div>
-                          </div>
-                            </TooltipContent>
-                          </Tooltip>
+                        ) : (
+                          <SelectValue placeholder="Select a model" />
                         )}
-                      </div>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-[240px]" position="popper">
+                      {recommendedModels.map(modelId => (
+                        <SelectItem 
+                          key={modelId} 
+                          value={modelId}
+                          disabled={modelStatus[modelId] === 'unavailable'}
+                          className={modelStatus[modelId] === 'unavailable' ? 'opacity-50' : ''}
+                        >
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{modelId.split('/')[1]}</span>
+                              {getModelStatusBadge(modelId)}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Select an AI model to generate your lesson plan
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -596,32 +528,32 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               name="additionalNotes"
               render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Additional Notes</FormLabel>
+                  <FormLabel>Additional Notes</FormLabel>
                   <FormControl>
                     <Textarea 
-                        placeholder="Any specific requirements or topics to focus on?" 
-                        className="min-h-[100px] focus-visible:ring-primary/50" 
+                      placeholder="Any specific requirements or topics to focus on?" 
+                      className="min-h-[100px] focus-visible:ring-primary/50" 
                       {...field} 
                     />
                   </FormControl>
-                    <FormDescription>
-                      Optional: Provide any specific requirements or focus areas
-                    </FormDescription>
+                  <FormDescription>
+                    Optional: Provide any specific requirements or focus areas
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-              <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
               <FormField
                 control={form.control}
                 name="includeAssessment"
                 render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
                     <div className="space-y-0.5">
                       <FormLabel>Include Assessment</FormLabel>
                       <FormDescription>
-                          Generate assessment questions
+                        Generate assessment questions
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -637,11 +569,11 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 control={form.control}
                 name="includeActivities"
                 render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
                     <div className="space-y-0.5">
                       <FormLabel>Include Activities</FormLabel>
                       <FormDescription>
-                          Generate in-class activities
+                        Generate in-class activities
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -655,19 +587,20 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               />
             </div>
             
-              <div className="flex justify-between items-center pt-2">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => form.reset()}
-                  className="text-xs gap-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                    <path d="M3 3v5h5"></path>
-                  </svg>
-                  Reset Form
-                </Button>
+            <div className="flex justify-between items-center pt-2">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => form.reset()}
+                className="text-xs gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                Reset Form
+              </Button>
+              <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
@@ -675,31 +608,31 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                       disabled={isGenerating} 
                       className="min-w-[140px] relative font-medium"
                     >
-              {isGenerating ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      {isGenerating ? (
+                        <>
+                          <Loader className="mr-2 h-4 w-4 animate-spin" />
                           <span>Generating...</span>
                           <span className="absolute -bottom-5 right-0 text-[10px] text-muted-foreground">
                             {retries > 0 ? `Attempt ${retries+1}/${maxRetries+1}` : ''}
                           </span>
-                </>
-              ) : (
+                        </>
+                      ) : (
                         <>
                           <span>Generate Lesson</span>
                           <span className="absolute -bottom-5 right-0 text-[10px] text-muted-foreground">Alt+G</span>
                         </>
-              )}
-            </Button>
+                      )}
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="left" align="center">
                     This will generate a complete lesson plan
                   </TooltipContent>
                 </Tooltip>
-              </div>
+              </TooltipProvider>
+            </div>
           </form>
         </Form>
       </CardContent>
     </Card>
-    </TooltipProvider>
   );
 }

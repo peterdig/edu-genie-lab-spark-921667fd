@@ -74,9 +74,9 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create an Assessment</CardTitle>
+    <Card className="border-primary/10 shadow-sm transition-all duration-200 hover:shadow-md">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-xl">Create an Assessment</CardTitle>
         <CardDescription>
           Provide details about your assessment, and our AI will generate questions and materials.
         </CardDescription>
@@ -91,14 +91,18 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                 <FormItem>
                   <FormLabel>Assessment Topic</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Cell Biology, American Revolution, Algebra..." {...field} />
+                    <Input 
+                      placeholder="e.g. Cell Biology, American Revolution, Algebra..." 
+                      {...field} 
+                      className="w-full"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <FormField
                 control={form.control}
                 name="gradeLevel"
@@ -107,11 +111,11 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                     <FormLabel>Grade Level</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select grade level" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position="popper">
                         <SelectItem value="k-2">K-2</SelectItem>
                         <SelectItem value="3-5">3-5</SelectItem>
                         <SelectItem value="6-8">6-8</SelectItem>
@@ -132,11 +136,11 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                     <FormLabel>Number of Questions</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select number" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position="popper">
                         <SelectItem value="5">5 questions</SelectItem>
                         <SelectItem value="10">10 questions</SelectItem>
                         <SelectItem value="15">15 questions</SelectItem>
@@ -153,25 +157,25 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
               control={form.control}
               name="model"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="space-y-2">
                   <FormLabel>AI Model</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-3 gap-2"
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rounded-md border border-muted p-2 hover:bg-muted/50">
                         <RadioGroupItem value="qwen" id="assessment-qwen" />
-                        <Label htmlFor="assessment-qwen">Qwen</Label>
+                        <Label htmlFor="assessment-qwen" className="cursor-pointer">Qwen</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rounded-md border border-muted p-2 hover:bg-muted/50">
                         <RadioGroupItem value="deepseek" id="assessment-deepseek" />
-                        <Label htmlFor="assessment-deepseek">DeepSeek</Label>
+                        <Label htmlFor="assessment-deepseek" className="cursor-pointer">DeepSeek</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 rounded-md border border-muted p-2 hover:bg-muted/50">
                         <RadioGroupItem value="mistral" id="assessment-mistral" />
-                        <Label htmlFor="assessment-mistral">Mistral</Label>
+                        <Label htmlFor="assessment-mistral" className="cursor-pointer">Mistral</Label>
                       </div>
                     </RadioGroup>
                   </FormControl>
@@ -185,13 +189,13 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
               name="questionTypes"
               render={() => (
                 <FormItem>
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <FormLabel>Question Types</FormLabel>
                     <FormDescription>
                       Select the types of questions to include.
                     </FormDescription>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {questionTypes.map((item) => (
                       <FormField
                         key={item.id}
@@ -200,7 +204,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                         render={({ field }) => (
                           <FormItem
                             key={item.id}
-                            className="flex flex-row items-start space-x-3 space-y-0"
+                            className="flex items-center space-x-3 space-y-0 rounded-md border p-3 hover:bg-muted/20"
                           >
                             <FormControl>
                               <Checkbox
@@ -216,7 +220,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                                 }}
                               />
                             </FormControl>
-                            <FormLabel className="font-normal">
+                            <FormLabel className="font-normal cursor-pointer">
                               {item.label}
                             </FormLabel>
                           </FormItem>
@@ -234,13 +238,13 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
               name="bloomsLevels"
               render={() => (
                 <FormItem>
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <FormLabel>Bloom's Taxonomy Levels</FormLabel>
                     <FormDescription>
                       Select the cognitive levels to target.
                     </FormDescription>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                     {[
                       { id: "remembering", label: "Remembering" },
                       { id: "understanding", label: "Understanding" },
@@ -256,7 +260,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                         render={({ field }) => (
                           <FormItem
                             key={item.id}
-                            className="flex flex-row items-start space-x-3 space-y-0"
+                            className="flex items-start space-x-3 space-y-0 rounded-md border p-2 hover:bg-muted/20"
                           >
                             <FormControl>
                               <Checkbox
@@ -272,7 +276,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                                 }}
                               />
                             </FormControl>
-                            <FormLabel className="font-normal">
+                            <FormLabel className="font-normal text-sm cursor-pointer">
                               {item.label}
                             </FormLabel>
                           </FormItem>
@@ -294,7 +298,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
                   <FormControl>
                     <Textarea 
                       placeholder="Add any specific requirements or context..."
-                      className="min-h-[100px]"
+                      className="min-h-[100px] w-full resize-y"
                       {...field} 
                     />
                   </FormControl>
@@ -303,16 +307,26 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isGenerating}>
-              {isGenerating ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Assessment...
-                </>
-              ) : (
-                "Generate Assessment"
-              )}
-            </Button>
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                className="w-full sm:w-auto sm:min-w-[200px] relative group" 
+                disabled={isGenerating}
+                size="lg"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    <span>Generating Assessment...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Generate Assessment</span>
+                    <span className="absolute -bottom-5 right-2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">Alt+G</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
         </Form>
       </CardContent>

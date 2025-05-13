@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
-import { ChevronRight, Lightbulb, Users, Clock, BookOpen, Star, Sparkles, Brain, ArrowRight, Blocks, GraduationCap } from "lucide-react";
+import { motion } from "framer-motion";
+import Spline from '@splinetool/react-spline';
+import { ShimmerLogo } from "@/components/ShimmerLogo";
+import { TextShimmer } from "@/components/TextShimmer";
+import { ChevronRight, Users, Clock, BookOpen, Sparkles, Brain, ArrowRight, Blocks, GraduationCap, Accessibility, FlaskConical, FileText, Zap, Smartphone, Download, Check, Shield, Wifi, WifiOff, Globe, Award, Layers } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [isSplineLoaded, setIsSplineLoaded] = useState(false);
+  const splineRef = useRef<any>(null);
+
+  // Handle Spline load
+  function onSplineLoad(spline: any) {
+    setIsSplineLoaded(true);
+    splineRef.current = spline;
+  }
 
   const features = [
     {
@@ -49,33 +61,125 @@ export default function Landing() {
     },
   ];
 
+  const advancedFeatures = [
+    {
+      id: "assessments",
+      title: "Smart Assessments",
+      description: "Create customizable assessments with auto-grading capabilities to evaluate student learning.",
+      icon: <FileText className="w-5 h-5" />,
+    },
+    {
+      id: "accessibility",
+      title: "Accessibility Tools",
+      description: "Enhanced features for all learners including text-to-speech and customizable display options.",
+      icon: <Accessibility className="w-5 h-5" />,
+    },
+    {
+      id: "virtual-labs",
+      title: "Virtual Labs",
+      description: "Access a library of interactive science simulations for hands-on virtual learning experiences.",
+      icon: <FlaskConical className="w-5 h-5" />,
+    },
+    {
+      id: "collaboration",
+      title: "Teacher Collaboration",
+      description: "Share resources and collaborate with other educators to improve teaching practices.",
+      icon: <Users className="w-5 h-5" />,
+    },
+  ];
+  
+  const mobileFeatures = [
+    {
+      id: "offline-access",
+      title: "Offline Access",
+      description: "Access your lessons and resources without internet connection",
+      icon: <WifiOff className="w-5 h-5" />,
+    },
+    {
+      id: "fast-responsive",
+      title: "Fast & Responsive",
+      description: "Optimized mobile performance for a smooth teaching experience",
+      icon: <Zap className="w-5 h-5" />,
+    },
+    {
+      id: "secure-data",
+      title: "Secure Data",
+      description: "End-to-end encryption for your content and student information",
+      icon: <Shield className="w-5 h-5" />,
+    },
+    {
+      id: "auto-sync",
+      title: "Auto-Sync",
+      description: "Automatically synchronize when you're back online",
+      icon: <Wifi className="w-5 h-5" />,
+    },
+  ];
+
+  // Animation variants for staggered animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-background">
+      <div className="relative overflow-hidden bg-background" style={{minHeight: "calc(100vh - 6rem)", maxHeight: "800px"}}>
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary.400/30),theme(colors.secondary.400/20),transparent_70%)]" />
+          {/* Fallback gradient while Spline loads */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10" />
+          
+          {/* Spline 3D background */}
+          <div className={`transition-opacity duration-1000 ${isSplineLoaded ? 'opacity-100' : 'opacity-0'}`}>
+            <Spline 
+              scene="https://prod.spline.design/hJ8WSiKIQDRgOe29/scene.splinecode" 
+              onLoad={onSplineLoad}
+            />
+          </div>
         </div>
         
-        <div className="container mx-auto px-4 py-24 relative z-10">
-          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-            <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-6 flex items-center">
+        <div className="container mx-auto px-4 h-full flex items-center justify-center relative z-10">
+          <motion.div 
+            className="flex flex-col items-center text-center max-w-3xl mx-auto pt-10 md:pt-0"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-6 flex items-center shadow-sm">
               <GraduationCap className="w-4 h-4 mr-1" />
               Built for educators, by educators
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Empower Your Teaching With <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-secondary-500">EduGenie</span>
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6 drop-shadow-sm">
+              Empower Your Teaching With <ShimmerLogo variant="hero" size="xl" />
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl">
               The AI-powered education platform that helps you create engaging lessons, save time, and meet the needs of every student.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
               <Button 
                 size="lg" 
-                className="gap-2 px-6 text-base w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors"
+                className="gap-2 px-6 text-base w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md"
                 onClick={() => navigate("/signup")}
               >
                 Get Started
@@ -84,107 +188,334 @@ export default function Landing() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="gap-2 px-6 text-base border-primary/30 hover:bg-primary/10"
+                className="gap-2 px-6 text-base border-primary/30 hover:bg-primary/10 shadow-sm"
                 onClick={() => navigate("/login")}
               >
                 Sign In
               </Button>
             </div>
-          </div>
+          </motion.div>
+        </div>
+        
+        {/* Scroll down indicator */}
+        <motion.div 
+          className="absolute bottom-8 left-0 right-0 flex justify-center items-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
+        >
+          <motion.div 
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 15L3 8H17L10 15Z" fill="currentColor" />
+            </svg>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Highlights banner */}
+
+
+      {/* Features Section */}
+      <div className="container mx-auto px-4 py-16 md:py-20">
+        <motion.div 
+          className="text-center mb-10 md:mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <span className="text-sm font-medium text-primary uppercase tracking-wider">Core Features</span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2">Designed for Modern Educators</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            <ShimmerLogo variant="header" size="sm" /> combines cutting-edge AI with proven pedagogy to create the ultimate teaching companion.
+          </p>
+        </motion.div>
+
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+        >
+          {features.map((feature) => (
+            <motion.div key={feature.id} variants={itemVariants}>
+              <Card
+                className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1"
+                style={{
+                  backgroundColor: theme === "dark" ? "hsl(var(--card))" : "hsl(var(--card))",
+                  borderWidth: "1px",
+                  borderColor: feature.id === "ai-powered" ? "hsl(var(--primary) / 0.2)" : 
+                              feature.id === "content-generation" ? "hsl(var(--secondary) / 0.2)" :
+                              feature.id === "time-saving" ? "hsl(var(--primary) / 0.15)" :
+                              feature.id === "differentiation" ? "hsl(var(--secondary) / 0.15)" :
+                              feature.id === "curriculum" ? "hsl(var(--primary) / 0.1)" :
+                              "hsl(var(--secondary) / 0.1)"
+                }}
+                onMouseEnter={() => setHovered(feature.id)}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <div className="flex flex-col h-full">
+                  <div className={`p-3 rounded-full w-fit mb-4 ${
+                    feature.id === "ai-powered" ? "bg-primary/15" : 
+                    feature.id === "content-generation" ? "bg-secondary/15" :
+                    feature.id === "time-saving" ? "bg-primary-400/15" :
+                    feature.id === "differentiation" ? "bg-secondary-400/15" :
+                    feature.id === "curriculum" ? "bg-primary-300/15" :
+                    "bg-secondary-300/15"
+                  }`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-lg md:text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm md:text-base text-muted-foreground flex-grow">{feature.description}</p>
+                  <div className={`mt-4 flex items-center text-sm font-medium transition-opacity duration-300 ${
+                    feature.id === "ai-powered" ? "text-primary" : 
+                    feature.id === "content-generation" ? "text-secondary" :
+                    feature.id === "time-saving" ? "text-primary-500" :
+                    feature.id === "differentiation" ? "text-secondary-500" :
+                    feature.id === "curriculum" ? "text-primary-600" :
+                    "text-secondary-600"
+                  } ${hovered === feature.id ? 'opacity-100' : 'opacity-0'}`}>
+                    <span>Learn more</span>
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Advanced Features Section */}
+      <div className="bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/5 py-16 md:py-20">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            className="text-center mb-10 md:mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="text-sm font-medium text-secondary uppercase tracking-wider">Advanced Tools</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2">Powerful Teaching Capabilities</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Unlock advanced features designed to enhance every aspect of your teaching experience.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            {advancedFeatures.map((feature) => (
+              <motion.div key={feature.id} variants={itemVariants}>
+                <Card
+                  className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1 border border-secondary/10"
+                >
+                  <div className="flex flex-col h-full">
+                    <div className="p-3 rounded-full w-fit mb-4 bg-secondary/15">
+                      {feature.icon}
+                    </div>
+                    <h3 className="text-lg md:text-xl font-semibold mb-2">{feature.title}</h3>
+                    <p className="text-sm md:text-base text-muted-foreground">{feature.description}</p>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="container mx-auto px-4 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Designed for Modern Educators</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            EduGenie combines cutting-edge AI with proven pedagogy to create the ultimate teaching companion.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature) => (
-            <Card
-              key={feature.id}
-              className="p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1"
-              style={{
-                backgroundColor: theme === "dark" ? "hsl(var(--card))" : "hsl(var(--card))",
-                borderWidth: "1px",
-                borderColor: feature.id === "ai-powered" ? "hsl(var(--primary) / 0.2)" : 
-                            feature.id === "content-generation" ? "hsl(var(--secondary) / 0.2)" :
-                            feature.id === "time-saving" ? "hsl(var(--primary) / 0.15)" :
-                            feature.id === "differentiation" ? "hsl(var(--secondary) / 0.15)" :
-                            feature.id === "curriculum" ? "hsl(var(--primary) / 0.1)" :
-                            "hsl(var(--secondary) / 0.1)"
-              }}
-              onMouseEnter={() => setHovered(feature.id)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <div className="flex flex-col h-full">
-                <div className={`p-3 rounded-full w-fit mb-4 ${
-                  feature.id === "ai-powered" ? "bg-primary/15" : 
-                  feature.id === "content-generation" ? "bg-secondary/15" :
-                  feature.id === "time-saving" ? "bg-primary-400/15" :
-                  feature.id === "differentiation" ? "bg-secondary-400/15" :
-                  feature.id === "curriculum" ? "bg-primary-300/15" :
-                  "bg-secondary-300/15"
-                }`}>
-                  {feature.icon}
+      {/* Mobile App Section */}
+      <div className="py-16 md:py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <motion.div
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="order-2 lg:order-1">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+              >
+                <TextShimmer
+                  as="h2"
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 mt-2"
+                  shimmerColor="rgba(var(--primary-rgb), 0.8)"
+                  baseColor="rgba(var(--primary-rgb), 0.6)"
+                >
+                  Mobile Experience
+                </TextShimmer>
+                <p className="text-muted-foreground mb-8 max-w-xl">
+                  Take <ShimmerLogo variant="header" size="sm" /> with you wherever you go. Our mobile app provides all the tools you need for planning and teaching on the move.
+                </p>
+              </motion.div>
+              
+              <motion.div 
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                variants={containerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+              >
+                {mobileFeatures.map((feature, index) => (
+                  <motion.div key={feature.id} variants={itemVariants}>
+                    <div 
+                      className="bg-card p-4 md:p-5 rounded-lg border border-border shadow-sm flex flex-col h-full"
+                    >
+                      <div className="p-2 rounded-full w-fit mb-3 bg-primary/10">
+                        {feature.icon}
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">{feature.title}</h3>
+                      <p className="text-sm text-muted-foreground">{feature.description}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+              
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <p className="text-sm">Compatible with Android 8.0+</p>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground flex-grow">{feature.description}</p>
-                <div className={`mt-4 flex items-center text-sm font-medium transition-opacity duration-300 ${
-                  feature.id === "ai-powered" ? "text-primary" : 
-                  feature.id === "content-generation" ? "text-secondary" :
-                  feature.id === "time-saving" ? "text-primary-500" :
-                  feature.id === "differentiation" ? "text-secondary-500" :
-                  feature.id === "curriculum" ? "text-primary-600" :
-                  "text-secondary-600"
-                } ${hovered === feature.id ? 'opacity-100' : 'opacity-0'}`}>
-                  <span>Learn more</span>
-                  <ArrowRight className="ml-1 h-4 w-4" />
+                <div className="flex items-center gap-2">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <p className="text-sm">Free download, no in-app purchases</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <p className="text-sm">Regular updates with new features</p>
                 </div>
               </div>
-            </Card>
-          ))}
+              
+              <Button 
+                className="mt-6 gap-2"
+                onClick={() => navigate("/download")}
+                size="lg"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Download APK
+              </Button>
+            </div>
+            
+            <div className="order-1 lg:order-2 flex justify-center">
+              <motion.div 
+                className="relative"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary/10 rounded-full"></div>
+                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-secondary/10 rounded-full"></div>
+                <motion.div 
+                  className="relative bg-gradient-to-br from-background to-primary/5 rounded-[2.5rem] p-4 border-8 border-background shadow-xl" 
+                  style={{maxWidth: "280px"}}
+                  whileHover={{ y: -5 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                >
+                  <div className="rounded-[2rem] overflow-hidden border border-border/40 bg-card">
+                    <div className="bg-primary/10 p-4 flex items-center justify-center">
+                      <div className="flex items-center space-x-2">
+                        <Smartphone className="text-primary h-5 w-5" />
+                        <ShimmerLogo variant="header" size="sm" />
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
+                        <Brain className="text-primary h-5 w-5" />
+                        <div>
+                          <div className="text-sm font-medium">AI Lessons</div>
+                          <div className="text-xs text-muted-foreground">Create on the go</div>
+                        </div>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
+                        <BookOpen className="text-secondary h-5 w-5" />
+                        <div>
+                          <div className="text-sm font-medium">Library</div>
+                          <div className="text-xs text-muted-foreground">Access anywhere</div>
+                        </div>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 flex items-center gap-3">
+                        <Users className="text-primary h-5 w-5" />
+                        <div>
+                          <div className="text-sm font-medium">Collaborate</div>
+                          <div className="text-xs text-muted-foreground">Work with peers</div>
+                        </div>
+                      </div>
+                      <div className="mx-auto w-12 h-1 bg-border rounded-full mt-2"></div>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 py-20">
+      <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 py-16 md:py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Teaching?</h2>
+          <motion.div 
+            className="max-w-3xl mx-auto text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Teaching?</h2>
             <p className="text-muted-foreground mb-8">
-              Join educators who are saving time and creating better learning experiences with EduGenie.
+              Join thousands of educators who are saving time and creating better learning experiences with <ShimmerLogo variant="header" size="sm" />.
             </p>
             <Button 
               size="lg" 
-              className="gap-2 px-6 text-base bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors"
+              className="gap-2 px-6 text-base bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors shadow-md"
               onClick={() => navigate("/signup")}
             >
               Create Account
               <ChevronRight className="h-4 w-4" />
             </Button>
-          </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              
+            </p>
+          </motion.div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-background border-t py-10">
+      <footer className="bg-background border-t py-8 md:py-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">EduGenie</span>
+              <ShimmerLogo variant="footer" size="md" />
             </div>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
               <Button variant="ghost" className="hover:text-primary" onClick={() => navigate("/login")}>Log in</Button>
               <Button variant="ghost" className="hover:text-secondary" onClick={() => navigate("/signup")}>Sign up</Button>
+              <Button variant="ghost" className="hover:text-secondary" onClick={() => navigate("/dashboard")}>Dashboard</Button>
+              <Button variant="ghost" className="hover:text-primary" onClick={() => navigate("/download")}>Mobile App</Button>
             </div>
           </div>
-          <div className="mt-8 text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} EduGenie. All rights reserved.</p>
+          <div className="mt-6 md:mt-8 text-center text-sm text-muted-foreground">
+            <p>© {new Date().getFullYear()} <ShimmerLogo variant="footer" size="sm" />. All rights reserved.</p>
           </div>
         </div>
       </footer>

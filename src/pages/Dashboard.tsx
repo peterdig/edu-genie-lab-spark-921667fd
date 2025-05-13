@@ -54,6 +54,28 @@ const CardHeading = ({ icon: Icon, title, value, description, onClick }: CardHea
   </div>
 );
 
+// Add a lesson to recent lessons
+const addRecentLesson = (lessonId: string) => {
+  try {
+    let recentLessons = JSON.parse(localStorage.getItem("recentLessons") || "[]");
+    
+    // Remove if already exists
+    recentLessons = recentLessons.filter((id: string) => id !== lessonId);
+    
+    // Add to front of array
+    recentLessons.unshift(lessonId);
+    
+    // Keep only last 10 lessons
+    recentLessons = recentLessons.slice(0, 10);
+    
+    localStorage.setItem("recentLessons", JSON.stringify(recentLessons));
+    return true;
+  } catch (e) {
+    console.error("Failed to add recent lesson:", e);
+    return false;
+  }
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -67,6 +89,9 @@ export default function Dashboard() {
   }, []);
   
   const handleLessonClick = (lessonId: string) => {
+    // Add to recent lessons
+    addRecentLesson(lessonId);
+    // Navigate to the lesson details page with the lessonId parameter
     navigate(`/lessons/${lessonId}`);
   };
 

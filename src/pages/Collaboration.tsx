@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Users, MessageSquare, Share2, FileText, Clock, Search, PlusCircle, UserPlus, Trash2, Edit, Check, X, Mail, AlertTriangle } from "lucide-react";
+import { Users, MessageSquare, Share2, FileText, Clock, Search, PlusCircle, UserPlus, Trash2, Edit, Check, X, Mail, AlertTriangle, Activity } from "lucide-react";
 import { useCollaboration } from "@/hooks/useCollaboration";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/lib/supabase";
 
 // Function to get initials from name
 const getInitials = (name: string) => {
@@ -96,6 +97,30 @@ export default function Collaboration() {
   
   // Get authentication status from AuthContext
   const { isAuthenticated: authContextStatus } = useAuth();
+  
+  const [activityLog, setActivityLog] = useState<Array<{
+    id: string;
+    action: string;
+    timestamp: string;
+    user: string;
+    details: string;
+  }>>([]);
+  
+  const [isRealTimeActive, setIsRealTimeActive] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
+  
+  // Initialize data when component mounts
+  useEffect(() => {
+    // This replaces any direct fetchData calls that might have been referenced
+    if (isAuthenticated && !loading) {
+      // We'll use the hook's built-in methods to load data
+      getUserTeams();
+      if (selectedTeam) {
+        getTeamMembers(selectedTeam);
+        getTeamSharedResources(selectedTeam);
+      }
+    }
+  }, [isAuthenticated, loading]);
   
   // Set the first team as selected if none is selected and teams are loaded
   useEffect(() => {
@@ -210,6 +235,61 @@ export default function Collaboration() {
     searchUsers(searchTerm);
   }, [searchTerm]);
 
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!isAuthenticated || usingFallback) {
+      return;
+    }
+    
+    try {
+      // Note: There are TypeScript compatibility issues with the Supabase realtime API
+      // The current version installed doesn't match the TypeScript definitions
+      // For now, we'll set realtime as inactive to prevent errors
+      console.log('Realtime subscriptions are temporarily disabled due to TypeScript compatibility issues');
+      
+      /* 
+      // This code is disabled due to TypeScript compatibility issues
+      // The proper implementation depends on the specific Supabase version
+      // and would require updating the @supabase/supabase-js package or adding custom type definitions
+      
+      setIsRealTimeActive(true);
+      
+      // Create a channel for real-time changes
+      const channel = supabase.channel('collaboration-changes');
+      
+      // Subscribe to channel
+      channel.subscribe();
+      
+      // Clean up on unmount
+      return () => {
+        channel.unsubscribe();
+        setIsRealTimeActive(false);
+      };
+      */
+      
+      // Temporarily implement a mock real-time system with periodic data refreshes
+      const refreshInterval = setInterval(() => {
+        // Refresh data every 30 seconds to simulate real-time updates
+        const now = new Date().toLocaleTimeString();
+        setLastUpdateTime(now);
+        
+        // Force refresh data
+        getUserTeams();
+        if (selectedTeam) {
+          getTeamMembers(selectedTeam);
+          getTeamSharedResources(selectedTeam);
+        }
+      }, 30000); // Refresh every 30 seconds
+      
+      return () => {
+        clearInterval(refreshInterval);
+      };
+    } catch (error) {
+      console.error('Error setting up real-time subscriptions:', error);
+      setIsRealTimeActive(false);
+    }
+  }, [isAuthenticated, usingFallback, teams, selectedTeam]);
+  
   // Error state
   if (error) {
     return (
@@ -277,26 +357,34 @@ export default function Collaboration() {
               Work with other teachers and share resources
             </p>
           </div>
-          {usingFallback && (
-            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-300">
-              Using localStorage (Offline Mode)
-            </Badge>
-          )}
+          <div className="flex gap-2 items-center">
+            {isRealTimeActive && (
+              <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-300">
+                <Activity className="w-3 h-3 mr-1 animate-pulse" />
+                Real-time active
+              </Badge>
+            )}
+            {lastUpdateTime && (
+              <p className="text-xs text-muted-foreground">
+                Last update: {lastUpdateTime}
+              </p>
+            )}
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="w-full md:w-auto grid grid-cols-3 md:inline-flex">
             <TabsTrigger value="teams">
-              <Users className="mr-2 h-4 w-4" />
+              <Users className="mr-2 h-4 w-4 hidden sm:inline-block" />
               Teams
             </TabsTrigger>
             <TabsTrigger value="shared">
-              <Share2 className="mr-2 h-4 w-4" />
+              <Share2 className="mr-2 h-4 w-4 hidden sm:inline-block" />
               Shared Content
             </TabsTrigger>
             <TabsTrigger value="activity">
-              <Clock className="mr-2 h-4 w-4" />
-              Recent Activity
+              <Clock className="mr-2 h-4 w-4 hidden sm:inline-block" />
+              Activity
             </TabsTrigger>
           </TabsList>
           
@@ -417,10 +505,10 @@ export default function Collaboration() {
             </Dialog>
 
             {/* Teams content */}
-            <div className="grid gap-4 md:grid-cols-7">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-7">
               {/* Teams List */}
-              <Card className="md:col-span-2">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Card className="md:col-span-2 border-2 shadow-md">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-muted/50">
                   <CardTitle className="text-sm font-medium">
                     Your Teams
                   </CardTitle>
@@ -428,13 +516,13 @@ export default function Collaboration() {
                     <PlusCircle className="h-4 w-4" />
                   </Button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   {loading ? (
                     <div className="flex items-center justify-center h-40">
                       <div className="animate-spin w-6 h-6 border-2 border-primary border-opacity-50 border-t-primary rounded-full" />
                     </div>
                   ) : userTeams.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 space-y-2">
+                    <div className="flex flex-col items-center justify-center h-40 space-y-2 p-4">
                       <p className="text-sm text-muted-foreground text-center">
                         You don't have any teams yet
                       </p>
@@ -445,17 +533,19 @@ export default function Collaboration() {
                     </div>
                   ) : (
                     <ScrollArea className="h-[300px] scrollbar-none smooth-scroll">
-                      <div className="space-y-1">
+                      <div className="py-2">
                         {userTeams.map((team) => (
                           <div
                             key={team.id}
-                            className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
-                              team.id === selectedTeam ? 'bg-muted' : 'hover:bg-muted/50'
+                            className={`flex items-center justify-between px-4 py-3 mx-1 rounded-md cursor-pointer ${
+                              team.id === selectedTeam 
+                                ? 'bg-primary/10 dark:bg-primary/20 font-medium' 
+                                : 'hover:bg-muted'
                             }`}
                             onClick={() => setSelectedTeam(team.id)}
                           >
                             <div>
-                              <p className="font-medium text-sm">{team.name}</p>
+                              <p className={`text-sm ${team.id === selectedTeam ? 'text-primary font-medium' : ''}`}>{team.name}</p>
                               {team.description && (
                                 <p className="text-xs text-muted-foreground truncate max-w-[180px]">
                                   {team.description}
@@ -496,12 +586,12 @@ export default function Collaboration() {
               </Card>
 
               {/* Team Details */}
-              <Card className="md:col-span-5">
-                <CardHeader>
+              <Card className="md:col-span-5 border shadow-sm">
+                <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle>
                     {selectedTeam ? userTeams.find(t => t.id === selectedTeam)?.name || 'Team Details' : 'Team Details'}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="mt-1 sm:mt-0">
                     {selectedTeam 
                       ? userTeams.find(t => t.id === selectedTeam)?.description || 'Manage team members and resources'
                       : 'Select a team to view details'}
@@ -519,7 +609,7 @@ export default function Collaboration() {
                     <div className="space-y-6">
                       {/* Team Members */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                           <h3 className="font-medium text-sm">Team Members</h3>
                           <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
                             <UserPlus className="h-4 w-4 mr-2" />
@@ -570,7 +660,7 @@ export default function Collaboration() {
                       
                       {/* Shared Resources */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                           <h3 className="font-medium text-sm">Shared Resources</h3>
                           <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
                             <Share2 className="h-4 w-4 mr-2" />
@@ -698,12 +788,12 @@ export default function Collaboration() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                       {sharedResources.map((resource) => (
-                        <Card key={resource.id}>
-                          <CardHeader className="pb-2">
+                        <Card key={resource.id} className="shadow-sm hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-2 bg-muted/30">
                             <div className="flex items-center justify-between">
-                              <Badge variant="outline">{resource.resource_type}</Badge>
+                              <Badge variant="outline" className="bg-background">{resource.resource_type}</Badge>
                               <Badge variant={resource.permission === 'edit' ? 'default' : 'secondary'} className="ml-auto">
                                 {resource.permission}
                               </Badge>
@@ -732,9 +822,9 @@ export default function Collaboration() {
           
           <TabsContent value="activity" className="space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Your team's recent collaboration activity</CardDescription>
+                <CardDescription className="mt-1 sm:mt-0">Your team's collaboration activity</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -744,27 +834,56 @@ export default function Collaboration() {
                 ) : (
                   <div className="relative space-y-4">
                     <div className="flex flex-col space-y-2">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex items-start space-x-4 p-2 rounded-md hover:bg-muted/50">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{getInitials(searchResults[i % searchResults.length]?.name || 'User')}</AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-1">
-                            <p className="text-sm">
-                              <span className="font-medium">{searchResults[i % searchResults.length]?.name || 'User'}</span>
-                              {' '}
-                              {i === 0 ? 'shared a lesson plan' : i === 1 ? 'commented on your assessment' : i === 2 ? 'joined your team' : i === 3 ? 'edited a shared document' : 'added a new resource'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {`${i * 2 + 1} ${i === 0 ? 'hour' : 'hours'} ago`}
-                            </p>
+                      {activityLog.length > 0 ? (
+                        activityLog.map((activity) => {
+                          // Find user name from search results if available
+                          const user = searchResults.find(u => u.id === activity.user) || { 
+                            name: 'Unknown User',
+                            id: activity.user
+                          };
+                          
+                          return (
+                            <div key={activity.id} className="flex items-start space-x-4 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Avatar className="h-8 w-8 border shadow-sm">
+                                <AvatarFallback className="bg-primary/10 text-primary">{getInitials(user.name)}</AvatarFallback>
+                              </Avatar>
+                              <div className="space-y-1 flex-1">
+                                <p className="text-sm">
+                                  <span className="font-medium">{user.name}</span>
+                                  {' '}
+                                  {activity.details}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(activity.timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        // Default activity data if no real-time events have occurred
+                        [...Array(5)].map((_, i) => (
+                          <div key={i} className="flex items-start space-x-4 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                            <Avatar className="h-8 w-8 border shadow-sm">
+                              <AvatarFallback className="bg-primary/10 text-primary">{getInitials(searchResults[i % searchResults.length]?.name || 'User')}</AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-1 flex-1">
+                              <p className="text-sm">
+                                <span className="font-medium">{searchResults[i % searchResults.length]?.name || 'User'}</span>
+                                {' '}
+                                {i === 0 ? 'shared a lesson plan' : i === 1 ? 'commented on your assessment' : i === 2 ? 'joined your team' : i === 3 ? 'edited a shared document' : 'added a new resource'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {`${i * 2 + 1} ${i === 0 ? 'hour' : 'hours'} ago`}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                     <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background to-transparent h-full w-full" style={{ top: '70%' }}></div>
                     <div className="flex justify-center">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="shadow-sm">
                         View All Activity
                       </Button>
                     </div>

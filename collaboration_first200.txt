@@ -1,0 +1,201 @@
+import { useState, useEffect } from "react";
+import { Layout } from "@/components/Layout";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Users, MessageSquare, Share2, FileText, Clock, Search, PlusCircle, UserPlus, Trash2, Edit, Check, X, Mail, AlertTriangle } from "lucide-react";
+import { useCollaboration } from "@/hooks/useCollaboration";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/lib/AuthContext.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+// Function to get initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+};
+
+// Map role to badge color
+const getRoleBadgeVariant = (role: string) => {
+  switch (role) {
+    case 'owner': return 'default';
+    case 'admin': return 'secondary';
+    case 'member': return 'outline';
+    default: return 'outline';
+  }
+};
+
+export default function Collaboration() {
+  const [activeTab, setActiveTab] = useState("teams");
+  const [newTeamOpen, setNewTeamOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamDescription, setNewTeamDescription] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [resourceType, setResourceType] = useState<'lesson' | 'assessment' | 'template' | 'rubric'>('lesson');
+  const [sharePermission, setSharePermission] = useState<'view' | 'edit'>('view');
+  const [shareOpen, setShareOpen] = useState(false);
+  
+  const {
+    teams,
+    teamMembers,
+    sharedResources,
+    loading,
+    error,
+    searchResults,
+    searchUsers,
+    getUserTeams,
+    getTeamMembers,
+    getTeamSharedResources,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    inviteToTeam,
+    shareResource,
+    unshareResource,
+    removeTeamMember,
+    usingFallback,
+    isAuthenticated
+  } = useCollaboration();
+  
+  // Filtered user teams
+  const userTeams = getUserTeams();
+  
+  // Get authentication status from AuthContext
+  const { isAuthenticated: authContextStatus } = useAuth();
+  
+  // Set the first team as selected if none is selected and teams are loaded
+  useEffect(() => {
+    if (!loading && userTeams.length > 0 && !selectedTeam) {
+      setSelectedTeam(userTeams[0].id);
+    }
+  }, [loading, userTeams, selectedTeam]);
+  
+  // Filter members of the selected team
+  const teamMembersList = selectedTeam 
+    ? getTeamMembers(selectedTeam)
+    : [];
+  
+  // Get shared resources for the selected team
+  const teamResources = selectedTeam
+    ? getTeamSharedResources(selectedTeam)
+    : [];
+  
+  // Handle team creation
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) {
+      toast.error("Team name is required");
+      return;
+    }
+    
+    try {
+      await createTeam(newTeamName, newTeamDescription);
+      toast.success("Team created successfully");
+      setNewTeamName("");
+      setNewTeamDescription("");
+      setNewTeamOpen(false);
+    } catch (error) {
+      console.error("Error creating team:", error);
+      toast.error("Failed to create team");
+    }
+  };
+  
+  // Handle user invitation
+  const handleInviteUser = async (userId: string) => {
+    if (!selectedTeam) {
+      toast.error("No team selected");
+      return;
+    }
+    
+    try {
+      await inviteToTeam(selectedTeam, userId, inviteRole);
+      toast.success("User invited successfully");
+      setInviteOpen(false);
+    } catch (error) {
+      console.error("Error inviting user:", error);
+      toast.error("Failed to invite user");
+    }
+  };
+  
+  // Handle resource sharing
+  const handleShareResource = async () => {
+    if (!selectedTeam || !selectedResource) {
+      toast.error("Team and resource are required");
+      return;
+    }
+    
+    try {
+      await shareResource(selectedResource, resourceType, selectedTeam, sharePermission);
+      toast.success("Resource shared successfully");
+      setShareOpen(false);
+    } catch (error) {
+      console.error("Error sharing resource:", error);
+      toast.error("Failed to share resource");
+    }
+  };
+  
+  // Handle team deletion
+  const handleDeleteTeam = async (teamId: string) => {
+    try {
+      await deleteTeam(teamId);
+      toast.success("Team deleted successfully");
+      
+      // If the deleted team was selected, clear the selection
+      if (selectedTeam === teamId) {
+        setSelectedTeam(null);
+      }
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast.error("Failed to delete team");
+    }
+  };
+  
+  // Handle removing a team member
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      await removeTeamMember(memberId);
+      toast.success("Member removed successfully");
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member");
+    }
+  };
+  
+  // Handle unsharing a resource
+  const handleUnshareResource = async (shareId: string) => {
+    try {
+      await unshareResource(shareId);
+      toast.success("Resource unshared successfully");

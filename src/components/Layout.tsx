@@ -4,7 +4,7 @@ import { AccountMenu } from './auth/AccountMenu';
 import { SidebarProvider, useSidebar } from './ui/sidebar';
 import { ThemeToggle } from './ui/theme-toggle';
 import { Separator } from './ui/separator';
-import { Menu } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface LayoutProps {
@@ -28,17 +28,15 @@ function LayoutContent({ children }: LayoutProps) {
       <AppSidebar />
       <div className="flex-1 flex flex-col w-full">
         <header className="flex h-14 items-center border-b px-4 lg:px-6 bg-background/90 backdrop-blur-sm sticky top-0 z-10">
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              aria-label="Toggle sidebar"
-              className="mr-2"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
+            className="mr-2 hover:bg-primary/10 hover:text-primary"
+          >
+            <PanelLeft className="h-5 w-5" />
+          </Button>
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">
             <ThemeToggle />

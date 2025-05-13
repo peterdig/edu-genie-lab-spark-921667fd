@@ -20,6 +20,7 @@ export function LabSimulation({ lab }: LabSimulationProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isNarrating, setIsNarrating] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState("sim");
 
   useEffect(() => {
     // Simulate loading
@@ -51,155 +52,183 @@ export function LabSimulation({ lab }: LabSimulationProps) {
     });
   };
 
+  // Show tabs for mobile view to switch between simulation and guide
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      <div className="md:col-span-2">
-        <Card className="h-full flex flex-col border-opacity-40 bg-opacity-30 backdrop-blur-md bg-gradient-to-br from-white/30 to-white/10 dark:from-gray-900/50 dark:to-gray-900/30 shadow-md">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/labs')} className="hover:bg-background/50">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <CardTitle>{lab.title}</CardTitle>
+    <div className="space-y-4">
+      {/* Mobile tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="md:hidden mb-2">
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+          <TabsTrigger value="sim" className="text-xs py-1.5 px-2.5 h-8">Simulation</TabsTrigger>
+          <TabsTrigger value="guide" className="text-xs py-1.5 px-2.5 h-8">Lab Guide</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="grid gap-4 md:gap-6 md:grid-cols-3">
+        <div className={cn(
+          "md:col-span-2",
+          activeTab !== "sim" && "hidden md:block"
+        )}>
+          <Card className="h-full flex flex-col border border-border/50">
+            <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/labs')} className="h-8 w-8">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <CardTitle className="text-base sm:text-xl">{lab.title}</CardTitle>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+                  <Badge variant="outline" className="text-xs">
+                    {lab.category}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {lab.gradeLevel}
+                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1 text-xs h-7 sm:h-8"
+                    onClick={handleNarration}
+                    disabled={isNarrating}
+                  >
+                    <Volume2 className="h-3.5 w-3.5" />
+                    <span>{isNarrating ? "Narrating..." : "Narrate"}</span>
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Badge variant="outline" className="backdrop-blur-md bg-background/70 shadow-sm border-primary/20">
-                  {lab.category}
-                </Badge>
-                <Badge variant="outline" className="backdrop-blur-md bg-background/70 shadow-sm border-primary/20">
-                  {lab.gradeLevel}
-                </Badge>
+              <CardDescription className="text-xs sm:text-sm mt-2 line-clamp-2 sm:line-clamp-none">{lab.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow p-0 px-3 sm:px-6">
+              <div className="w-full h-[250px] sm:h-[400px] bg-muted rounded-md overflow-hidden relative">
+                {isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-primary mb-3 sm:mb-4"></div>
+                      <p className="text-muted-foreground text-sm">Loading simulation...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <iframe 
+                    src={lab.url} 
+                    title={lab.title}
+                    className="w-full h-full border-0"
+                    allowFullScreen
+                  ></iframe>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between border-t pt-3 sm:pt-6 px-3 sm:px-6 pb-3 sm:pb-6">
               <Button 
                 variant="outline" 
-                size="sm" 
-                  className="flex items-center gap-2 backdrop-blur-sm"
-                onClick={handleNarration}
-                disabled={isNarrating}
+                onClick={() => navigate("/labs")} 
+                className="text-xs sm:text-sm h-8"
               >
-                <Volume2 className="h-4 w-4" />
-                <span>{isNarrating ? "Narrating..." : "Narrate Lab"}</span>
+                Back to Labs
               </Button>
-              </div>
-            </div>
-            <CardDescription>{lab.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow">
-            <div className="w-full h-[400px] bg-muted rounded-md overflow-hidden relative">
-              {isLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                    <p className="text-muted-foreground">Loading simulation...</p>
-                  </div>
+              <Button 
+                className="flex items-center gap-1 text-xs sm:text-sm h-8"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Open in Full Screen</span>
+                <span className="sm:hidden">Full Screen</span>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        
+        <div className={cn(
+          "",
+          activeTab !== "guide" && "hidden md:block"
+        )}>
+          <Card className="h-full flex flex-col border border-border/50">
+            <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2">
+              <CardTitle className="text-base sm:text-lg">Lab Guide</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow p-0">
+              <Tabs defaultValue="instructions" className="w-full">
+                <div className="px-3 sm:px-4">
+                  <TabsList className="grid grid-cols-2 bg-muted/80 w-full h-8">
+                    <TabsTrigger value="instructions" className="text-xs py-1.5">Instructions</TabsTrigger>
+                    <TabsTrigger value="questions" className="text-xs py-1.5">Questions</TabsTrigger>
+                  </TabsList>
                 </div>
-              ) : (
-                <iframe 
-                  src={lab.url} 
-                  title={lab.title}
-                  className="w-full h-full border-0"
-                  allowFullScreen
-                ></iframe>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t pt-6">
-            <Button variant="outline" onClick={() => navigate("/labs")} className="backdrop-blur-sm">
-              Back to Labs
-            </Button>
-            <Button className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-300">
-              <ExternalLink className="h-4 w-4" />
-              <span>Open in Full Screen</span>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-      
-      <div>
-        <Card className="h-full flex flex-col border-opacity-40 bg-opacity-30 backdrop-blur-md bg-gradient-to-br from-white/30 to-white/10 dark:from-gray-900/50 dark:to-gray-900/30 shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Lab Guide</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow p-0">
-            <Tabs defaultValue="instructions" className="w-full">
-              <TabsList className="grid grid-cols-2 m-4 bg-background/50 backdrop-blur-sm">
-                <TabsTrigger value="instructions" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">Instructions</TabsTrigger>
-                <TabsTrigger value="questions" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">Questions</TabsTrigger>
-              </TabsList>
-              
-              <ScrollArea className="h-[500px]">
-                <TabsContent value="instructions" className="p-4 pt-0 m-0">
-                  <div className="space-y-4">
-                    <div className="bg-background/50 backdrop-blur-sm rounded-lg p-4">
-                      <h4 className="font-medium mb-2">Learning Objectives</h4>
-                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                        {lab.objectives.map((objective, i) => (
-                          <li key={i}>{objective}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium mb-2">Steps</h4>
-                      <Accordion type="single" collapsible className="w-full">
-                        {lab.steps.map((step, i) => (
-                          <AccordionItem key={i} value={`step-${i}`} className={cn(
-                            "border rounded-md mb-2 overflow-hidden",
-                            "backdrop-blur-sm bg-background/30",
-                            completedSteps.includes(i) && "border-green-500/30 bg-green-50/10"
-                          )}>
-                            <AccordionTrigger className="text-sm px-4 hover:bg-background/50">
-                              <div className="flex items-center gap-2">
-                                {completedSteps.includes(i) && (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                )}
-                                <span>Step {i + 1}: {step.title}</span>
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="text-sm text-muted-foreground px-4 pb-4">
-                              <div className="mb-3">{step.description}</div>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className={cn(
-                                  "text-xs",
-                                  completedSteps.includes(i) 
-                                    ? "bg-green-500/10 hover:bg-green-500/20 text-green-600" 
-                                    : "bg-background/50"
-                                )}
-                                onClick={() => toggleStepCompletion(i)}
-                              >
-                                {completedSteps.includes(i) ? "Mark as Incomplete" : "Mark as Complete"}
-                              </Button>
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </div>
-                  </div>
-                </TabsContent>
                 
-                <TabsContent value="questions" className="p-4 pt-0 m-0">
-                  <div className="space-y-6">
-                    {lab.questions.map((question, i) => (
-                      <div key={i} className="border rounded-md p-4 backdrop-blur-sm bg-background/30 hover:bg-background/40 transition-colors">
-                        <p className="font-medium mb-3">Question {i + 1}:</p>
-                        <p className="mb-3 text-sm text-muted-foreground">{question.text}</p>
-                        <Button 
-                          variant="secondary" 
-                          size="sm"
-                          className="bg-secondary/50 backdrop-blur-sm hover:bg-secondary/70"
-                        >
-                          View Hint
-                        </Button>
+                <ScrollArea className="h-[300px] sm:h-[500px]">
+                  <TabsContent value="instructions" className="p-3 sm:p-4 pt-3 m-0">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="bg-muted/30 rounded-lg p-3">
+                        <h4 className="font-medium mb-1.5 text-sm sm:text-base">Learning Objectives</h4>
+                        <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground">
+                          {lab.objectives.map((objective, i) => (
+                            <li key={i}>{objective}</li>
+                          ))}
+                        </ul>
                       </div>
-                    ))}
-                  </div>
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </CardContent>
-        </Card>
+                      
+                      <div>
+                        <h4 className="font-medium mb-1.5 text-sm sm:text-base">Steps</h4>
+                        <Accordion type="single" collapsible className="w-full">
+                          {lab.steps.map((step, i) => (
+                            <AccordionItem key={i} value={`step-${i}`} className={cn(
+                              "border rounded-md mb-2 overflow-hidden",
+                              "bg-muted/20",
+                              completedSteps.includes(i) && "border-green-500/30 bg-green-50/10"
+                            )}>
+                              <AccordionTrigger className="text-xs sm:text-sm px-3 hover:bg-muted/30 py-2">
+                                <div className="flex items-center gap-1.5">
+                                  {completedSteps.includes(i) && (
+                                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                  )}
+                                  <span>Step {i + 1}: {step.title}</span>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="text-xs sm:text-sm text-muted-foreground px-3 pb-3">
+                                <div className="mb-2">{step.description}</div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className={cn(
+                                    "text-xs h-7",
+                                    completedSteps.includes(i) 
+                                      ? "bg-green-500/10 hover:bg-green-500/20 text-green-600" 
+                                      : "bg-muted/30"
+                                  )}
+                                  onClick={() => toggleStepCompletion(i)}
+                                >
+                                  {completedSteps.includes(i) ? "Mark as Incomplete" : "Mark as Complete"}
+                                </Button>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="questions" className="p-3 sm:p-4 pt-3 m-0">
+                    <div className="space-y-4 sm:space-y-6">
+                      {lab.questions.map((question, i) => (
+                        <div key={i} className="border rounded-md p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
+                          <p className="font-medium mb-2 text-xs sm:text-sm">Question {i + 1}:</p>
+                          <p className="mb-2 text-xs text-muted-foreground">{question.text}</p>
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            className="text-xs h-7"
+                          >
+                            View Hint
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </ScrollArea>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

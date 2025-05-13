@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, ErrorInfo, ReactNode, useRef } from "react";
+import { useState, useEffect, Component, ErrorInfo, ReactNode, useRef, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { LessonGenerator } from "@/components/lessons/LessonGenerator";
 import { LessonDisplay } from "@/components/lessons/LessonDisplay";
@@ -14,7 +14,7 @@ import { generateTeachingTip } from "@/lib/api";
 import { fetchRecommendedModels } from "@/lib/openrouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard, Clock, Save } from "lucide-react";
+import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard, Clock, Save, SortAsc } from "lucide-react";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
 
 // Error boundary component to catch rendering errors
 class ErrorBoundary extends Component<
@@ -209,6 +210,8 @@ export default function Lessons() {
   const [showToolbox, setShowToolbox] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const teachingTipRef = useRef<HTMLDivElement>(null);
+  const [sortOptionsOpen, setSortOptionsOpen] = useState(false);
+  const [filterOptionsOpen, setFilterOptionsOpen] = useState(false);
   
   // Handle specific lesson viewing if ID is provided in URL
   useEffect(() => {
@@ -424,62 +427,105 @@ export default function Lessons() {
   
   return (
     <Layout>
-      <div className="w-full max-w-7xl mx-auto">
-        <div className="flex justify-between mb-4">
-          <h1 className="text-3xl font-bold tracking-tight">Lessons</h1>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between mb-4 gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Lessons</h1>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center flex-wrap gap-2">
             <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
                     size="icon"
                     onClick={() => setKeyboardShortcutsOpen(true)}
-              >
+                  >
                     <Keyboard className="h-4 w-4" />
-              </Button>
-                  </TooltipTrigger>
+                  </Button>
+                </TooltipTrigger>
                 <TooltipContent>
                   Keyboard Shortcuts
-                  </TooltipContent>
-                </Tooltip>
+                </TooltipContent>
+              </Tooltip>
             </TooltipProvider>
-                
-              <DarkModeToggle />
-            </div>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOptionsOpen(true)}
+                  >
+                    <SortAsc className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Sort Options
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setFilterOptionsOpen(true)}
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Filter Options
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <Input
+              placeholder="Search lessons..."
+              className="w-[150px] sm:w-[200px] h-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
+        </div>
 
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="w-full md:w-3/4">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="w-full lg:w-3/4">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="create">Create Lesson</TabsTrigger>
-                <TabsTrigger value="saved">
-                  <span className="flex items-center">
-                    <Save className="mr-1 h-4 w-4" />
-                    Saved
-                    {savedLessonsList.length > 0 && 
-                      <Badge variant="secondary" className="ml-1">{savedLessonsList.length}</Badge>
-                    }
-                  </span>
-                          </TabsTrigger>
-                <TabsTrigger value="bookmarked">Bookmarked</TabsTrigger>
-                <TabsTrigger value="recent">
-                  <span className="flex items-center">
-                    <Clock className="mr-1 h-4 w-4" />
-                    Recent
-                    {recentLessons.length > 0 && 
-                      <Badge variant="secondary" className="ml-1">{recentLessons.length}</Badge>
-                    }
-                  </span>
-                          </TabsTrigger>
-                  </TabsList>
-                
+              <div className="overflow-x-auto pb-2 no-scrollbar">
+                <TabsList className="w-auto inline-flex min-w-full">
+                  <TabsTrigger value="create">Create Lesson</TabsTrigger>
+                  <TabsTrigger value="saved">
+                    <span className="flex items-center">
+                      <Save className="mr-1 h-4 w-4" />
+                      Saved
+                      {savedLessonsList.length > 0 && 
+                        <Badge className="ml-1" variant="secondary">{savedLessonsList.length}</Badge>
+                      }
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="bookmarked">Bookmarked</TabsTrigger>
+                  <TabsTrigger value="recent">
+                    <span className="flex items-center">
+                      <Clock className="mr-1 h-4 w-4" />
+                      Recent
+                      {recentLessons.length > 0 && 
+                        <Badge className="ml-1" variant="secondary">{recentLessons.length}</Badge>
+                      }
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
               <TabsContent value="create" className="space-y-4">
                 {generatedLesson ? (
                   <ErrorBoundary>
+                    <div className="overflow-x-auto">
                       <LessonDisplay lesson={generatedLesson} onReset={handleReset} />
+                    </div>
                   </ErrorBoundary>
                 ) : (
                   <ErrorBoundary>
@@ -489,14 +535,14 @@ export default function Lessons() {
               </TabsContent>
               
               <TabsContent value="saved" className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                   <h2 className="text-lg font-medium">Saved Lessons</h2>
                   <Button variant="outline" size="sm" onClick={loadSavedLessons}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                            </Button>
-                        </div>
-                        
+                  </Button>
+                </div>
+                
                 {savedLessonsList.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
@@ -504,14 +550,14 @@ export default function Lessons() {
                       <p className="text-center text-muted-foreground">
                         No saved lessons yet. Click the save button on a lesson to save it here.
                       </p>
-                      </CardContent>
-                    </Card>
+                    </CardContent>
+                  </Card>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {savedLessonsList.map((lesson) => (
-                          <ContentCard
-                            key={lesson.id}
-                            title={lesson.title}
+                      <ContentCard
+                        key={lesson.id}
+                        title={lesson.title}
                         description={lesson.overview}
                         metadata={`Grade ${lesson.gradeLevel} • ${lesson.subject}`}
                         icon={<Save className="h-4 w-4 text-primary" />}
@@ -519,10 +565,10 @@ export default function Lessons() {
                         tags={lesson.tags.slice(0, 2)}
                         onClick={() => handleLessonSelect(lesson.id)}
                       />
-                        ))}
-                      </div>
-                    )}
-                </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
               
               <TabsContent value="bookmarked" className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -533,7 +579,7 @@ export default function Lessons() {
                   </Button>
                 </div>
                 
-                    {bookmarkedLessons.length === 0 ? (
+                {bookmarkedLessons.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                       <BookmarkCheck className="h-12 w-12 text-muted-foreground mb-4" />
@@ -559,17 +605,17 @@ export default function Lessons() {
                         />
                       );
                     })}
-                              </div>
+                  </div>
                 )}
               </TabsContent>
               
               <TabsContent value="recent" className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-medium">Recently Viewed Lessons</h2>
-                                <Button 
+                  <Button 
                     variant="outline" 
-                                  size="sm" 
-                                  onClick={() => {
+                    size="sm" 
+                    onClick={() => {
                       const recentIds = getRecentLessons();
                       if (recentIds.length > 0) {
                         const recentDetails = recentIds
@@ -585,8 +631,8 @@ export default function Lessons() {
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                                </Button>
-                              </div>
+                  </Button>
+                </div>
                 
                 {recentLessons.length === 0 ? (
                   <Card>
@@ -595,10 +641,10 @@ export default function Lessons() {
                       <p className="text-center text-muted-foreground">
                         No recently viewed lessons. View a lesson to have it appear here.
                       </p>
-                            </CardContent>
-                          </Card>
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recentLessons.map((lesson) => (
                       <ContentCard
                         key={lesson.id}
@@ -610,17 +656,17 @@ export default function Lessons() {
                         tags={lesson.tags.slice(0, 2)}
                         onClick={() => handleLessonSelect(lesson.id)}
                       />
-                        ))}
-                      </div>
-                    )}
-                </TabsContent>
-              </Tabs>
-            </div>
-            
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+          
           <div className="w-full md:w-1/4">
             <div className="sticky top-24">
               {/* Render the toolbox component if enabled */}
-            {showToolbox && (
+              {showToolbox && (
                 <div className="mb-6">
                   <TeacherToolbox />
                 </div>
@@ -674,6 +720,106 @@ export default function Lessons() {
             </DialogDescription>
           </DialogHeader>
           <KeyboardShortcutsDialog />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sortOptionsOpen} onOpenChange={setSortOptionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sort Options</DialogTitle>
+            <DialogDescription>
+              Choose how to sort your lessons
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  // Sort implementation goes here
+                  setSortOptionsOpen(false);
+                }}
+              >
+                Newest First
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  // Sort implementation goes here
+                  setSortOptionsOpen(false);
+                }}
+              >
+                Oldest First
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  // Sort implementation goes here
+                  setSortOptionsOpen(false);
+                }}
+              >
+                Alphabetical (A-Z)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterOptionsOpen} onOpenChange={setFilterOptionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filter Options</DialogTitle>
+            <DialogDescription>
+              Filter your lessons by subject, grade level, or other criteria
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Subject</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  <SelectItem value="math">Mathematics</SelectItem>
+                  <SelectItem value="science">Science</SelectItem>
+                  <SelectItem value="english">English</SelectItem>
+                  <SelectItem value="history">History</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Grade Level</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select grade level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="k-2">K-2</SelectItem>
+                  <SelectItem value="3-5">3-5</SelectItem>
+                  <SelectItem value="6-8">6-8</SelectItem>
+                  <SelectItem value="9-12">9-12</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setFilterOptionsOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setFilterOptionsOpen(false)}>
+                Apply Filters
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </Layout>

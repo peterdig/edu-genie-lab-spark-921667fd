@@ -9,6 +9,7 @@ import { generateTeachingTip } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 
 // Helper function to add a lesson to recent lessons
 const addRecentLesson = (lessonId: string) => {
@@ -263,350 +264,383 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
   }, []);
   
   return (
-    <Card className="w-full animate-fade-in">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl">{lesson.title}</CardTitle>
-          <div className="flex space-x-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={toggleBookmark} 
-                    className={isBookmarked ? "text-primary" : ""}
-                  >
-                    {isBookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isBookmarked ? 'Remove bookmark' : 'Bookmark lesson'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleSave}
-                    className={isSaved ? "text-primary" : ""}
-                    disabled={isSaved}
-                  >
-                    <Save className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSaved ? 'Lesson already saved' : 'Save lesson'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <Button variant="ghost" size="icon" onClick={() => setShowExportOptions(!showExportOptions)} title="Download">
-              <Download className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handlePrint} title="Print">
-              <Printer className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleShare} title="Share">
-              <Share2 className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-        
-        {showExportOptions && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button 
-              size="sm" 
-              variant={exportFormat === "text" ? "default" : "outline"} 
-              onClick={() => { setExportFormat("text"); handleDownload(); }}
-              className="flex items-center gap-2"
-            >
-              <File className="h-4 w-4" />
-              Text
-            </Button>
-            <Button 
-              size="sm" 
-              variant={exportFormat === "pdf" ? "default" : "outline"} 
-              onClick={() => { setExportFormat("pdf"); handleDownload(); }}
-              className="flex items-center gap-2"
-            >
-              <File className="h-4 w-4" />
-              PDF
-            </Button>
-            <Button 
-              size="sm" 
-              variant={exportFormat === "word" ? "default" : "outline"} 
-              onClick={() => { setExportFormat("word"); handleDownload(); }}
-              className="flex items-center gap-2"
-            >
-              <File className="h-4 w-4" />
-              Word
-            </Button>
-          </div>
-        )}
-        
-        <div className="flex flex-wrap gap-2 mt-2">
-          <div className="bg-muted text-sm px-2 py-1 rounded-md inline-flex items-center">
-            <Calendar className="h-3 w-3 mr-1" />
-            <span>{lesson.duration}</span>
-          </div>
-          <div className="bg-muted text-sm px-2 py-1 rounded-md inline-flex items-center">
-            <Book className="h-3 w-3 mr-1" />
-            <span>Grade {lesson.gradeLevel}</span>
-          </div>
-          {lesson.subject && (
-            <div className="bg-primary/10 text-sm px-2 py-1 rounded-md inline-flex items-center">
-              <span>{lesson.subject}</span>
-            </div>
-          )}
-          {lesson.tags && lesson.tags.map((tag, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {tag}
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">{lesson.title}</h2>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <Badge variant="outline" className="font-normal">
+              Grade {lesson.gradeLevel}
             </Badge>
-          ))}
+            <Badge variant="outline" className="font-normal">
+              {lesson.subject}
+            </Badge>
+            <Badge variant="outline" className="font-normal">
+              {lesson.duration}
+            </Badge>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-6">
+        
+        <div className="flex flex-wrap gap-2 justify-end mt-2 sm:mt-0">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isSaved ? "default" : "outline"}
+                  onClick={handleSave}
+                  disabled={isSaved}
+                  className="h-8"
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  {isSaved ? "Saved" : "Save"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isSaved ? "Lesson saved" : "Save lesson"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={toggleBookmark}
+                  className="h-8"
+                >
+                  {isBookmarked ? (
+                    <BookmarkCheck className="h-4 w-4" />
+                  ) : (
+                    <Bookmark className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isBookmarked ? "Remove bookmark" : "Bookmark lesson"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowExportOptions(!showExportOptions)}
+                  className="h-8"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export lesson plan</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrint}
+                  className="h-8"
+                >
+                  <Printer className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Print lesson plan</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleShare}
+                  className="h-8"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Share lesson plan</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+      
+      {showExportOptions && (
+        <Card className="mb-4">
+          <CardContent className="pt-4">
+            <div className="flex flex-col space-y-4">
+              <div className="space-y-2 w-full">
+                <h3 className="text-sm font-medium">Export Format</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="sm"
+                    variant={exportFormat === "text" ? "default" : "outline"}
+                    onClick={() => setExportFormat("text")}
+                    className="h-8"
+                  >
+                    <File className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span>Text</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={exportFormat === "pdf" ? "default" : "outline"}
+                    onClick={() => setExportFormat("pdf")}
+                    className="h-8"
+                  >
+                    <File className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span>PDF</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={exportFormat === "word" ? "default" : "outline"}
+                    onClick={() => setExportFormat("word")}
+                    className="h-8"
+                  >
+                    <File className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span>Word</span>
+                  </Button>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleDownload}
+                className="h-8 w-full"
+              >
+                <ArrowDownToLine className="h-4 w-4 mr-2" />
+                Download {exportFormat.toUpperCase()}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
+        <div className="overflow-x-auto pb-2 no-scrollbar">
+          <TabsList className="w-auto inline-flex min-w-full justify-start">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="plan">Lesson Plan</TabsTrigger>
+            <TabsTrigger value="lesson-plan">Lesson Plan</TabsTrigger>
             <TabsTrigger value="assessment">Assessment</TabsTrigger>
             <TabsTrigger value="materials">Materials</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
+        </div>
+        
+        <TabsContent value="overview" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Lesson Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-md font-medium mb-1">Description</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {lesson.overview}
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="text-md font-medium mb-1">Learning Objectives</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {lesson.objectives.map((objective, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">
+                        {objective}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div>
+                  <h3 className="text-md font-medium mb-1">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {lesson.tags.map((tag, i) => (
+                      <Badge key={i} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           
-          <TabsContent value="overview" className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">Description</h3>
-              <p className="text-muted-foreground">{lesson.overview}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-medium mb-2">Learning Objectives</h3>
-              <ul className="list-disc list-inside space-y-1">
-                {lesson.objectives.map((objective, index) => (
-                  <li key={index} className="text-muted-foreground">{objective}</li>
-                ))}
-              </ul>
-            </div>
-
-            {teachingTip && (
-              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mt-6">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-medium text-sm mb-2">Teaching Tip</h4>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 w-6 -mt-1" 
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Teaching Tip</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchTeachingTip}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground italic">Loading teaching tip...</p>
+              ) : teachingTip ? (
+                <p className="text-sm text-muted-foreground">{teachingTip}</p>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    No teaching tip loaded yet.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={fetchTeachingTip}
                     disabled={isLoading}
                   >
-                    <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                    Generate Teaching Tip
                   </Button>
                 </div>
-                <p className="text-sm italic">{teachingTip}</p>
-              </div>
-            )}
-
-            {!teachingTip && (
-              <div className="mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={fetchTeachingTip}
-                  disabled={isLoading}
-                  className="w-full"
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="lesson-plan" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Detailed Lesson Plan</CardTitle>
+                {/* Edit button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
                 >
-                  {isLoading ? "Loading..." : "Get Teaching Tip"}
+                  {isEditing ? (
+                    <>
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Edit
+                    </>
+                  )}
                 </Button>
               </div>
-            )}
-            
-            <Alert className="bg-accent/40 border-accent mt-4">
-              <AlertDescription>
-                <span className="font-medium">Standards alignment: </span>
-                This lesson helps meet standards for {lesson.subject} at the {lesson.gradeLevel} grade level.
-              </AlertDescription>
-            </Alert>
-          </TabsContent>
-          
-          <TabsContent value="plan">
-            <div className="space-y-4">
+            </CardHeader>
+            <CardContent>
               {isEditing ? (
                 <div className="space-y-4">
-                  <textarea 
-                    className="w-full min-h-[300px] p-4 border rounded-md" 
+                  <Textarea
                     value={customPlan}
                     onChange={(e) => setCustomPlan(e.target.value)}
+                    rows={15}
+                    className="font-mono text-sm"
                   />
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCustomPlan(lesson.plan || "");
+                        setIsEditing(false);
+                      }}
+                    >
                       Cancel
                     </Button>
-                    <Button onClick={savePlanEdits}>
+                    <Button
+                      size="sm"
+                      onClick={savePlanEdits}
+                    >
                       Save Changes
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="prose max-w-none">
-                  <div className="flex justify-end mb-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                      className="flex items-center gap-1"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      <span>Edit Plan</span>
-                    </Button>
-                  </div>
-                  
-                  {typeof lesson.plan === 'string' && lesson.plan ? (
-                    lesson.plan.split('\n\n').map((paragraph, index) => (
-                      <p key={index} className="mb-4 text-muted-foreground">
-                        {paragraph}
-                      </p>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">No detailed plan available.</p>
-                  )}
+                <div className="whitespace-pre-line text-sm">
+                  {customPlan || lesson.plan}
                 </div>
               )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="assessment">
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-2">Assessment Strategy</h3>
-                <div className="prose max-w-none">
-                  <p className="text-muted-foreground">{lesson.assessment}</p>
-                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="assessment" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Assessment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="whitespace-pre-line text-sm">
+                {lesson.assessment}
               </div>
-              
-              {lesson.questions && lesson.questions.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-medium mb-4">Sample Questions</h3>
-                  <div className="space-y-4">
-                    {lesson.questions.map((question, index) => (
-                      <div key={index} className="border rounded-lg p-4 hover-lift">
-                        <p className="font-medium mb-2">{index + 1}. {question.text}</p>
-                        {question.options && (
-                          <ul className="space-y-2 mt-2">
-                            {question.options.map((option, optIndex) => (
-                              <li key={optIndex} className="flex items-start gap-2">
-                                <div className="min-w-4 mt-0.5">
-                                  {option === question.answer ? (
-                                    <CheckSquare className="h-4 w-4 text-primary" />
-                                  ) : (
-                                    <div className="h-4 w-4 border rounded" />
-                                  )}
-                                </div>
-                                <span>{option}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="materials">
-            <div>
-              <ul className="space-y-2">
-                {lesson.materials.map((material, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <span className="bg-muted w-6 h-6 rounded-full flex items-center justify-center text-xs">
-                      {index + 1}
-                    </span>
-                    <span>{material}</span>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="materials" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Required Materials</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside space-y-2">
+                {lesson.materials.map((material, i) => (
+                  <li key={i} className="text-sm">
+                    {material}
                   </li>
                 ))}
               </ul>
-              
-              <div className="mt-8">
-                <h3 className="font-medium mb-4">Recommended Resources</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="hover-lift">
-                    <CardContent className="p-4">
-                      <h4 className="text-sm font-medium">Educational Videos</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Find subject-related videos from trusted educational sources.
-                      </p>
-                      <Button variant="link" className="px-0 py-1 h-auto text-xs" onClick={() => toast.info("This would open a resource finder dialog")}>
-                        Browse Videos
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card className="hover-lift">
-                    <CardContent className="p-4">
-                      <h4 className="text-sm font-medium">Printable Worksheets</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Download ready-to-use worksheets for this lesson.
-                      </p>
-                      <Button variant="link" className="px-0 py-1 h-auto text-xs" onClick={() => toast.info("This would open a worksheet generator")}>
-                        Generate Worksheets
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="notes">
-            <div className="space-y-4">
-              <h3 className="font-medium">Teacher Notes</h3>
-              <p className="text-xs text-muted-foreground">Add your personal notes, reflections, or reminders for this lesson plan.</p>
-              
-              <textarea
-                className="w-full min-h-[200px] p-4 border rounded-md"
-                placeholder="Add your notes here..."
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="notes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Teaching Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Add your notes about this lesson here..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                rows={8}
               />
-              
-              <Button onClick={saveNotes} className="w-full sm:w-auto">Save Notes</Button>
-              
-              <div className="mt-6">
-                <h4 className="text-sm font-medium mb-2">Tips for effective note-taking:</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Record what worked well and what needs improvement</li>
-                  <li>Note any modifications made during the lesson</li>
-                  <li>Track student engagement and understanding</li>
-                  <li>Add ideas for next time you teach this lesson</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-      <CardFooter className="flex justify-between border-t pt-6">
-        <Button variant="outline" onClick={onReset}>
-          Create New Lesson
+              <Button 
+                onClick={saveNotes} 
+                className="mt-4"
+                size="sm"
+              >
+                Save Notes
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <div className="flex justify-between">
+        <Button
+          variant="outline"
+          onClick={onReset}
+        >
+          Back to Generator
         </Button>
-        <div className="flex gap-2">
-          {!isSaved && (
-            <Button onClick={handleSave} className="flex items-center gap-2">
-              <Save className="h-4 w-4" />
-              <span>Save Lesson</span>
-            </Button>
-          )}
-          <Button className="flex items-center gap-2">
-            <Edit className="h-4 w-4" />
-            <span>Edit Lesson</span>
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+        
+        <Button
+          onClick={handleSave}
+          disabled={isSaved}
+        >
+          {isSaved ? "Saved to Library" : "Save to My Library"}
+        </Button>
+      </div>
+    </div>
   );
 }

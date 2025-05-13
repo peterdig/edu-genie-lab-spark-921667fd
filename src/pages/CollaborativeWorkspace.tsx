@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from "react";
+import React from 'react';
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/lib/AuthContext.jsx";
 import { useCollaboration } from "@/hooks/useCollaboration";
@@ -98,6 +99,14 @@ export default function CollaborativeWorkspace() {
   // Use our real-time collaboration hook with memoized team ID
   const memoizedTeamId = useMemo(() => activeTeamId, [activeTeamId]);
   
+  // Track component mount status to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
   const {
     documents,
     currentDocument,
@@ -147,7 +156,7 @@ export default function CollaborativeWorkspace() {
   // Stable loading derived state that doesn't flicker
   const isLoading = useMemo(() => getStableLoading(), [getStableLoading]);
   
-  // More aggressive document selection with stability timeout
+  // More efficient document selection with stability timeout
   const handleDocumentSelect = useCallback(async (documentId: string) => {
     // Skip if already selected
     if (documentIdRef.current === documentId) {
@@ -173,18 +182,23 @@ export default function CollaborativeWorkspace() {
     } catch (error) {
       console.error("Error selecting document:", error);
     } finally {
-      // Ensure minimum loading time of 500ms to prevent flickering
+      // Check if component is still mounted
+      if (!isMountedRef.current) return;
+      
+      // Ensure minimum loading time of 300ms to prevent flickering
       const elapsed = Date.now() - lastUpdatedRef.current;
-      const remainingTime = Math.max(500 - elapsed, 50);
+      const remainingTime = Math.max(300 - elapsed, 50);
       
       loadingTimeoutRef.current = setTimeout(() => {
         lastUpdatedRef.current = Date.now();
-        setLocalLoading(false);
+        if (isMountedRef.current) {
+          setLocalLoading(false);
+        }
         
         // Extra stability timeout to prevent immediate flicker after loading
         stateStabilityTimeoutRef.current = setTimeout(() => {
           // Nothing to do here, just preventing any state changes
-        }, 200);
+        }, 100);
       }, remainingTime);
     }
   }, [selectDocument]);
@@ -192,8 +206,12 @@ export default function CollaborativeWorkspace() {
   // Cleanup loading timeout
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
+      }
+      if (stateStabilityTimeoutRef.current) {
+        clearTimeout(stateStabilityTimeoutRef.current);
       }
     };
   }, []);
@@ -215,6 +233,8 @@ export default function CollaborativeWorkspace() {
     
     // Batch update with delay
     loadingTimeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      
       if (pendingDocumentStateRef.current?.content) {
         setDocumentContent(pendingDocumentStateRef.current.content);
         pendingDocumentStateRef.current.content = undefined;
@@ -224,7 +244,7 @@ export default function CollaborativeWorkspace() {
   
   // Handle saving document with throttling to prevent excessive API calls
   const handleSaveDocument = useCallback(async () => {
-    if (isSaving || !currentDocument) return;
+    if (isSaving || !currentDocument || !isMountedRef.current) return;
     
     setIsSaving(true);
     try {
@@ -232,9 +252,13 @@ export default function CollaborativeWorkspace() {
       // Successfully saved
     } catch (error) {
       console.error("Error saving document:", error);
-      toast.error("Failed to save document");
+      if (isMountedRef.current) {
+        toast.error("Failed to save document");
+      }
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+      }
     }
   }, [currentDocument, documentContent, saveDocument, isSaving]);
   
@@ -257,12 +281,14 @@ export default function CollaborativeWorkspace() {
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
       contentRef.current = documentContent;
-      forceRender({}); // Force a render after the RAF
+      if (isMountedRef.current) {
+        forceRender({}); // Force a render after the RAF
+      }
     });
     return () => cancelAnimationFrame(handle);
   }, [documentContent]);
   
-  // Render the document editor with extreme optimization
+  // Render the document editor with extreme optimization - memoized component
   const renderDocumentEditor = useMemo(() => {
     // Wrap in Suspense/lazy for code splitting
     return (
@@ -281,23 +307,29 @@ export default function CollaborativeWorkspace() {
   
   // Handle sending a new chat message with debounce
   const handleSendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !user || isSending) return;
+    if (!newMessage.trim() || !user || isSending || !isMountedRef.current) return;
     
     setIsSending(true);
     try {
       await sendChatMessage(newMessage);
-      setNewMessage("");
+      if (isMountedRef.current) {
+        setNewMessage("");
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      if (isMountedRef.current) {
+        toast.error("Failed to send message");
+      }
     } finally {
-      setIsSending(false);
+      if (isMountedRef.current) {
+        setIsSending(false);
+      }
     }
   }, [newMessage, user, sendChatMessage, isSending]);
   
   // Handle creating a new document
   const handleCreateDocument = useCallback(async () => {
-    if (!newDocTitle.trim() || isCreating) {
+    if (!newDocTitle.trim() || isCreating || !isMountedRef.current) {
       toast.error("Please enter a title for the document");
       return;
     }
@@ -305,22 +337,28 @@ export default function CollaborativeWorkspace() {
     setIsCreating(true);
     try {
       const newDoc = await createDocument(newDocTitle, "", newDocType);
-      if (newDoc) {
+      if (newDoc && isMountedRef.current) {
         toast.success("Document created successfully");
         setNewDocTitle("");
         setShowCreateForm(false);
         // Use a timeout to ensure state updates before selecting document
         setTimeout(() => {
-          handleDocumentSelect(newDoc.id);
-        }, 100);
-      } else {
+          if (isMountedRef.current) {
+            handleDocumentSelect(newDoc.id);
+          }
+        }, 50);
+      } else if (isMountedRef.current) {
         toast.error("Failed to create document");
       }
     } catch (error) {
       console.error("Error creating document:", error);
-      toast.error("Failed to create document");
+      if (isMountedRef.current) {
+        toast.error("Failed to create document");
+      }
     } finally {
-      setIsCreating(false);
+      if (isMountedRef.current) {
+        setIsCreating(false);
+      }
     }
   }, [newDocTitle, newDocType, createDocument, handleDocumentSelect, isCreating]);
   
@@ -328,10 +366,14 @@ export default function CollaborativeWorkspace() {
   const handleLoadVersion = useCallback(async (versionId: string) => {
     try {
       await loadDocumentVersion(versionId);
-      toast.success("Document version loaded");
+      if (isMountedRef.current) {
+        toast.success("Document version loaded");
+      }
     } catch (error) {
       console.error("Error loading document version:", error);
-      toast.error("Failed to load document version");
+      if (isMountedRef.current) {
+        toast.error("Failed to load document version");
+      }
     }
   }, [loadDocumentVersion]);
   
@@ -341,20 +383,26 @@ export default function CollaborativeWorkspace() {
       if (videoEnabled && videoRef.current) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          if (videoRef.current) {
+          if (videoRef.current && isMountedRef.current) {
             videoRef.current.srcObject = stream;
           }
-          toast.success("Video enabled");
+          if (isMountedRef.current) {
+            toast.success("Video enabled");
+          }
         } catch (mediaError) {
           console.error("Error accessing media devices:", mediaError);
-          toast.error("Failed to access camera");
-          setVideoEnabled(false);
+          if (isMountedRef.current) {
+            toast.error("Failed to access camera");
+            setVideoEnabled(false);
+          }
         }
       }
     } catch (error) {
       console.error("Error accessing media devices:", error);
-      toast.error("Failed to access camera");
-      setVideoEnabled(false);
+      if (isMountedRef.current) {
+        toast.error("Failed to access camera");
+        setVideoEnabled(false);
+      }
     }
   }, [videoEnabled]);
   
@@ -381,7 +429,9 @@ export default function CollaborativeWorkspace() {
   // Handle toggling audio
   const toggleAudio = useCallback(() => {
     setAudioEnabled(prev => !prev);
-    toast.success(`Microphone ${audioEnabled ? 'muted' : 'unmuted'}`);
+    if (isMountedRef.current) {
+      toast.success(`Microphone ${audioEnabled ? 'muted' : 'unmuted'}`);
+    }
   }, [audioEnabled]);
   
   // Handle ending call
@@ -391,13 +441,21 @@ export default function CollaborativeWorkspace() {
       stream.getTracks().forEach(track => track.stop());
     }
     
-    setVideoEnabled(false);
-    setAudioEnabled(false);
-    toast.info("Video conference ended");
+    if (isMountedRef.current) {
+      setVideoEnabled(false);
+      setAudioEnabled(false);
+      toast.info("Video conference ended");
+    }
   }, []);
   
-  // For document editor fallback when lazy component is used
-  function DocumentEditor({ content, onChange }: { content: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }) {
+  // Lazy loaded components
+  const DocumentEditorMemo = useMemo(() => React.memo(function DocumentEditor({ 
+    content, 
+    onChange 
+  }: { 
+    content: string, 
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void 
+  }) {
     return (
       <Textarea
         className="w-full h-full rounded-none border-0 resize-none p-4 font-mono text-sm"
@@ -406,7 +464,7 @@ export default function CollaborativeWorkspace() {
         placeholder="Start typing your document content..."
       />
     );
-  }
+  }), []);
   
   // Show loading state with minimum duration
   if (isLoading) {

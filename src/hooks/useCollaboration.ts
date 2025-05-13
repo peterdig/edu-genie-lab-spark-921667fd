@@ -85,6 +85,9 @@ export function useCollaboration() {
   const [dataInitError, setDataInitError] = useState<Error | null>(null);
   // Force localStorage mode for collaboration features
   const [forceLocalStorage, setForceLocalStorage] = useState(true);
+  
+  // Track if fallback data has been initialized
+  const [fallbackInitialized, setFallbackInitialized] = useState(false);
 
   // Use AuthContext to get authentication status
   useEffect(() => {
@@ -121,9 +124,41 @@ export function useCollaboration() {
     }
   }, [authStatus, authUser]);
 
-  // Override the fallback flag for all hooks to force using localStorage
-  const baseFallback = useLocalStorageFallback() || forceLocalStorage;
+  // Override the fallback flag for all hooks - CHANGED to remove forced localStorage
+  const baseFallback = useLocalStorageFallback();
 
+  // Check if server endpoints are accessible
+  useEffect(() => {
+    const checkServerEndpoints = async () => {
+      if (isAuthenticated) {
+        try {
+          // Try to access teams table
+          const { error } = await supabase
+            .from('teams')
+            .select('count')
+            .limit(1);
+          
+          // If no error, we can use server
+          if (!error) {
+            console.log('Supabase tables are accessible, disabling forced localStorage');
+            setForceLocalStorage(false);
+          } else {
+            console.log('Supabase tables not accessible, using localStorage fallback', error);
+            setForceLocalStorage(true);
+          }
+        } catch (error) {
+          console.error('Error checking server endpoints:', error);
+          setForceLocalStorage(true);
+        }
+      }
+    };
+    
+    checkServerEndpoints();
+  }, [isAuthenticated]);
+  
+  // Determine if we should use fallback
+  const shouldUseFallback = baseFallback || forceLocalStorage;
+  
   const { 
     data: teams, 
     loading: teamsLoading, 
@@ -133,7 +168,7 @@ export function useCollaboration() {
     deleteItem: deleteTeam,
     isUsingFallback: usingFallback,
     forceLocalStorageSave: saveTeams
-  } = useSupabaseData<Team>('teams', 'edgenie_teams', DEFAULT_TEAMS, baseFallback);
+  } = useSupabaseData<Team>('teams', 'edgenie_teams', DEFAULT_TEAMS, shouldUseFallback);
 
   const { 
     data: teamMembers, 
@@ -143,7 +178,7 @@ export function useCollaboration() {
     deleteItem: deleteTeamMember,
     queryByField: queryTeamMembers,
     forceLocalStorageSave: saveMembers
-  } = useSupabaseData<TeamMember>('team_members', 'edgenie_team_members', DEFAULT_TEAM_MEMBERS, baseFallback);
+  } = useSupabaseData<TeamMember>('team_members', 'edgenie_team_members', DEFAULT_TEAM_MEMBERS, shouldUseFallback);
 
   const { 
     data: sharedResources, 
@@ -153,7 +188,7 @@ export function useCollaboration() {
     deleteItem: deleteSharedResource,
     queryByField: querySharedResources,
     forceLocalStorageSave: saveResources
-  } = useSupabaseData<SharedResource>('shared_resources', 'edgenie_shared_resources', DEFAULT_SHARED_RESOURCES, baseFallback);
+  } = useSupabaseData<SharedResource>('shared_resources', 'edgenie_shared_resources', DEFAULT_SHARED_RESOURCES, shouldUseFallback);
 
   const [searchResults, setSearchResults] = useState(MOCK_USERS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,6 +231,7 @@ export function useCollaboration() {
           saveResources();
           
           setIsInitialized(true);
+          setFallbackInitialized(true);
         } catch (error) {
           console.error("Error initializing collaboration data:", error);
           setDataInitError(error instanceof Error ? error : new Error(String(error)));
@@ -205,6 +241,82 @@ export function useCollaboration() {
     
     initCollaborationData();
   }, [teamsLoading, membersLoading, resourcesLoading, userId, isInitialized, saveTeams, saveMembers, saveResources]);
+
+  // Set up real-time listeners for collaboration data
+  useEffect(() => {
+    if (!isAuthenticated || baseFallback) return;
+
+    // Note: There are TypeScript compatibility issues with the Supabase realtime API
+    // The current version installed doesn't match the TypeScript definitions
+    // For now, we'll use periodic data refreshes instead of real-time subscriptions
+    console.log('Realtime subscriptions are temporarily disabled due to TypeScript compatibility issues');
+    
+    /*
+    // This code is disabled due to TypeScript compatibility issues
+    // The proper implementation depends on the specific Supabase version
+
+    // Subscribe to teams changes
+    const teamsSubscription = supabase
+      .channel('teams-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'teams'
+      }, (payload) => {
+        console.log('Teams change received:', payload);
+        // Refresh data after changes
+        getUserTeams();
+      })
+      .subscribe();
+    
+    // Subscribe to team members changes
+    const membersSubscription = supabase
+      .channel('team-members-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'team_members'
+      }, (payload) => {
+        console.log('Team members change received:', payload);
+        if (selectedTeam) {
+          getTeamMembers(selectedTeam);
+        }
+      })
+      .subscribe();
+    
+    // Subscribe to shared resources changes
+    const resourcesSubscription = supabase
+      .channel('shared-resources-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'shared_resources'
+      }, (payload) => {
+        console.log('Shared resources change received:', payload);
+        if (selectedTeam) {
+          getTeamSharedResources(selectedTeam);
+        }
+      })
+      .subscribe();
+    
+    // Clean up subscriptions
+    return () => {
+      teamsSubscription.unsubscribe();
+      membersSubscription.unsubscribe();
+      resourcesSubscription.unsubscribe();
+    };
+    */
+    
+    // Periodically refresh data to simulate real-time updates
+    const refreshInterval = setInterval(() => {
+      console.log('Refreshing collaboration data...');
+      getUserTeams();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [isAuthenticated, baseFallback]);
 
   // Get teams for current user
   const getUserTeams = () => {
@@ -296,13 +408,35 @@ export function useCollaboration() {
 
       // Then add current user as owner
       if (newTeam) {
-        const newMember = await addTeamMember({
-          team_id: newTeam.id,
-          user_id: userId,
-          role: 'owner'
-        });
-
-        console.log("Team member added:", newMember);
+        try {
+          const newMember = await addTeamMember({
+            team_id: newTeam.id,
+            user_id: userId,
+            role: 'owner'
+          });
+          
+          console.log("Team member added:", newMember);
+        } catch (memberError) {
+          console.error("Error adding team member:", memberError);
+          
+          // Add member locally if server failed
+          if (usingFallback || shouldUseFallback) {
+            const storedMembers = localStorage.getItem('edgenie_team_members');
+            const members = storedMembers ? JSON.parse(storedMembers) : [];
+            
+            const localMember = {
+              id: crypto.randomUUID(),
+              team_id: newTeam.id,
+              user_id: userId,
+              role: 'owner',
+              created_at: new Date().toISOString()
+            };
+            
+            members.push(localMember);
+            localStorage.setItem('edgenie_team_members', JSON.stringify(members));
+            console.log("Added team member locally:", localMember);
+          }
+        }
         
         // Force save to localStorage in case there were any issues
         saveTeams();
@@ -315,7 +449,7 @@ export function useCollaboration() {
       
       // Try to create team locally even if Supabase fails
       try {
-        const localTeamId = uuidv4();
+        const localTeamId = crypto.randomUUID();
         const localTeam = {
           id: localTeamId,
           name,
@@ -334,7 +468,7 @@ export function useCollaboration() {
         const storedMembers = localStorage.getItem('edgenie_team_members');
         const members = storedMembers ? JSON.parse(storedMembers) : [];
         members.push({
-          id: uuidv4(),
+          id: crypto.randomUUID(),
           team_id: localTeamId,
           user_id: userId,
           role: 'owner',

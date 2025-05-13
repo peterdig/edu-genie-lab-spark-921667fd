@@ -28,6 +28,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
+import { useNotificationsContext } from "@/lib/NotificationContext";
 
 interface AccountMenuProps {
   className?: string;
@@ -35,6 +36,7 @@ interface AccountMenuProps {
 
 export function AccountMenu({ className }: AccountMenuProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { unreadCount } = useNotificationsContext();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
@@ -86,7 +88,11 @@ export function AccountMenu({ className }: AccountMenuProps) {
       {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/notifications")}>
         <Bell className="h-5 w-5" />
-        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">3</Badge>
+        {unreadCount > 0 && (
+          <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </Badge>
+        )}
       </Button>
       
       {/* User Menu */}

@@ -14,6 +14,11 @@ const MISSING_TABLES_CACHE = {
   'document_collaborators': false
 };
 
+// Add a global document cache to persist document data between component mounts
+const DOCUMENT_CACHE = new Map<string, CollaborativeDocument>();
+const DOCUMENT_HISTORY_CACHE = new Map<string, DocumentVersion[]>();
+const MESSAGE_CACHE = new Map<string, ChatMessage[]>();
+
 // Sample mock data for initial state
 const MOCK_DOCUMENTS: CollaborativeDocument[] = [
   {
@@ -168,6 +173,12 @@ interface CollaboratorPresence {
   is_typing?: boolean;
 }
 
+// Add a helper function to check if document data needs refresh
+const needsRefresh = (timestamp: number): boolean => {
+  // Only refresh data if it's older than 5 minutes
+  return !timestamp || Date.now() - timestamp > 5 * 60 * 1000;
+};
+
 export const useRealTimeCollaboration = (teamId?: string) => {
   const { user, isAuthenticated } = useAuth();
   const [documents, setDocuments] = useState<CollaborativeDocument[]>([]);
@@ -189,6 +200,7 @@ export const useRealTimeCollaboration = (teamId?: string) => {
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const loadingOperationRef = useRef(false);
   const lastRequestTimeRef = useRef<Record<string, number>>({});
+  const cacheTimestampRef = useRef<Record<string, number>>({});
   
   // Memoize team ID to prevent unnecessary re-renders
   const memoizedTeamId = useMemo(() => teamId, [teamId]);
@@ -238,6 +250,12 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     const checkTables = async () => {
       if (!isAuthenticated || !user) return;
       
+      // Don't check tables every time if we already know they're missing
+      if (Object.values(MISSING_TABLES_CACHE).some(missing => missing)) {
+        setTablesMissing(MISSING_TABLES_CACHE);
+        return;
+      }
+      
       try {
         const tables = await checkTablesExist();
         const missingTables = {
@@ -269,11 +287,21 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     }
   }, [isAuthenticated, user]);
   
-  // Load documents from backend
+  // Load documents from backend with improved caching
   useEffect(() => {
     if (!isAuthenticated) return;
     
     const fetchDocuments = async () => {
+      const cacheKey = `team_${memoizedTeamId || 'user'}`;
+      const cachedTimestamp = cacheTimestampRef.current[cacheKey];
+      
+      // Use cached documents if available and fresh
+      if (documents.length > 0 && !needsRefresh(cachedTimestamp)) {
+        setLoading(false);
+        setInitialized(true);
+        return;
+      }
+      
       setLoading(true);
       loadingOperationRef.current = true;
       
@@ -306,15 +334,25 @@ export const useRealTimeCollaboration = (teamId?: string) => {
             }
           } else if (data && data.length > 0) {
             setDocuments(data);
+            
+            // Cache the data
+            data.forEach(doc => {
+              DOCUMENT_CACHE.set(doc.id, doc);
+            });
+            
+            // Update cache timestamp
+            cacheTimestampRef.current[cacheKey] = Date.now();
           } else {
             // No documents found, use local fallback for initial data
             console.log('No documents found in Supabase, using local fallback for initial data');
             setDocuments(localDocuments);
+            cacheTimestampRef.current[cacheKey] = Date.now();
           }
         } else {
           // Use localStorage
           console.log('Using localStorage for documents');
           setDocuments(localDocuments);
+          cacheTimestampRef.current[cacheKey] = Date.now();
         }
       } catch (err) {
         console.error('Error fetching documents:', err);
@@ -322,9 +360,12 @@ export const useRealTimeCollaboration = (teamId?: string) => {
         // Fallback to local storage
         setDocuments(localDocuments);
       } finally {
-        setLoading(false);
-        loadingOperationRef.current = false;
-        setInitialized(true);
+        // Use a shorter delay for initial loading
+        setTimeout(() => {
+          setLoading(false);
+          loadingOperationRef.current = false;
+          setInitialized(true);
+        }, 250);
       }
     };
     
@@ -333,6 +374,11 @@ export const useRealTimeCollaboration = (teamId?: string) => {
   
   // Memoize helper functions to prevent unecessary re-renders
   const fetchDocumentHistory = useCallback(async (documentId: string): Promise<DocumentVersion[]> => {
+    // Check cache first
+    if (DOCUMENT_HISTORY_CACHE.has(documentId) && !needsRefresh(cacheTimestampRef.current[`history_${documentId}`])) {
+      return DOCUMENT_HISTORY_CACHE.get(documentId) || [];
+    }
+    
     try {
       const { data, error } = await supabase
         .from('document_history')
@@ -343,6 +389,9 @@ export const useRealTimeCollaboration = (teamId?: string) => {
       if (error) throw error;
       
       if (data && data.length > 0) {
+        // Update cache
+        DOCUMENT_HISTORY_CACHE.set(documentId, data);
+        cacheTimestampRef.current[`history_${documentId}`] = Date.now();
         return data;
       }
     } catch (err) {
@@ -352,14 +401,25 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     // Try local storage
     const localVersionHistory = await queryLocalVersions('document_id', documentId);
     if (localVersionHistory && localVersionHistory.length > 0) {
+      // Cache the result
+      DOCUMENT_HISTORY_CACHE.set(documentId, localVersionHistory);
+      cacheTimestampRef.current[`history_${documentId}`] = Date.now();
       return localVersionHistory;
     }
     
     // Use mock data as final fallback
-    return MOCK_VERSIONS.filter(ver => ver.document_id === documentId);
+    const mockVersions = MOCK_VERSIONS.filter(ver => ver.document_id === documentId);
+    DOCUMENT_HISTORY_CACHE.set(documentId, mockVersions);
+    cacheTimestampRef.current[`history_${documentId}`] = Date.now();
+    return mockVersions;
   }, [queryLocalVersions]);
   
   const fetchChatMessages = useCallback(async (documentId: string): Promise<ChatMessage[]> => {
+    // Check cache first
+    if (MESSAGE_CACHE.has(documentId) && !needsRefresh(cacheTimestampRef.current[`messages_${documentId}`])) {
+      return MESSAGE_CACHE.get(documentId) || [];
+    }
+    
     try {
       const { data, error } = await supabase
         .from('document_messages')
@@ -370,6 +430,9 @@ export const useRealTimeCollaboration = (teamId?: string) => {
       if (error) throw error;
       
       if (data && data.length > 0) {
+        // Update cache
+        MESSAGE_CACHE.set(documentId, data);
+        cacheTimestampRef.current[`messages_${documentId}`] = Date.now();
         return data;
       }
     } catch (err) {
@@ -379,24 +442,40 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     // Use messages from local storage as fallback
     const localChatMessages = localMessages.filter(msg => msg.document_id === documentId);
     if (localChatMessages.length > 0) {
+      // Cache the result
+      MESSAGE_CACHE.set(documentId, localChatMessages);
+      cacheTimestampRef.current[`messages_${documentId}`] = Date.now();
       return localChatMessages;
     }
     
     // Use mock data as final fallback
-    return MOCK_CHAT_MESSAGES.filter(msg => msg.document_id === documentId);
+    const mockMessages = MOCK_CHAT_MESSAGES.filter(msg => msg.document_id === documentId);
+    MESSAGE_CACHE.set(documentId, mockMessages);
+    cacheTimestampRef.current[`messages_${documentId}`] = Date.now();
+    return mockMessages;
   }, [localMessages]);
   
-  // Select document and fetch related data
+  // Select document and fetch related data - optimize with caching
   const selectDocument = useCallback(async (documentId: string) => {
     if (!documentId) return null;
     if (loadingOperationRef.current) return null;
+    
+    // If the document is already selected, don't reload everything
+    if (currentDocument?.id === documentId) {
+      return currentDocument;
+    }
     
     loadingOperationRef.current = true;
     try {
       setLoading(true);
       
-      // Find document in state first
-      let document = documents.find(doc => doc.id === documentId);
+      // Find document in cache first, then state, then backend
+      let document = DOCUMENT_CACHE.get(documentId);
+      
+      if (!document) {
+        // Find document in state
+        document = documents.find(doc => doc.id === documentId);
+      }
       
       if (!document) {
         // Try to fetch from supabase
@@ -409,6 +488,11 @@ export const useRealTimeCollaboration = (teamId?: string) => {
             
           if (error) throw error;
           document = data;
+          
+          // Cache the document
+          if (document) {
+            DOCUMENT_CACHE.set(documentId, document);
+          }
         } catch (err) {
           console.error("Error fetching from Supabase, using local fallback:", err);
           // Fallback to local storage
@@ -421,28 +505,26 @@ export const useRealTimeCollaboration = (teamId?: string) => {
           } else {
             document = localDoc;
           }
+          
+          // Cache the document
+          if (document) {
+            DOCUMENT_CACHE.set(documentId, document);
+          }
         }
       }
       
       // Only update state if document has changed to avoid unnecessary re-renders
-      if (!currentDocument || currentDocument.id !== document.id) {
-        setCurrentDocument(document);
-        setDocumentContent(document.content);
-      }
+      setCurrentDocument(document);
+      setDocumentContent(document.content);
       
-      // Fetch document history and chat messages in parallel
-      const [historyResult, chatResult] = await Promise.allSettled([
-        fetchDocumentHistory(documentId),
-        fetchChatMessages(documentId)
-      ]);
+      // Use promise.all for parallel fetching but with optimized caching
+      const historyPromise = fetchDocumentHistory(documentId);
+      const chatPromise = fetchChatMessages(documentId);
       
-      if (historyResult.status === 'fulfilled' && historyResult.value) {
-        setDocumentHistory(historyResult.value);
-      }
+      const [history, messages] = await Promise.all([historyPromise, chatPromise]);
       
-      if (chatResult.status === 'fulfilled' && chatResult.value) {
-        setChatMessages(chatResult.value);
-      }
+      setDocumentHistory(history);
+      setChatMessages(messages);
       
       // Set up real-time subscriptions
       setupRealTimeSubscriptions(documentId);
@@ -456,11 +538,11 @@ export const useRealTimeCollaboration = (teamId?: string) => {
       setError(err instanceof Error ? err : new Error(String(err)));
       return null;
     } finally {
-      // Debounce loading state to prevent flickering
+      // Faster loading state resolution
       setTimeout(() => {
         setLoading(false);
         loadingOperationRef.current = false;
-      }, 500);
+      }, 200);
     }
   }, [documents, currentDocument, localDocuments, fetchDocumentHistory, fetchChatMessages]);
   
@@ -878,6 +960,47 @@ export const useRealTimeCollaboration = (teamId?: string) => {
       return null;
     }
   };
+  
+  const checkAndCreateMissingTables = useCallback(async (): Promise<Record<string, boolean>> => {
+    try {
+      // Check if we need to check tables again
+      const now = Date.now();
+      if (LAST_TABLE_CHECK && now - LAST_TABLE_CHECK < TABLE_CHECK_INTERVAL) {
+        return MISSING_TABLES_CACHE;
+      }
+      
+      // Update last check timestamp
+      LAST_TABLE_CHECK = now;
+      
+      // Get table status
+      const tableStatus = await checkTablesExist();
+      
+      // Update cache
+      Object.entries(tableStatus).forEach(([table, exists]) => {
+        MISSING_TABLES_CACHE[table as keyof typeof MISSING_TABLES_CACHE] = exists;
+      });
+      
+      return tableStatus;
+    } catch (error) {
+      console.error("Error checking tables:", error);
+      
+      // Handle specific document_collaborators policy error
+      if (error instanceof Error && 
+          error.message?.includes('infinite recursion detected in policy for relation "document_collaborators"')) {
+        console.warn("Detected recursive policy error in document_collaborators. Forcing fallback to local storage.");
+        
+        // Mark all collaboration tables as non-existent to force local storage use
+        Object.keys(MISSING_TABLES_CACHE).forEach(table => {
+          MISSING_TABLES_CACHE[table as keyof typeof MISSING_TABLES_CACHE] = false;
+        });
+        
+        // Force using local storage
+        setUseLocalStorage(true);
+      }
+      
+      return MISSING_TABLES_CACHE;
+    }
+  }, []);
   
   // Memoize the return value to prevent unnecessary re-renders
   return useMemo(() => ({

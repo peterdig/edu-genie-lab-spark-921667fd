@@ -14,10 +14,10 @@ import {
   FileText,
   Accessibility as AccessibilityIcon,
   Share2,
-  X,
   MessageSquare,
   Link,
-  Download
+  Download,
+  ChevronLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/AuthContext.jsx";
+import { Separator } from "@/components/ui/separator";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -60,12 +61,14 @@ const NavItem = ({ icon: Icon, label, to }: NavItemProps) => {
         <NavLink 
           to={to} 
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-            isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all",
+            isActive 
+              ? "bg-primary/15 text-primary font-medium shadow-sm" 
+              : "hover:bg-muted/80 hover:text-foreground"
           )}
           onClick={handleClick}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
           <span>{label}</span>
         </NavLink>
       </SidebarMenuButton>
@@ -74,9 +77,9 @@ const NavItem = ({ icon: Icon, label, to }: NavItemProps) => {
 };
 
 export function AppSidebar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, toggleSidebar } = useSidebar();
   
   const handleLogout = async () => {
     try {
@@ -86,35 +89,24 @@ export function AppSidebar() {
       console.error("Logout error:", error);
     }
   };
-
+  
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 flex justify-between items-center">
+    <Sidebar className="border-r shadow-sm">
+      <SidebarHeader className="p-4 flex justify-between items-center bg-muted/50 dark:bg-muted/20">
         <div className="flex items-center gap-2">
-          <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
+          <div className="bg-primary/15 w-10 h-10 rounded-md flex items-center justify-center shadow-sm border border-primary/10">
             <Book className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-lg">EduGenie</h2>
+            <h2 className="font-bold text-lg tracking-tight">EduGenie</h2>
             <p className="text-xs text-muted-foreground">AI-Powered Education</p>
           </div>
         </div>
-        {isMobile && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setOpenMobile(false)}
-            className="lg:hidden"
-            aria-label="Close sidebar"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
       </SidebarHeader>
       
-      <SidebarContent className="overflow-y-auto">
+      <SidebarContent className="overflow-y-auto p-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="font-medium text-xs text-muted-foreground ml-2">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem icon={Home} label="Dashboard" to="/dashboard" />
@@ -125,8 +117,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel>Organization</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="font-medium text-xs text-muted-foreground ml-2">Organization</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem icon={FolderOpen} label="My Library" to="/my-library" />
@@ -135,8 +127,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="font-medium text-xs text-muted-foreground ml-2">Tools</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem icon={Users} label="Differentiation" to="/differentiation" />
@@ -146,20 +138,20 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel>Insights & Collaboration</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="font-medium text-xs text-muted-foreground ml-2">Insights & Collaboration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem icon={BarChart} label="Analytics" to="/analytics" />
               <NavItem icon={Share2} label="Collaboration" to="/collaboration" />
-              <NavItem icon={MessageSquare} label="Collaborative Workspace" to="/collaborative-workspace" />
+              <NavItem icon={MessageSquare} label="Workspace" to="/collaborative-workspace" />
               <NavItem icon={Link} label="Integrations" to="/integrations" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel>Apps & Downloads</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="font-medium text-xs text-muted-foreground ml-2">Apps & Downloads</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem icon={Download} label="Download Apps" to="/download" />
@@ -168,10 +160,10 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="p-4 mt-auto">
+      <SidebarFooter className="p-4 mt-auto border-t">
         <Button 
           variant="outline" 
-          className="w-full flex items-center gap-2" 
+          className="w-full flex items-center gap-2 shadow-sm" 
           size="sm"
           onClick={handleLogout}
         >

@@ -72,11 +72,29 @@ export default function CurriculumPlanner() {
   
   // Initialize with default data
   const initializeWithDefaultData = () => {
-    setAvailableContent(mockContentItems);
-    
-    // Create initial week
-    const initialWeek = createWeek(1);
-    setWeeks([initialWeek]);
+    // Make sure we have content items available
+    if (mockContentItems && mockContentItems.length > 0) {
+      // Create deep copies to avoid reference issues
+      const contentItemsCopy = JSON.parse(JSON.stringify(mockContentItems));
+      setAvailableContent(contentItemsCopy);
+      
+      // Create initial week
+      const initialWeek = createWeek(1);
+      setWeeks([initialWeek]);
+      
+      console.log("Initialized curriculum planner with mock data:", {
+        contentItems: contentItemsCopy.length,
+        weeks: 1
+      });
+    } else {
+      console.error("No mock content items found for curriculum planner");
+      // Create empty arrays to avoid null references
+      setAvailableContent([]);
+      
+      // Create initial week even if no content is available
+      const initialWeek = createWeek(1);
+      setWeeks([initialWeek]);
+    }
   };
   
   // Create a new week with 5 days (Monday to Friday)
@@ -180,7 +198,8 @@ export default function CurriculumPlanner() {
       const dayIndex = currentWeekData.days.findIndex(day => day.id === destination.droppableId);
       if (dayIndex === -1) return;
       
-      const newWeeks = [...weeks];
+      // Create a deep copy of the weeks array to ensure proper state update
+      const newWeeks = JSON.parse(JSON.stringify(weeks));
       const weekIndex = newWeeks.findIndex(week => week.weekNumber === currentWeek);
       
       // Create a planner item from the content item
@@ -196,6 +215,12 @@ export default function CurriculumPlanner() {
       setWeeks(newWeeks);
       setAvailableContent(sourceItems);
       
+      // Save to localStorage immediately to ensure persistence
+      localStorage.setItem('curriculumPlan', JSON.stringify({
+        weeks: newWeeks,
+        currentWeek
+      }));
+      
       // Show success toast
       toast.success(`Added "${movedItem.title}" to ${formatDate(newWeeks[weekIndex].days[dayIndex].date)}`);
       return;
@@ -210,7 +235,8 @@ export default function CurriculumPlanner() {
     
     if (!sourceDay || !destDay) return;
     
-    const newWeeks = [...weeks];
+    // Create a deep copy of the weeks array to ensure proper state update
+    const newWeeks = JSON.parse(JSON.stringify(weeks));
     const weekIndex = newWeeks.findIndex(week => week.weekNumber === currentWeek);
     
     // Moving within the same day
@@ -222,6 +248,13 @@ export default function CurriculumPlanner() {
       newWeeks[weekIndex].days[dayIndex].items = dayItems;
       
       setWeeks(newWeeks);
+      
+      // Save to localStorage immediately to ensure persistence
+      localStorage.setItem('curriculumPlan', JSON.stringify({
+        weeks: newWeeks,
+        currentWeek
+      }));
+      
       toast.success("Item reordered");
     } else {
       // Moving between days
@@ -238,6 +271,13 @@ export default function CurriculumPlanner() {
       newWeeks[weekIndex].days[destDayIndex].items = destItems;
       
       setWeeks(newWeeks);
+      
+      // Save to localStorage immediately to ensure persistence
+      localStorage.setItem('curriculumPlan', JSON.stringify({
+        weeks: newWeeks,
+        currentWeek
+      }));
+      
       toast.success(`Moved item to ${formatDate(newWeeks[weekIndex].days[destDayIndex].date)}`);
     }
   };
@@ -250,28 +290,46 @@ export default function CurriculumPlanner() {
     const dayIndex = currentWeekData.days.findIndex(day => day.id === dayId);
     if (dayIndex === -1) return;
     
-    const newWeeks = [...weeks];
+    const itemIndex = currentWeekData.days[dayIndex].items.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    // Create a deep copy of the weeks array to ensure proper state update
+    const newWeeks = JSON.parse(JSON.stringify(weeks));
     const weekIndex = newWeeks.findIndex(week => week.weekNumber === currentWeek);
     
-    const removedItem = newWeeks[weekIndex].days[dayIndex].items.find(item => item.id === itemId);
-    if (!removedItem) return;
+    // Get the removed item before removing it
+    const removedItem = newWeeks[weekIndex].days[dayIndex].items[itemIndex];
     
-    // Remove the item from the day
-    newWeeks[weekIndex].days[dayIndex].items = newWeeks[weekIndex].days[dayIndex].items.filter(item => item.id !== itemId);
+    // Remove the item
+    newWeeks[weekIndex].days[dayIndex].items.splice(itemIndex, 1);
     
-    // Add the original content back to available content
-    const originalContent = mockContentItems.find(item => item.contentId === removedItem.contentId);
-    if (originalContent) {
-      setAvailableContent([...availableContent, originalContent]);
-    }
+    // Add the item back to available content if it came from there originally
+    // We need to modify this slightly to make sure we're not adding duplicate items
+    const cleanedItem = {
+      id: uuidv4(), // Generate a new ID to avoid conflicts
+      title: removedItem.title,
+      type: removedItem.type,
+      createdAt: removedItem.createdAt,
+      updatedAt: removedItem.updatedAt,
+      contentId: removedItem.contentId,
+      version: removedItem.version
+    };
     
+    setAvailableContent([...availableContent, cleanedItem]);
     setWeeks(newWeeks);
-    toast.success("Item removed from schedule");
+    
+    // Save to localStorage immediately to ensure persistence
+    localStorage.setItem('curriculumPlan', JSON.stringify({
+      weeks: newWeeks,
+      currentWeek
+    }));
+    
+    toast.success(`Removed "${removedItem.title}" from schedule`);
   };
   
-  // Open edit dialog for an item
+  // Edit an item
   const handleEditItem = (dayId: string, item: PlannerItem) => {
-    setCurrentEditItem({ dayId, item });
+    setCurrentEditItem({item, dayId});
     setIsItemDialogOpen(true);
   };
   
@@ -279,7 +337,7 @@ export default function CurriculumPlanner() {
   const handleSaveItem = () => {
     if (!currentEditItem) return;
     
-    const { dayId, item } = currentEditItem;
+    const {item, dayId} = currentEditItem;
     
     const currentWeekData = weeks.find(week => week.weekNumber === currentWeek);
     if (!currentWeekData) return;
@@ -287,29 +345,47 @@ export default function CurriculumPlanner() {
     const dayIndex = currentWeekData.days.findIndex(day => day.id === dayId);
     if (dayIndex === -1) return;
     
-    const newWeeks = [...weeks];
-    const weekIndex = newWeeks.findIndex(week => week.weekNumber === currentWeek);
-    
-    const itemIndex = newWeeks[weekIndex].days[dayIndex].items.findIndex(i => i.id === item.id);
+    const itemIndex = currentWeekData.days[dayIndex].items.findIndex(existingItem => existingItem.id === item.id);
     if (itemIndex === -1) return;
     
-    // Update the item
-    newWeeks[weekIndex].days[dayIndex].items[itemIndex] = item;
+    // Create a deep copy of the weeks array to ensure proper state update
+    const newWeeks = JSON.parse(JSON.stringify(weeks));
+    const weekIndex = newWeeks.findIndex(week => week.weekNumber === currentWeek);
+    
+    // Update the item with edited values
+    newWeeks[weekIndex].days[dayIndex].items[itemIndex] = {
+      ...item,
+      updatedAt: new Date().toISOString()
+    };
     
     setWeeks(newWeeks);
     setIsItemDialogOpen(false);
     setCurrentEditItem(null);
-    toast.success("Item updated");
-  };
-  
-  // Save the curriculum plan
-  const handleSavePlan = () => {
-    // In a real app, this would save to a database
+    
+    // Save to localStorage immediately to ensure persistence
     localStorage.setItem('curriculumPlan', JSON.stringify({
-      weeks,
+      weeks: newWeeks,
       currentWeek
     }));
-    toast.success("Curriculum plan saved");
+    
+    toast.success(`Updated "${item.title}" details`);
+  };
+  
+  // Save plan to localStorage
+  const handleSavePlan = () => {
+    try {
+      // Create a deep copy to ensure we're saving the complete state
+      const planToSave = {
+        weeks: JSON.parse(JSON.stringify(weeks)),
+        currentWeek
+      };
+      
+      localStorage.setItem('curriculumPlan', JSON.stringify(planToSave));
+      toast.success("Curriculum plan saved successfully");
+    } catch (error) {
+      console.error("Error saving plan:", error);
+      toast.error("Failed to save curriculum plan");
+    }
   };
   
   // Export the curriculum plan as PDF

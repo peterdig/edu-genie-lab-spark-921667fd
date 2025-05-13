@@ -657,77 +657,79 @@ export default function MyLibrary() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 max-w-7xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-6 max-w-7xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Library</h1>
-            <p className="text-muted-foreground">Organize and manage your content</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Library</h1>
+            <p className="text-muted-foreground text-sm">Organize and manage your content</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <Input 
               placeholder="Search folders..." 
-              className="w-64"
+              className="w-full sm:w-64 h-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button variant="outline" size="sm" onClick={resetToMockData} className="flex items-center gap-1">
-              <RefreshCw className="h-4 w-4" />
-              Reset Data
-            </Button>
-            <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <FolderPlus className="h-4 w-4" />
-                  <span>New Folder</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Folder</DialogTitle>
-                  <DialogDescription>
-                    Create a new folder to organize your content.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Folder Name</Label>
-                    <Input 
-                      id="name" 
-                      placeholder="Enter folder name" 
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                    />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={resetToMockData} className="flex items-center gap-1 text-xs h-9">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reset Data
+              </Button>
+              <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-1 text-xs h-9 w-full sm:w-auto">
+                    <FolderPlus className="h-3.5 w-3.5" />
+                    <span>New Folder</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create New Folder</DialogTitle>
+                    <DialogDescription>
+                      Create a new folder to organize your content.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Folder Name</Label>
+                      <Input 
+                        id="name" 
+                        placeholder="Enter folder name" 
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="description">Description (Optional)</Label>
+                      <Textarea 
+                        id="description" 
+                        placeholder="Enter folder description"
+                        value={newFolderDescription}
+                        onChange={(e) => setNewFolderDescription(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Textarea 
-                      id="description" 
-                      placeholder="Enter folder description"
-                      value={newFolderDescription}
-                      onChange={(e) => setNewFolderDescription(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateFolderOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreateFolder}>Create Folder</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateFolderOpen(false)}>Cancel</Button>
+                    <Button onClick={handleCreateFolder}>Create Folder</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
           {/* Folders Sidebar */}
-          <Card className="col-span-3 glass-card">
-            <CardHeader>
-              <CardTitle>Folders</CardTitle>
+          <Card className="md:col-span-4 lg:col-span-3 glass-card">
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-lg">Folders</CardTitle>
               <CardDescription>
                 {folders.length} folders
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px] pr-4">
+            <CardContent className="p-0 px-3 sm:px-6 pb-3 sm:pb-6">
+              <ScrollArea className="h-[350px] sm:h-[500px] pr-3 sm:pr-4">
                 <div className="space-y-1">
                   {/* Render root folders and their subfolders */}
                   {folderTree.length > 0 ? (
@@ -739,7 +741,7 @@ export default function MyLibrary() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-7 w-7 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFolderExpanded(folder.id);
@@ -747,14 +749,14 @@ export default function MyLibrary() {
                             >
                               {folder.children.length > 0 && (
                                 expandedFolders.includes(folder.id) 
-                                  ? <ChevronDown className="h-4 w-4" /> 
-                                  : <ChevronRight className="h-4 w-4" />
+                                  ? <ChevronDown className="h-3.5 w-3.5" /> 
+                                  : <ChevronRight className="h-3.5 w-3.5" />
                               )}
                             </Button>
                             <Button
                               variant="ghost"
                               className={cn(
-                                "flex-1 justify-start text-left font-normal",
+                                "flex-1 justify-start text-left font-normal text-xs sm:text-sm py-1.5 h-7",
                                 selectedFolder?.id === folder.id && "bg-accent"
                               )}
                               onClick={() => {
@@ -783,8 +785,8 @@ export default function MyLibrary() {
                               }}
                             >
                               <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                  <FolderOpen className="h-4 w-4" />
+                                <div className="flex items-center gap-1.5">
+                                  <FolderOpen className="h-3.5 w-3.5" />
                                   <span className="truncate">{folder.name}</span>
                                 </div>
                                 <span className="text-xs text-muted-foreground">{folder.items.length}</span>
@@ -792,19 +794,20 @@ export default function MyLibrary() {
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
+                              <DropdownMenuContent align="end" className="w-52">
                                 <DropdownMenuItem 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setNewFolderParentId(folder.id);
                                     setIsCreateSubfolderOpen(true);
                                   }}
+                                  className="text-xs"
                                 >
-                                  <FolderPlus className="h-4 w-4 mr-2" />
+                                  <FolderPlus className="h-3.5 w-3.5 mr-2" />
                                   Add Subfolder
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
@@ -812,19 +815,20 @@ export default function MyLibrary() {
                                     e.stopPropagation();
                                     setIsShareDialogOpen(true);
                                   }}
+                                  className="text-xs"
                                 >
-                                  <Share2 className="h-4 w-4 mr-2" />
+                                  <Share2 className="h-3.5 w-3.5 mr-2" />
                                   Share Folder
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
-                                  className="text-destructive focus:text-destructive"
+                                  className="text-destructive focus:text-destructive text-xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     promptDeleteFolder(folder.id);
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
                                   Delete Folder
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -833,13 +837,13 @@ export default function MyLibrary() {
                           
                           {/* Render subfolders if expanded */}
                           {expandedFolders.includes(folder.id) && folder.children.length > 0 && (
-                            <div className="pl-8 space-y-1">
+                            <div className="pl-6 space-y-1">
                               {folder.children.map((subfolder) => (
                                 <div key={subfolder.id} className="flex items-center">
                                   <Button
                                     variant="ghost"
                                     className={cn(
-                                      "w-full justify-start text-left font-normal",
+                                      "w-full justify-start text-left font-normal text-xs sm:text-sm py-1.5 h-7",
                                       selectedFolder?.id === subfolder.id && "bg-accent"
                                     )}
                                     onClick={() => {
@@ -856,36 +860,37 @@ export default function MyLibrary() {
                                       setSelectedFolder(flatFolder);
                                     }}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <FolderOpen className="h-4 w-4" />
+                                    <div className="flex items-center gap-1.5">
+                                      <FolderOpen className="h-3.5 w-3.5" />
                                       <span className="truncate">{subfolder.name}</span>
                                     </div>
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal className="h-4 w-4" />
+                                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuContent align="end" className="w-52">
                                       <DropdownMenuItem 
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setIsShareDialogOpen(true);
                                         }}
+                                        className="text-xs"
                                       >
-                                        <Share2 className="h-4 w-4 mr-2" />
+                                        <Share2 className="h-3.5 w-3.5 mr-2" />
                                         Share Folder
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem 
-                                        className="text-destructive focus:text-destructive"
+                                        className="text-destructive focus:text-destructive text-xs"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           promptDeleteFolder(subfolder.id);
                                         }}
                                       >
-                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
                                         Delete Folder
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -897,7 +902,7 @@ export default function MyLibrary() {
                         </div>
                       ))
                   ) : (
-                    <div className="py-12 text-center text-muted-foreground">
+                    <div className="py-10 text-center text-muted-foreground">
                       {searchTerm ? "No folders found" : "No folders yet"}
                     </div>
                   )}
@@ -907,308 +912,323 @@ export default function MyLibrary() {
           </Card>
 
           {/* Folder Content */}
-          <div className="col-span-9">
+          <div className="md:col-span-8 lg:col-span-9">
             {selectedFolder ? (
               <Card className="glass-card">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>{selectedFolder.name}</CardTitle>
-                    <CardDescription>
-                      {selectedFolder.description || "No description"}
-                    </CardDescription>
+                <CardHeader className="px-3 sm:px-6 py-3 sm:py-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-xl">{selectedFolder.name}</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">
+                        {selectedFolder.description || "No description"}
+                      </CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => openEditFolderDialog(selectedFolder)}
+                          className="text-xs"
+                        >
+                          <PenLine className="h-3.5 w-3.5 mr-2" />
+                          Edit Folder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setIsShareDialogOpen(true)}
+                          className="text-xs"
+                        >
+                          <Share2 className="h-3.5 w-3.5 mr-2" />
+                          Share Folder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive text-xs"
+                          onClick={() => promptDeleteFolder(selectedFolder.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                          Delete Folder
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => openEditFolderDialog(selectedFolder)}
-                      >
-                        <PenLine className="h-4 w-4 mr-2" />
-                        Edit Folder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setIsShareDialogOpen(true)}
-                      >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share Folder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => promptDeleteFolder(selectedFolder.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="all">
-                    <TabsList>
-                      <TabsTrigger value="all">All</TabsTrigger>
-                      <TabsTrigger value="lessons">Lessons</TabsTrigger>
-                      <TabsTrigger value="labs">Labs</TabsTrigger>
-                      <TabsTrigger value="assessments">Assessments</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="all" className="mt-4">
-                      {selectedFolder.items.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {selectedFolder.items.map((item) => (
-                            <Card key={item.id} className="overflow-hidden">
-                              <CardHeader className="bg-muted/50 p-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    {getContentTypeIcon(item.type)}
-                                    <span className="text-xs font-medium uppercase">{item.type}</span>
+                <CardContent className="px-0 pt-0">
+                  <div className="overflow-x-auto no-scrollbar pb-1">
+                    <Tabs defaultValue="all" className="w-full">
+                      <div className="px-3 sm:px-6">
+                        <TabsList className="h-9 px-1.5 w-full sm:w-auto">
+                          <TabsTrigger value="all" className="text-xs py-1.5 px-3">All</TabsTrigger>
+                          <TabsTrigger value="lessons" className="text-xs py-1.5 px-3">Lessons</TabsTrigger>
+                          <TabsTrigger value="labs" className="text-xs py-1.5 px-3">Labs</TabsTrigger>
+                          <TabsTrigger value="assessments" className="text-xs py-1.5 px-3">Assessments</TabsTrigger>
+                        </TabsList>
+                      </div>
+                      <TabsContent value="all" className="mt-4 px-3 sm:px-6">
+                        {selectedFolder.items.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {selectedFolder.items.map((item) => (
+                              <Card key={item.id} className="overflow-hidden border border-border/40">
+                                <CardHeader className="bg-muted/50 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      {getContentTypeIcon(item.type)}
+                                      <span className="text-xs font-medium uppercase">{item.type}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleViewVersionHistory(item.contentId)}
+                                      >
+                                        <History className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => promptRemoveItem(item.id)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => handleViewVersionHistory(item.contentId)}
+                                </CardHeader>
+                                <CardContent className="p-3">
+                                  <h3 className="font-semibold truncate text-sm">{item.title}</h3>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
+                                  </p>
+                                </CardContent>
+                                <CardFooter className="p-3 pt-0 flex justify-end">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-xs h-7"
+                                    onClick={() => handleViewContent(item)}
+                                  >
+                                    View
+                                  </Button>
+                                </CardFooter>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 sm:py-12 text-center text-muted-foreground">
+                            <File className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                            <h3 className="font-medium mb-1 text-sm sm:text-base">No items in this folder</h3>
+                            <p className="text-xs sm:text-sm">Save lessons, labs, or assessments to this folder</p>
+                            <Button 
+                              className="mt-3 sm:mt-4 text-xs h-8" 
+                              variant="outline"
+                              onClick={() => setIsAddContentOpen(true)}
+                            >
+                              <FilePlus2 className="h-3.5 w-3.5 mr-1.5" />
+                              Add Content
+                            </Button>
+                          </div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="lessons" className="mt-4 px-3 sm:px-6">
+                        {selectedFolder.items.filter(item => item.type === 'lesson').length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {selectedFolder.items
+                              .filter(item => item.type === 'lesson')
+                              .map((item) => (
+                                <Card key={item.id} className="overflow-hidden border border-border/40">
+                                  <CardHeader className="bg-muted/50 p-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <Book className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-medium uppercase">Lesson</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => handleViewVersionHistory(item.contentId)}
+                                        >
+                                          <History className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => promptRemoveItem(item.id)}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent className="p-3">
+                                    <h3 className="font-semibold truncate text-sm">{item.title}</h3>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
+                                    </p>
+                                  </CardContent>
+                                  <CardFooter className="p-3 pt-0 flex justify-end">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="text-xs h-7"
+                                      onClick={() => handleViewContent(item)}
                                     >
-                                      <History className="h-4 w-4" />
+                                      View
                                     </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => promptRemoveItem(item.id)}
+                                  </CardFooter>
+                                </Card>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 sm:py-12 text-center text-muted-foreground">
+                            <Book className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                            <h3 className="font-medium mb-1 text-sm sm:text-base">No lessons in this folder</h3>
+                            <p className="text-xs sm:text-sm">Save lessons to this folder</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="labs" className="mt-4 px-3 sm:px-6">
+                        {selectedFolder.items.filter(item => item.type === 'lab').length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {selectedFolder.items
+                              .filter(item => item.type === 'lab')
+                              .map((item) => (
+                                <Card key={item.id} className="overflow-hidden border border-border/40">
+                                  <CardHeader className="bg-muted/50 p-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <Beaker className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-medium uppercase">Lab</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => handleViewVersionHistory(item.contentId)}
+                                        >
+                                          <History className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => promptRemoveItem(item.id)}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent className="p-3">
+                                    <h3 className="font-semibold truncate text-sm">{item.title}</h3>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
+                                    </p>
+                                  </CardContent>
+                                  <CardFooter className="p-3 pt-0 flex justify-end">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="text-xs h-7"
+                                      onClick={() => handleViewContent(item)}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      View
                                     </Button>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="p-4">
-                                <h3 className="font-semibold truncate">{item.title}</h3>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
-                                </p>
-                              </CardContent>
-                              <CardFooter className="p-4 pt-0 flex justify-end">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleViewContent(item)}
-                                >
-                                  View
-                                </Button>
-                              </CardFooter>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <File className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <h3 className="font-medium mb-1">No items in this folder</h3>
-                          <p className="text-sm">Save lessons, labs, or assessments to this folder</p>
-                          <Button 
-                            className="mt-4" 
-                            variant="outline"
-                            onClick={() => setIsAddContentOpen(true)}
-                          >
-                            <FilePlus2 className="h-4 w-4 mr-2" />
-                            Add Content
-                          </Button>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="lessons">
-                      {selectedFolder.items.filter(item => item.type === 'lesson').length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {selectedFolder.items
-                            .filter(item => item.type === 'lesson')
-                            .map((item) => (
-                              <Card key={item.id} className="overflow-hidden">
-                                <CardHeader className="bg-muted/50 p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <Book className="h-4 w-4" />
-                                      <span className="text-xs font-medium uppercase">Lesson</span>
+                                  </CardFooter>
+                                </Card>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 sm:py-12 text-center text-muted-foreground">
+                            <Beaker className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                            <h3 className="font-medium mb-1 text-sm sm:text-base">No labs in this folder</h3>
+                            <p className="text-xs sm:text-sm">Save labs to this folder</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="assessments" className="mt-4 px-3 sm:px-6">
+                        {selectedFolder.items.filter(item => item.type === 'assessment').length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {selectedFolder.items
+                              .filter(item => item.type === 'assessment')
+                              .map((item) => (
+                                <Card key={item.id} className="overflow-hidden border border-border/40">
+                                  <CardHeader className="bg-muted/50 p-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-medium uppercase">Assessment</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => handleViewVersionHistory(item.contentId)}
+                                        >
+                                          <History className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => promptRemoveItem(item.id)}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => handleViewVersionHistory(item.contentId)}
-                                      >
-                                        <History className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => promptRemoveItem(item.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="p-4">
-                                  <h3 className="font-semibold truncate">{item.title}</h3>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
-                                  </p>
-                                </CardContent>
-                                <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleViewContent(item)}
-                                  >
-                                    View
-                                  </Button>
-                                </CardFooter>
-                              </Card>
-                            ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <Book className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <h3 className="font-medium mb-1">No lessons in this folder</h3>
-                          <p className="text-sm">Save lessons to this folder</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="labs">
-                      {selectedFolder.items.filter(item => item.type === 'lab').length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {selectedFolder.items
-                            .filter(item => item.type === 'lab')
-                            .map((item) => (
-                              <Card key={item.id} className="overflow-hidden">
-                                <CardHeader className="bg-muted/50 p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <Beaker className="h-4 w-4" />
-                                      <span className="text-xs font-medium uppercase">Lab</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => handleViewVersionHistory(item.contentId)}
-                                      >
-                                        <History className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => promptRemoveItem(item.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="p-4">
-                                  <h3 className="font-semibold truncate">{item.title}</h3>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
-                                  </p>
-                                </CardContent>
-                                <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleViewContent(item)}
-                                  >
-                                    View
-                                  </Button>
-                                </CardFooter>
-                              </Card>
-                            ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <Beaker className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <h3 className="font-medium mb-1">No labs in this folder</h3>
-                          <p className="text-sm">Save labs to this folder</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="assessments">
-                      {selectedFolder.items.filter(item => item.type === 'assessment').length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {selectedFolder.items
-                            .filter(item => item.type === 'assessment')
-                            .map((item) => (
-                              <Card key={item.id} className="overflow-hidden">
-                                <CardHeader className="bg-muted/50 p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <FileSpreadsheet className="h-4 w-4" />
-                                      <span className="text-xs font-medium uppercase">Assessment</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => handleViewVersionHistory(item.contentId)}
-                                      >
-                                        <History className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => promptRemoveItem(item.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="p-4">
-                                  <h3 className="font-semibold truncate">{item.title}</h3>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
-                                  </p>
-                                </CardContent>
-                                <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleViewContent(item)}
-                                  >
-                                    View
-                                  </Button>
-                                </CardFooter>
-                              </Card>
-                            ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <h3 className="font-medium mb-1">No assessments in this folder</h3>
-                          <p className="text-sm">Save assessments to this folder</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                                  </CardHeader>
+                                  <CardContent className="p-3">
+                                    <h3 className="font-semibold truncate text-sm">{item.title}</h3>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Version: {item.version || 1} • Updated: {new Date(item.updatedAt).toLocaleDateString()}
+                                    </p>
+                                  </CardContent>
+                                  <CardFooter className="p-3 pt-0 flex justify-end">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="text-xs h-7"
+                                      onClick={() => handleViewContent(item)}
+                                    >
+                                      View
+                                    </Button>
+                                  </CardFooter>
+                                </Card>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="py-8 sm:py-12 text-center text-muted-foreground">
+                            <FileSpreadsheet className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                            <h3 className="font-medium mb-1 text-sm sm:text-base">No assessments in this folder</h3>
+                            <p className="text-xs sm:text-sm">Save assessments to this folder</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
               <Card className="h-full glass-card flex items-center justify-center">
-                <CardContent className="py-12 text-center">
-                  <FolderOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-                  <h3 className="text-xl font-medium mb-2">No folder selected</h3>
-                  <p className="text-muted-foreground mb-6">Select a folder from the sidebar or create a new one</p>
-                  <Button onClick={() => setIsCreateFolderOpen(true)}>
-                    <FolderPlus className="h-4 w-4 mr-2" />
+                <CardContent className="py-8 sm:py-12 text-center">
+                  <FolderOpen className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg sm:text-xl font-medium mb-1 sm:mb-2">No folder selected</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm mb-4 sm:mb-6">Select a folder from the sidebar or create a new one</p>
+                  <Button 
+                    onClick={() => setIsCreateFolderOpen(true)}
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5 mr-1.5" />
                     Create New Folder
                   </Button>
                 </CardContent>
@@ -1218,65 +1238,66 @@ export default function MyLibrary() {
             {/* Version History Dialog */}
             {showVersionHistory && selectedContentId && (
               <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] w-[95vw] sm:w-auto p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <History className="h-5 w-5" />
+                    <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <History className="h-4 w-4 sm:h-5 sm:w-5" />
                       Version History: {selectedContent?.title}
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="text-xs sm:text-sm">
                       View and restore previous versions of this content
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="py-4">
+                  <div className="py-2 sm:py-4">
                     {selectedContent && (
-                      <Card className="mb-4 bg-muted/20">
-                        <CardHeader className="py-3">
+                      <Card className="mb-3 sm:mb-4 bg-muted/20">
+                        <CardHeader className="py-2 sm:py-3 px-3 sm:px-4">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               {getContentTypeIcon(selectedContent.type)}
-                              <CardTitle className="text-base">{selectedContent.title}</CardTitle>
+                              <CardTitle className="text-sm sm:text-base">{selectedContent.title}</CardTitle>
                             </div>
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="text-xs py-0.5 px-1.5 h-auto">
                               {selectedContent.type}
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="py-2">
-                          <div className="flex items-center justify-between text-sm">
+                        <CardContent className="py-2 px-3 sm:px-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1">
                             <span>Current Version: {selectedContent.version || 1}</span>
                             <span>Last Updated: {new Date(selectedContent.updatedAt).toLocaleDateString()}</span>
                           </div>
                         </CardContent>
                       </Card>
                     )}
-                    <ScrollArea className="h-[320px] pr-4">
+                    <ScrollArea className="h-[250px] sm:h-[320px] pr-3 sm:pr-4">
                       {getContentVersions(selectedContentId).map((version) => (
-                        <Card key={version.id} className="mb-4">
-                          <CardHeader className="p-4">
-                            <div className="flex items-center justify-between">
+                        <Card key={version.id} className="mb-3 sm:mb-4">
+                          <CardHeader className="p-3 sm:p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                               <div>
-                                <CardTitle className="text-base flex items-center gap-2">
-                                  <Clock className="h-4 w-4" />
+                                <CardTitle className="text-sm sm:text-base flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
                                   Version {version.version}
                                 </CardTitle>
-                                <CardDescription>
+                                <CardDescription className="text-xs">
                                   {new Date(version.createdAt).toLocaleString()} • {version.createdBy}
                                 </CardDescription>
                               </div>
                               <Button 
                                 variant="outline" 
                                 size="sm"
+                                className="text-xs h-7 sm:h-8"
                                 onClick={() => handleRestoreVersion(version)}
                               >
                                 Restore
                               </Button>
                             </div>
                           </CardHeader>
-                          <CardContent className="p-4 pt-0">
-                            <p className="text-sm text-muted-foreground">{version.notes || "No notes"}</p>
-                            <div className="mt-2 p-3 bg-muted/30 rounded-md">
-                              <pre className="text-xs overflow-auto whitespace-pre-wrap">
+                          <CardContent className="p-3 sm:p-4 pt-0">
+                            <p className="text-xs text-muted-foreground">{version.notes || "No notes"}</p>
+                            <div className="mt-2 p-2 sm:p-3 bg-muted/30 rounded-md">
+                              <pre className="text-xs overflow-auto whitespace-pre-wrap max-h-[100px] sm:max-h-none">
                                 {JSON.stringify(version.data, null, 2)}
                               </pre>
                             </div>
@@ -1286,7 +1307,7 @@ export default function MyLibrary() {
                     </ScrollArea>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowVersionHistory(false)}>Close</Button>
+                    <Button variant="outline" onClick={() => setShowVersionHistory(false)} className="text-xs sm:text-sm h-8 sm:h-9">Close</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -1296,175 +1317,181 @@ export default function MyLibrary() {
 
         {/* Create Subfolder Dialog */}
         <Dialog open={isCreateSubfolderOpen} onOpenChange={setIsCreateSubfolderOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Create Subfolder</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Create Subfolder</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Create a new subfolder to better organize your content.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="subfolder-name">Subfolder Name</Label>
+            <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="subfolder-name" className="text-xs sm:text-sm">Subfolder Name</Label>
                 <Input 
                   id="subfolder-name" 
                   placeholder="Enter subfolder name" 
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="subfolder-description">Description (Optional)</Label>
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="subfolder-description" className="text-xs sm:text-sm">Description (Optional)</Label>
                 <Textarea 
                   id="subfolder-description" 
                   placeholder="Enter subfolder description"
                   value={newFolderDescription}
                   onChange={(e) => setNewFolderDescription(e.target.value)}
+                  className="text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateSubfolderOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateSubfolder}>Create Subfolder</Button>
+              <Button variant="outline" onClick={() => setIsCreateSubfolderOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button onClick={handleCreateSubfolder} className="text-xs sm:text-sm h-8 sm:h-9">Create Subfolder</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Share Folder Dialog */}
         <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Share Folder</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Share Folder</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Share this folder with other teachers in your school or district.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="share-email">Email Address</Label>
+            <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="share-email" className="text-xs sm:text-sm">Email Address</Label>
                 <Input 
                   id="share-email" 
                   type="email"
                   placeholder="colleague@school.edu" 
                   value={shareEmail}
                   onChange={(e) => setShareEmail(e.target.value)}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleShareFolder}>Share</Button>
+              <Button variant="outline" onClick={() => setIsShareDialogOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button onClick={handleShareFolder} className="text-xs sm:text-sm h-8 sm:h-9">Share</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Add Content Dialog */}
         <Dialog open={isAddContentOpen} onOpenChange={setIsAddContentOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Add Content</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Add Content</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Add new content to this folder.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="content-title">Title</Label>
+            <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="content-title" className="text-xs sm:text-sm">Title</Label>
                 <Input 
                   id="content-title" 
                   placeholder="Enter content title" 
                   value={newContentTitle}
                   onChange={(e) => setNewContentTitle(e.target.value)}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="content-type">Content Type</Label>
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="content-type" className="text-xs sm:text-sm">Content Type</Label>
                 <Select 
                   value={newContentType} 
                   onValueChange={(value) => setNewContentType(value as ContentType)}
                 >
-                  <SelectTrigger id="content-type">
+                  <SelectTrigger id="content-type" className="h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue placeholder="Select content type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lesson">Lesson</SelectItem>
-                    <SelectItem value="lab">Lab</SelectItem>
-                    <SelectItem value="assessment">Assessment</SelectItem>
+                    <SelectItem value="lesson" className="text-xs sm:text-sm">Lesson</SelectItem>
+                    <SelectItem value="lab" className="text-xs sm:text-sm">Lab</SelectItem>
+                    <SelectItem value="assessment" className="text-xs sm:text-sm">Assessment</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddContentOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddContent}>Add Content</Button>
+              <Button variant="outline" onClick={() => setIsAddContentOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button onClick={handleAddContent} className="text-xs sm:text-sm h-8 sm:h-9">Add Content</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Edit Folder Dialog */}
         <Dialog open={isEditFolderOpen} onOpenChange={setIsEditFolderOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Edit Folder</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Edit Folder</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Edit the details of this folder.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="folder-name">Folder Name</Label>
+            <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="folder-name" className="text-xs sm:text-sm">Folder Name</Label>
                 <Input 
                   id="folder-name" 
                   placeholder="Enter folder name" 
                   value={editFolderName}
                   onChange={(e) => setEditFolderName(e.target.value)}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="folder-description">Description (Optional)</Label>
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="folder-description" className="text-xs sm:text-sm">Description (Optional)</Label>
                 <Textarea 
                   id="folder-description" 
                   placeholder="Enter folder description"
                   value={editFolderDescription}
                   onChange={(e) => setEditFolderDescription(e.target.value)}
+                  className="text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditFolderOpen(false)}>Cancel</Button>
-              <Button onClick={handleEditFolder}>Save</Button>
+              <Button variant="outline" onClick={() => setIsEditFolderOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button onClick={handleEditFolder} className="text-xs sm:text-sm h-8 sm:h-9">Save</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Delete Folder Confirmation Dialog */}
         <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Are you sure you want to delete this folder? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeleteFolder}>Delete</Button>
+            <DialogFooter className="mt-3 sm:mt-4">
+              <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteFolder} className="text-xs sm:text-sm h-8 sm:h-9">Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Remove Item Confirmation Dialog */}
         <Dialog open={isRemoveItemConfirmOpen} onOpenChange={setIsRemoveItemConfirmOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md w-[95vw] sm:w-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Confirm Removal</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Confirm Removal</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Are you sure you want to remove this item from the folder? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsRemoveItemConfirmOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleRemoveItem}>Remove</Button>
+            <DialogFooter className="mt-3 sm:mt-4">
+              <Button variant="outline" onClick={() => setIsRemoveItemConfirmOpen(false)} className="text-xs sm:text-sm h-8 sm:h-9">Cancel</Button>
+              <Button variant="destructive" onClick={handleRemoveItem} className="text-xs sm:text-sm h-8 sm:h-9">Remove</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

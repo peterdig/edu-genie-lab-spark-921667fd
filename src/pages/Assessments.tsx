@@ -276,24 +276,24 @@ export default function Assessments() {
   
   return (
     <Layout>
-      <div className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 px-4 py-4 sm:py-6 sm:px-6 lg:px-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Assessments</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Assessments</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Create and manage AI-generated assessments and quizzes
           </p>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center overflow-x-auto">
             <TabsList className="mb-2">
-              <TabsTrigger value="create" className="data-[state=active]:bg-primary/10">
+              <TabsTrigger value="create" className="data-[state=active]:bg-primary/10 text-sm sm:text-base">
                 Create New
-                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+1</kbd>
+                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded hidden sm:inline-block">Alt+1</kbd>
               </TabsTrigger>
-              <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10">
+              <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 text-sm sm:text-base">
                 Saved Assessments
-                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+2</kbd>
+                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded hidden sm:inline-block">Alt+2</kbd>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -331,7 +331,7 @@ export default function Assessments() {
                     )}
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap justify-end">
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -387,7 +387,7 @@ export default function Assessments() {
                       <span className="sr-only">Refresh</span>
                     </Button>
                   </div>
-            </div>
+                </div>
               </CardHeader>
               
               {showFilters && (
@@ -448,7 +448,7 @@ export default function Assessments() {
             
             {isLoading ? (
               // Loading skeleton
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <FeatureCard key={index} className="h-[230px] animate-pulse">
                     <CardContent className="p-4 h-full flex flex-col">
@@ -480,23 +480,23 @@ export default function Assessments() {
               </div>
             ) : (
               <>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {paginatedAssessments.map((assessment) => (
                     <FeatureCard 
                       key={assessment.id} 
                       className="hover:border-primary/30 transition-colors cursor-pointer overflow-hidden"
                     >
-                      <CardContent className="p-4" onClick={() => navigate(`/assessments/${assessment.id}`)}>
+                      <CardContent className="p-3 sm:p-4" onClick={() => navigate(`/assessments/${assessment.id}`)}>
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-base">{assessment.title}</h3>
-                          <Badge variant="outline" className="bg-primary/5 text-primary text-xs">
+                          <h3 className="font-medium text-sm sm:text-base line-clamp-1">{assessment.title}</h3>
+                          <Badge variant="outline" className="bg-primary/5 text-primary text-xs shrink-0 ml-2">
                             {assessment.questions.length} Q
                           </Badge>
                         </div>
                         
                         <div className="flex items-center gap-1 mb-3 text-xs text-muted-foreground">
-                          <BookOpen className="h-3 w-3" />
-                          <span>Grade {assessment.gradeLevel} • {assessment.subject}</span>
+                          <BookOpen className="h-3 w-3 shrink-0" />
+                          <span className="line-clamp-1">Grade {assessment.gradeLevel} • {assessment.subject}</span>
                         </div>
                         
                         {/* Question type visualization */}
@@ -512,10 +512,10 @@ export default function Assessments() {
                             ></div>
                           </div>
                         </div>
-                      
+                        
                         <div className="flex items-center justify-between mt-3 pt-2 border-t text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                            <Clock className="h-3 w-3 shrink-0" />
                             <span>{formatDate(assessment.createdAt)}</span>
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -524,17 +524,17 @@ export default function Assessments() {
                         </div>
                       </CardContent>
                     </FeatureCard>
-              ))}
-            </div>
+                  ))}
+                </div>
                 
-                {/* Pagination controls */}
+                {/* Pagination controls - improved for mobile */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6">
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-2">
+                    <p className="text-xs text-muted-foreground text-center sm:text-left">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredAssessments.length)} of {filteredAssessments.length} assessments
                     </p>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <Button
                         variant="outline"
                         size="icon"
@@ -554,7 +554,7 @@ export default function Assessments() {
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       
-                      <span className="text-xs">
+                      <span className="text-xs px-2">
                         Page {currentPage} of {totalPages}
                       </span>
                       

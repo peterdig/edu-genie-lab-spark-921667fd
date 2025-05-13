@@ -34,14 +34,14 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 222 89% 57%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 15% 95%;
-    --sidebar-accent-foreground: 254 75% 30%;
+    /* Sidebar variables */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 240 5% 26%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-muted: 220 15% 95%;
+    --sidebar-muted-foreground: 220 10% 45%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 10% 40%;
 
     --font-size-multiplier: 1;
     --line-height: 1.5;
@@ -84,14 +84,14 @@
     --input: 216 34% 17%;
     --ring: 224 71% 4%;
     
-    --sidebar-background: 224 71% 4%;
+    /* Dark mode sidebar variables */
+    --sidebar: 224 70% 7%;
     --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 222 89% 57%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 216 34% 17%;
-    --sidebar-accent-foreground: 213 31% 91%; 
-    --sidebar-border: 216 34% 17%;
-    --sidebar-ring: 222 89% 57%;
+    --sidebar-border: 216 34% 15%;
+    --sidebar-muted: 223 47% 11%;
+    --sidebar-muted-foreground: 215 20.2% 65.1%;
+    --sidebar-accent: 217 33% 18%;
+    --sidebar-accent-foreground: 213 31% 91%;
     
     /* Dark mode scrollbar variables */
     --scrollbar-track: transparent;
@@ -103,6 +103,33 @@
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
+  }
+}
+
+@layer components {
+  /* Custom sidebar styling */
+  [data-sidebar="sidebar"] {
+    @apply bg-sidebar text-sidebar-foreground border-sidebar-border;
+  }
+
+  .sidebar-header {
+    @apply border-b border-sidebar-border bg-sidebar-muted/50 p-4;
+  }
+
+  .sidebar-group-label {
+    @apply text-sidebar-muted-foreground text-xs font-medium px-3 py-2;
+  }
+
+  .sidebar-menu-item {
+    @apply py-0.5;
+  }
+
+  .sidebar-menu-button {
+    @apply w-full;
+  }
+
+  .sidebar-icon {
+    @apply text-sidebar-muted-foreground;
   }
 }
 
@@ -357,4 +384,76 @@ body {
   font-size: 0.875rem;
   max-width: 300px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Accessibility styles */
+:root {
+  --font-size-multiplier: 1;
+}
+
+/* Font size adjustments */
+html.large-text {
+  font-size: calc(16px * var(--font-size-multiplier));
+}
+
+body, p, span, div, button, input, select, textarea {
+  font-size: calc(1rem * var(--font-size-multiplier));
+}
+
+/* High contrast mode */
+html.high-contrast {
+  filter: contrast(1.2);
+}
+
+html.high-contrast body {
+  background-color: #000;
+  color: #fff;
+}
+
+html.high-contrast .bg-white,
+html.high-contrast .bg-background,
+html.high-contrast .bg-card {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+html.high-contrast button,
+html.high-contrast a,
+html.high-contrast .btn,
+html.high-contrast [role="button"] {
+  border: 2px solid #fff !important;
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+html.high-contrast button:hover,
+html.high-contrast a:hover,
+html.high-contrast .btn:hover,
+html.high-contrast [role="button"]:hover {
+  background-color: #333 !important;
+}
+
+html.high-contrast input,
+html.high-contrast select,
+html.high-contrast textarea {
+  border: 2px solid #fff !important;
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* Reduced motion */
+html.reduced-motion * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Accessibility focus outline */
+*:focus-visible {
+  outline: 3px solid #1a73e8 !important;
+  outline-offset: 2px !important;
+}
+
+html.high-contrast *:focus-visible {
+  outline: 3px solid #fff !important;
+  outline-offset: 2px !important;
 }

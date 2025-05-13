@@ -1,0 +1,31 @@
+};
+
+export default function Collaboration() {
+  const [activeTab, setActiveTab] = useState("teams");
+  const [newTeamOpen, setNewTeamOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamDescription, setNewTeamDescription] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [resourceType, setResourceType] = useState<'lesson' | 'assessment' | 'template' | 'rubric'>('lesson');
+  const [sharePermission, setSharePermission] = useState<'view' | 'edit'>('view');
+  const [shareOpen, setShareOpen] = useState(false);
+  
+  const {
+    teams,
+    teamMembers,
+    sharedResources,
+    loading,
+    error,
+    searchResults,
+    searchUsers,
+    getUserTeams,
+    getTeamMembers,
+    getTeamSharedResources,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    inviteToTeam,

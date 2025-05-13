@@ -14,6 +14,10 @@ import { ThemeProvider } from "./lib/theme-provider";
 import { useLocalStorageFallback, checkConnectivity } from "./lib/supabase";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { initializeDatabase } from "./lib/database";
+import { NotificationsProvider } from "./lib/NotificationContext";
+import OnlineProvider from './contexts/OnlineContext';
+import AccessibilityProvider from './contexts/AccessibilityContext';
+import { AccessibilitySettingsButton } from './components/accessibility/AccessibilitySettings';
 
 // Lazy load pages for better initial load performance
 const DashboardPage = lazy(() => import('@/pages/Dashboard'));
@@ -36,6 +40,9 @@ const IntegrationsHub = lazy(() => import('@/pages/IntegrationsHub'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Lessons = lazy(() => import('@/pages/Lessons'));
 const MobileDownload = lazy(() => import('@/pages/MobileDownload'));
+const Notifications = lazy(() => import('@/pages/Notifications'));
+const TeacherTraining = lazy(() => import("./pages/TeacherTraining"));
+const SupabaseTest = lazy(() => import('./components/SupabaseTest'));
 
 // Create a wrapper component for LazyCollaboration that provides SidebarProvider
 const CollaborationWithSidebar = () => (
@@ -184,156 +191,192 @@ const App = () => {
       <ThemeProvider defaultTheme="system" storageKey="edgenie-theme">
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <ColorBlindnessFilters />
-              {showFallback && <FallbackNotice />}
-              <div className="min-h-screen flex flex-col bg-background antialiased scrollbar-none smooth-scroll">
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <Landing />
-                      </Suspense>
-                    } />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    <Route path="/login" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <Login />
-                      </Suspense>
-                    } />
-                    <Route path="/signup" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <Signup />
-                      </Suspense>
-                    } />
-                    <Route path="/download" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <MobileDownload />
-                      </Suspense>
-                    } />
-                    <Route path="/dashboard" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <DashboardPage />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/lessons" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Lessons />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/assessments" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Assessments />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/labs" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Labs />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/labs/:id" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <LabDetail />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/settings" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Settings />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/my-library" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <MyLibrary />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/curriculum-planner" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <CurriculumPlanner />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/differentiation" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <DifferentiationHelper />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/rubric-generator" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <RubricGenerator />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/analytics" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Analytics />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/collaboration" element={
-                      <AuthGuard>
-                        <ErrorBoundary>
-                          <Suspense fallback={<LoadingFallback />}>
-                            <CollaborationWithSidebar />
-                          </Suspense>
-                        </ErrorBoundary>
-                      </AuthGuard>
-                    } />
-                    <Route path="/accessibility" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <Accessibility />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/collaborative-workspace" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <CollaborativeWorkspace />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/integrations" element={
-                      <AuthGuard>
-                        <Suspense fallback={<LoadingFallback />}>
-                          <IntegrationsHub />
-                        </Suspense>
-                      </AuthGuard>
-                    } />
-                    <Route path="/supabase-setup" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <SupabaseSetup />
-                      </Suspense>
-                    } />
-                    <Route path="*" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <NotFound />
-                      </Suspense>
-                    } />
-                  </Routes>
-                </BrowserRouter>
-              </div>
-            </TooltipProvider>
+            <OnlineProvider>
+              <AccessibilityProvider>
+                <NotificationsProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <ColorBlindnessFilters />
+                    {showFallback && <FallbackNotice />}
+                    <div className="min-h-screen flex flex-col bg-background antialiased scrollbar-none smooth-scroll">
+                      <BrowserRouter>
+                        <Routes>
+                          <Route path="/" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <Landing />
+                            </Suspense>
+                          } />
+                          <Route path="/auth/callback" element={<AuthCallback />} />
+                          <Route path="/login" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <Login />
+                            </Suspense>
+                          } />
+                          <Route path="/signup" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <Signup />
+                            </Suspense>
+                          } />
+                          <Route path="/download" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <MobileDownload />
+                            </Suspense>
+                          } />
+                          <Route path="/supabase-test" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <SupabaseTest />
+                            </Suspense>
+                          } />
+                          <Route path="/dashboard" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <DashboardPage />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/lessons" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Lessons />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/lessons/:lessonId" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Lessons />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/assessments" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Assessments />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/labs" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Labs />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/labs/:id" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <LabDetail />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/settings" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Settings />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/my-library" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <MyLibrary />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/curriculum-planner" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <CurriculumPlanner />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/differentiation" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <DifferentiationHelper />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/rubric-generator" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <RubricGenerator />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/analytics" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Analytics />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/collaboration" element={
+                            <AuthGuard>
+                              <ErrorBoundary>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <CollaborationWithSidebar />
+                                </Suspense>
+                              </ErrorBoundary>
+                            </AuthGuard>
+                          } />
+                          <Route path="/accessibility" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Accessibility />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/collaborative-workspace" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <CollaborativeWorkspace />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/integrations" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <IntegrationsHub />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/supabase-setup" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <SupabaseSetup />
+                            </Suspense>
+                          } />
+                          <Route path="/notifications" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Notifications />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route 
+                            path="/training" 
+                            element={
+                              <AuthGuard>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <TeacherTraining />
+                                </Suspense>
+                              </AuthGuard>
+                            } 
+                          />
+                          <Route path="*" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <NotFound />
+                            </Suspense>
+                          } />
+                        </Routes>
+                        <AccessibilitySettingsButton />
+                      </BrowserRouter>
+                    </div>
+                  </TooltipProvider>
+                </NotificationsProvider>
+              </AccessibilityProvider>
+            </OnlineProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
@@ -342,4 +385,6 @@ const App = () => {
 };
 
 export default App;
+
+
 

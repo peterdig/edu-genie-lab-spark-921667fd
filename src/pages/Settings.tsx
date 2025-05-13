@@ -22,6 +22,7 @@ import { useLocation, Navigate } from "react-router-dom";
 import { ProfileForm } from "@/components/auth/ProfileForm";
 import { PasswordUpdateForm } from "@/components/auth/PasswordUpdateForm";
 import { AvatarUpload } from "@/components/auth/AvatarUpload";
+import { NotificationTest } from "@/components/NotificationTest";
 
 // Define schemas for form validation
 const profileSchema = z.object({
@@ -273,83 +274,95 @@ export default function Settings() {
           
           {/* Preferences Tab */}
           <TabsContent value="preferences">
-            <Card>
-              <CardHeader>
-                <CardTitle>Application Preferences</CardTitle>
-                <CardDescription>
-                  Customize how EdGenie works for you
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Dark Mode</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Toggle between light and dark themes
-                    </p>
-                  </div>
-                  <Switch
-                    checked={isDarkMode}
-                    onCheckedChange={toggleDarkMode}
-                    aria-label="Toggle dark mode"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="font-medium">Default AI Model</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Choose which AI model to use by default
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={defaultModel === "qwen" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDefaultModel("qwen")}
-                    >
-                      Qwen
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Interface Preferences</CardTitle>
+                    <CardDescription>
+                      Customize your experience with EduGenie
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Dark Mode</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Switch between light and dark themes
+                        </p>
+                      </div>
+                      <DarkModeToggle />
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Compact View</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Show more content with less spacing
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Default AI Model</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Choose your preferred AI model for content generation
+                        </p>
+                      </div>
+                      <div className="w-[180px]">
+                        <select 
+                          value={defaultModel} 
+                          onChange={e => setDefaultModel(e.target.value)}
+                          className="w-full p-2 border rounded-md"
+                        >
+                          <option value="qwen">Qwen 3 4B</option>
+                          <option value="mistral">Mistral 7B</option>
+                          <option value="llama">Llama 3.1 8B</option>
+                          <option value="deepseek">DeepSeek 3 Base</option>
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button onClick={handleSavePreferences} disabled={isLoadingPrefs} className="w-full">
+                      {isLoadingPrefs ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : updateSuccess ? (
+                        <>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Saved
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </Button>
-                    <Button
-                      variant={defaultModel === "gpt-4" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDefaultModel("gpt-4")}
-                    >
-                      GPT-4
-                    </Button>
-                    <Button
-                      variant={defaultModel === "gemini" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDefaultModel("gemini")}
-                    >
-                      Gemini
-                    </Button>
-                    <Button
-                      variant={defaultModel === "claude" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDefaultModel("claude")}
-                    >
-                      Claude
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button onClick={handleSavePreferences} disabled={isLoadingPrefs}>
-                  {isLoadingPrefs ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : updateSuccess ? (
-                    <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Saved
-                    </>
-                  ) : (
-                    "Save Preferences"
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
+                  </CardFooter>
+                </Card>
+              </div>
+              
+              <div>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Notifications Test</CardTitle>
+                    <CardDescription>
+                      Create test notifications to try out the notification system
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <NotificationTest />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
           
           {/* Security Tab */}
