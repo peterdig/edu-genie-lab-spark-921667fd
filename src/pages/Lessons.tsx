@@ -402,7 +402,7 @@ export default function Lessons() {
       // Fetch teaching tip on initial load
       await fetchRandomTip(false);
     };
-    
+
     initializePage();
     
     return () => {
@@ -414,14 +414,14 @@ export default function Lessons() {
   const filteredLessons = lessons.filter(lesson => {
     const matchesSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           lesson.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          lesson.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-                          
+      lesson.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      
     const matchesGrade = gradeFilter === "all" || lesson.gradeLevel.includes(gradeFilter);
     const matchesSubject = subjectFilter === "all" || lesson.subject.toLowerCase() === subjectFilter.toLowerCase();
-    
+      
     return matchesSearch && matchesGrade && matchesSubject;
   });
-
+  
   return (
     <Layout>
       <div className="w-full max-w-7xl mx-auto">
@@ -430,26 +430,26 @@ export default function Lessons() {
           
           <div className="flex items-center space-x-2">
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
+                <Tooltip>
+                  <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
                     size="icon"
                     onClick={() => setKeyboardShortcutsOpen(true)}
-                  >
+              >
                     <Keyboard className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
+              </Button>
+                  </TooltipTrigger>
                 <TooltipContent>
                   Keyboard Shortcuts
-                </TooltipContent>
-              </Tooltip>
+                  </TooltipContent>
+                </Tooltip>
             </TooltipProvider>
-            
-            <DarkModeToggle />
+                
+              <DarkModeToggle />
+            </div>
           </div>
-        </div>
-        
+
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-3/4">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -463,7 +463,7 @@ export default function Lessons() {
                       <Badge variant="secondary" className="ml-1">{savedLessonsList.length}</Badge>
                     }
                   </span>
-                </TabsTrigger>
+                          </TabsTrigger>
                 <TabsTrigger value="bookmarked">Bookmarked</TabsTrigger>
                 <TabsTrigger value="recent">
                   <span className="flex items-center">
@@ -473,13 +473,13 @@ export default function Lessons() {
                       <Badge variant="secondary" className="ml-1">{recentLessons.length}</Badge>
                     }
                   </span>
-                </TabsTrigger>
-              </TabsList>
-              
+                          </TabsTrigger>
+                  </TabsList>
+                
               <TabsContent value="create" className="space-y-4">
                 {generatedLesson ? (
                   <ErrorBoundary>
-                    <LessonDisplay lesson={generatedLesson} onReset={handleReset} />
+                      <LessonDisplay lesson={generatedLesson} onReset={handleReset} />
                   </ErrorBoundary>
                 ) : (
                   <ErrorBoundary>
@@ -494,9 +494,9 @@ export default function Lessons() {
                   <Button variant="outline" size="sm" onClick={loadSavedLessons}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                  </Button>
-                </div>
-                
+                            </Button>
+                        </div>
+                        
                 {savedLessonsList.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
@@ -504,14 +504,14 @@ export default function Lessons() {
                       <p className="text-center text-muted-foreground">
                         No saved lessons yet. Click the save button on a lesson to save it here.
                       </p>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {savedLessonsList.map((lesson) => (
-                      <ContentCard
-                        key={lesson.id}
-                        title={lesson.title}
+                          <ContentCard
+                            key={lesson.id}
+                            title={lesson.title}
                         description={lesson.overview}
                         metadata={`Grade ${lesson.gradeLevel} • ${lesson.subject}`}
                         icon={<Save className="h-4 w-4 text-primary" />}
@@ -519,10 +519,10 @@ export default function Lessons() {
                         tags={lesson.tags.slice(0, 2)}
                         onClick={() => handleLessonSelect(lesson.id)}
                       />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+                        ))}
+                      </div>
+                    )}
+                </TabsContent>
               
               <TabsContent value="bookmarked" className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -533,7 +533,7 @@ export default function Lessons() {
                   </Button>
                 </div>
                 
-                {bookmarkedLessons.length === 0 ? (
+                    {bookmarkedLessons.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                       <BookmarkCheck className="h-12 w-12 text-muted-foreground mb-4" />
@@ -559,17 +559,17 @@ export default function Lessons() {
                         />
                       );
                     })}
-                  </div>
+                              </div>
                 )}
               </TabsContent>
               
               <TabsContent value="recent" className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-medium">Recently Viewed Lessons</h2>
-                  <Button 
+                                <Button 
                     variant="outline" 
-                    size="sm" 
-                    onClick={() => {
+                                  size="sm" 
+                                  onClick={() => {
                       const recentIds = getRecentLessons();
                       if (recentIds.length > 0) {
                         const recentDetails = recentIds
@@ -585,8 +585,8 @@ export default function Lessons() {
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                  </Button>
-                </div>
+                                </Button>
+                              </div>
                 
                 {recentLessons.length === 0 ? (
                   <Card>
@@ -595,8 +595,8 @@ export default function Lessons() {
                       <p className="text-center text-muted-foreground">
                         No recently viewed lessons. View a lesson to have it appear here.
                       </p>
-                    </CardContent>
-                  </Card>
+                            </CardContent>
+                          </Card>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recentLessons.map((lesson) => (
@@ -610,17 +610,17 @@ export default function Lessons() {
                         tags={lesson.tags.slice(0, 2)}
                         onClick={() => handleLessonSelect(lesson.id)}
                       />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-          
+                        ))}
+                      </div>
+                    )}
+                </TabsContent>
+              </Tabs>
+            </div>
+            
           <div className="w-full md:w-1/4">
             <div className="sticky top-24">
               {/* Render the toolbox component if enabled */}
-              {showToolbox && (
+            {showToolbox && (
                 <div className="mb-6">
                   <TeacherToolbox />
                 </div>

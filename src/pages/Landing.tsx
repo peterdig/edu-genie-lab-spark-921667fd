@@ -54,18 +54,18 @@ export default function Landing() {
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-background">
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,#3b82f640,transparent)]" />
+          <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary.400/30),theme(colors.secondary.400/20),transparent_70%)]" />
         </div>
         
         <div className="container mx-auto px-4 py-24 relative z-10">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-6 flex items-center">
+            <div className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-1 px-3 rounded-full text-sm font-medium mb-6 flex items-center">
               <GraduationCap className="w-4 h-4 mr-1" />
               Built for educators, by educators
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Empower Your Teaching With <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500">EdGenie</span>
+              Empower Your Teaching With <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-secondary-500">EduGenie</span>
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl">
@@ -75,7 +75,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
               <Button 
                 size="lg" 
-                className="gap-2 px-6 text-base w-full"
+                className="gap-2 px-6 text-base w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors"
                 onClick={() => navigate("/signup")}
               >
                 Get Started
@@ -84,7 +84,7 @@ export default function Landing() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="gap-2 px-6 text-base"
+                className="gap-2 px-6 text-base border-primary/30 hover:bg-primary/10"
                 onClick={() => navigate("/login")}
               >
                 Sign In
@@ -99,7 +99,7 @@ export default function Landing() {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Designed for Modern Educators</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            EdGenie combines cutting-edge AI with proven pedagogy to create the ultimate teaching companion.
+            EduGenie combines cutting-edge AI with proven pedagogy to create the ultimate teaching companion.
           </p>
         </div>
 
@@ -107,39 +107,40 @@ export default function Landing() {
           {features.map((feature) => (
             <Card
               key={feature.id}
-              className="p-6 h-full transition-all duration-300"
+              className="p-6 h-full transition-all duration-300 hover:shadow-md hover:shadow-primary/10 hover:-translate-y-1"
               style={{
-                backgroundColor: theme === "dark" ? "#262626" : "#f5f5f5",
-                borderColor: feature.id === "ai-powered" ? "rgba(59, 130, 246, 0.2)" : 
-                            feature.id === "content-generation" ? "rgba(168, 85, 247, 0.2)" :
-                            feature.id === "time-saving" ? "rgba(236, 72, 153, 0.2)" :
-                            feature.id === "differentiation" ? "rgba(34, 197, 94, 0.2)" :
-                            feature.id === "curriculum" ? "rgba(234, 179, 8, 0.2)" :
-                            "rgba(239, 68, 68, 0.2)"
+                backgroundColor: theme === "dark" ? "hsl(var(--card))" : "hsl(var(--card))",
+                borderWidth: "1px",
+                borderColor: feature.id === "ai-powered" ? "hsl(var(--primary) / 0.2)" : 
+                            feature.id === "content-generation" ? "hsl(var(--secondary) / 0.2)" :
+                            feature.id === "time-saving" ? "hsl(var(--primary) / 0.15)" :
+                            feature.id === "differentiation" ? "hsl(var(--secondary) / 0.15)" :
+                            feature.id === "curriculum" ? "hsl(var(--primary) / 0.1)" :
+                            "hsl(var(--secondary) / 0.1)"
               }}
               onMouseEnter={() => setHovered(feature.id)}
               onMouseLeave={() => setHovered(null)}
             >
               <div className="flex flex-col h-full">
                 <div className={`p-3 rounded-full w-fit mb-4 ${
-                  feature.id === "ai-powered" ? "bg-blue-500/10" : 
-                  feature.id === "content-generation" ? "bg-purple-500/10" :
-                  feature.id === "time-saving" ? "bg-pink-500/10" :
-                  feature.id === "differentiation" ? "bg-green-500/10" :
-                  feature.id === "curriculum" ? "bg-yellow-500/10" :
-                  "bg-red-500/10"
+                  feature.id === "ai-powered" ? "bg-primary/15" : 
+                  feature.id === "content-generation" ? "bg-secondary/15" :
+                  feature.id === "time-saving" ? "bg-primary-400/15" :
+                  feature.id === "differentiation" ? "bg-secondary-400/15" :
+                  feature.id === "curriculum" ? "bg-primary-300/15" :
+                  "bg-secondary-300/15"
                 }`}>
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground flex-grow">{feature.description}</p>
                 <div className={`mt-4 flex items-center text-sm font-medium transition-opacity duration-300 ${
-                  feature.id === "ai-powered" ? "text-blue-500" : 
-                  feature.id === "content-generation" ? "text-purple-500" :
-                  feature.id === "time-saving" ? "text-pink-500" :
-                  feature.id === "differentiation" ? "text-green-500" :
-                  feature.id === "curriculum" ? "text-yellow-500" :
-                  "text-red-500"
+                  feature.id === "ai-powered" ? "text-primary" : 
+                  feature.id === "content-generation" ? "text-secondary" :
+                  feature.id === "time-saving" ? "text-primary-500" :
+                  feature.id === "differentiation" ? "text-secondary-500" :
+                  feature.id === "curriculum" ? "text-primary-600" :
+                  "text-secondary-600"
                 } ${hovered === feature.id ? 'opacity-100' : 'opacity-0'}`}>
                   <span>Learn more</span>
                   <ArrowRight className="ml-1 h-4 w-4" />
@@ -151,16 +152,16 @@ export default function Landing() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-muted py-20">
+      <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Teaching?</h2>
             <p className="text-muted-foreground mb-8">
-              Join educators who are saving time and creating better learning experiences with EdGenie.
+              Join educators who are saving time and creating better learning experiences with EduGenie.
             </p>
             <Button 
               size="lg" 
-              className="gap-2 px-6 text-base"
+              className="gap-2 px-6 text-base bg-gradient-to-r from-primary to-secondary hover:from-primary-600 hover:to-secondary-600 transition-colors"
               onClick={() => navigate("/signup")}
             >
               Create Account
@@ -175,15 +176,15 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">
-              <span className="text-xl font-bold">EdGenie</span>
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">EduGenie</span>
             </div>
             <div className="flex gap-6">
-              <Button variant="ghost" onClick={() => navigate("/login")}>Log in</Button>
-              <Button variant="ghost" onClick={() => navigate("/signup")}>Sign up</Button>
+              <Button variant="ghost" className="hover:text-primary" onClick={() => navigate("/login")}>Log in</Button>
+              <Button variant="ghost" className="hover:text-secondary" onClick={() => navigate("/signup")}>Sign up</Button>
             </div>
           </div>
           <div className="mt-8 text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} EdGenie. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} EduGenie. All rights reserved.</p>
           </div>
         </div>
       </footer>

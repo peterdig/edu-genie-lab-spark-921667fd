@@ -10,7 +10,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Add explicit alias for the lessons file
+      "@lib/lessons": path.resolve(__dirname, "./src/lib/lessons.ts"),
     },
+    // Add extensions to improve module resolution
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
   },
   server: {
     host: "::",
@@ -29,6 +33,8 @@ export default defineConfig({
   // Enable better error output
   build: {
     sourcemap: true,
+    // Improve CSS handling for arbitrary values
+    cssTarget: 'chrome80',
   },
   define: {
     // Add React Router future flags to opt-in to v7 behavior

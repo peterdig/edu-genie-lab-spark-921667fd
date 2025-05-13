@@ -10,7 +10,7 @@ import { ReactNode } from 'react';
 import { useAuth } from "@/lib/AuthContext.jsx";
 import { LessonResult } from "@/types/lessons";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getSavedLessons } from "@/lib/lessons";
+import { getSavedLessons } from "@/data/lessons";
 import { ContentCard } from "@/components/dashboard/ContentCard";
 
 // Feature card components for consistent styling
@@ -161,10 +161,10 @@ export default function Dashboard() {
               <Button 
                 variant="ghost" 
                 className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
-                onClick={() => navigate('/lessons/new')}
+                onClick={() => navigate('/lessons')}
               >
                 <div className="relative">
-                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary.400/10),transparent_70%)]"></div>
                   <Book className="h-8 w-8 mb-2 text-primary" />
                 </div>
                 <span className="font-medium">Create Lesson</span>
@@ -175,10 +175,10 @@ export default function Dashboard() {
               <Button 
                 variant="ghost" 
                 className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
-                onClick={() => navigate('/assessments/new')}
+                onClick={() => navigate('/assessments')}
               >
                 <div className="relative">
-                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary.400/10),transparent_70%)]"></div>
                   <BarChart className="h-8 w-8 mb-2 text-primary" />
                 </div>
                 <span className="font-medium">Create Assessment</span>
@@ -192,7 +192,7 @@ export default function Dashboard() {
                 onClick={() => navigate('/labs')}
               >
                 <div className="relative">
-                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
+                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary.400/10),transparent_70%)]"></div>
                   <Zap className="h-8 w-8 mb-2 text-primary" />
                 </div>
                 <span className="font-medium">Browse Labs</span>
@@ -254,7 +254,7 @@ export default function Dashboard() {
                   variant="outline" 
                   size="sm" 
                   className="mt-4"
-                  onClick={() => navigate('/lessons/new')}
+                  onClick={() => navigate('/lessons')}
                 >
                   Create New Lesson
                 </Button>
