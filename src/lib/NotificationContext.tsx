@@ -21,7 +21,7 @@ interface NotificationsContextValue {
 }
 
 // Create the context with a default value
-const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
+export const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
 
 // Provider props
 interface NotificationsProviderProps {

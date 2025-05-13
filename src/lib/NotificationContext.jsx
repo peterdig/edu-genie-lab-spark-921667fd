@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Create the context with a default value
-const NotificationsContext = createContext(undefined);
+export const NotificationsContext = createContext(undefined);
 
 // Create a provider component
 export function NotificationsProvider({ children }) {
