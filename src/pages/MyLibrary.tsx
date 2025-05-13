@@ -10,12 +10,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Folder, ContentItem, FolderTree, ContentVersion, ContentType } from "@/types/folders";
 import { mockFolders, mockContentItems, mockFolderTree, mockContentVersions } from "@/data/mockFolders";
-import { ChevronRight, FolderOpen, FolderPlus, File, Trash2, FilePlus2, PenLine, Book, Beaker, FileSpreadsheet, MoreHorizontal, ChevronDown, History, Clock, Share2 } from "lucide-react";
+import { ChevronRight, FolderOpen, FolderPlus, File, Trash2, FilePlus2, PenLine, Book, Beaker, FileSpreadsheet, MoreHorizontal, ChevronDown, History, Clock, Share2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 export default function MyLibrary() {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -36,9 +38,28 @@ export default function MyLibrary() {
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [newContentTitle, setNewContentTitle] = useState("");
   const [newContentType, setNewContentType] = useState<ContentType>("lesson");
+  const navigate = useNavigate();
+  
+  // New state for edit folder dialog
+  const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [editFolderName, setEditFolderName] = useState("");
+  const [editFolderDescription, setEditFolderDescription] = useState("");
+  
+  // New state for delete confirmation
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+  const [itemToRemove, setItemToRemove] = useState<string | null>(null);
+  const [isRemoveItemConfirmOpen, setIsRemoveItemConfirmOpen] = useState(false);
+  
+  // State for selected content
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
 
-  // Initialize with mock data
-  useEffect(() => {
+  // Reset to initial mock data (for testing)
+  const resetToMockData = () => {
+    localStorage.removeItem('library-folders');
+    localStorage.removeItem('library-folder-tree');
+    localStorage.removeItem('library-content-versions');
     setFolders(mockFolders);
     setFolderTree(mockFolderTree);
     setContentVersions(mockContentVersions);
@@ -53,7 +74,73 @@ export default function MyLibrary() {
       .filter(folder => folder.children.length > 0)
       .map(folder => folder.id);
     setExpandedFolders(rootFolderIds);
+    
+    toast.success("Library data has been reset to defaults");
+  };
+
+  // Initialize with mock data
+  useEffect(() => {
+    const savedFolders = localStorage.getItem('library-folders');
+    const savedFolderTree = localStorage.getItem('library-folder-tree');
+    const savedContentVersions = localStorage.getItem('library-content-versions');
+    
+    if (savedFolders && savedFolderTree) {
+      try {
+        setFolders(JSON.parse(savedFolders));
+        setFolderTree(JSON.parse(savedFolderTree));
+        
+        if (savedContentVersions) {
+          setContentVersions(JSON.parse(savedContentVersions));
+        } else {
+          setContentVersions(mockContentVersions);
+        }
+        
+        // Initialize with first folder selected
+        const parsedFolders = JSON.parse(savedFolders);
+        if (parsedFolders.length > 0) {
+          setSelectedFolder(parsedFolders[0]);
+        }
+        
+        // Initialize with root folders expanded
+        const parsedFolderTree = JSON.parse(savedFolderTree);
+        const rootFolderIds = parsedFolderTree
+          .filter(folder => folder.children.length > 0)
+          .map(folder => folder.id);
+        setExpandedFolders(rootFolderIds);
+      } catch (error) {
+        console.error("Failed to parse saved library data:", error);
+        resetToMockData();
+      }
+    } else {
+      setFolders(mockFolders);
+      setFolderTree(mockFolderTree);
+      setContentVersions(mockContentVersions);
+      
+      // Initialize with first folder selected
+      if (mockFolders.length > 0) {
+        setSelectedFolder(mockFolders[0]);
+      }
+      
+      // Initialize with root folders expanded
+      const rootFolderIds = mockFolderTree
+        .filter(folder => folder.children.length > 0)
+        .map(folder => folder.id);
+      setExpandedFolders(rootFolderIds);
+    }
   }, []);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    if (folders.length > 0) {
+      localStorage.setItem('library-folders', JSON.stringify(folders));
+    }
+    if (folderTree.length > 0) {
+      localStorage.setItem('library-folder-tree', JSON.stringify(folderTree));
+    }
+    if (contentVersions.length > 0) {
+      localStorage.setItem('library-content-versions', JSON.stringify(contentVersions));
+    }
+  }, [folders, folderTree, contentVersions]);
 
   // Toggle expanded state of a folder
   const toggleFolderExpanded = (folderId: string, event?: React.MouseEvent) => {
@@ -163,22 +250,102 @@ export default function MyLibrary() {
     toast.success("Subfolder created successfully");
   };
 
-  const handleDeleteFolder = (folderId: string) => {
+  // Edit folder
+  const handleEditFolder = () => {
+    if (!editingFolder) return;
+    
+    if (!editFolderName.trim()) {
+      toast.error("Folder name is required");
+      return;
+    }
+    
+    // Update folders list
+    const updatedFolders = folders.map(folder => 
+      folder.id === editingFolder.id
+        ? { 
+            ...folder, 
+            name: editFolderName,
+            description: editFolderDescription || undefined,
+            updatedAt: new Date().toISOString()
+          }
+        : folder
+    );
+    setFolders(updatedFolders);
+    
+    // Update folder tree
+    const updateFolderInTree = (tree: FolderTree[]): FolderTree[] => {
+      return tree.map(folder => {
+        if (folder.id === editingFolder.id) {
+          return {
+            ...folder,
+            name: editFolderName,
+            description: editFolderDescription || undefined,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        
+        if (folder.children.length > 0) {
+          return {
+            ...folder,
+            children: updateFolderInTree(folder.children)
+          };
+        }
+        
+        return folder;
+      });
+    };
+    
+    const updatedFolderTree = updateFolderInTree(folderTree);
+    setFolderTree(updatedFolderTree);
+    
+    // Update selected folder if it's the one being edited
+    if (selectedFolder && selectedFolder.id === editingFolder.id) {
+      setSelectedFolder({
+        ...selectedFolder,
+        name: editFolderName,
+        description: editFolderDescription || undefined,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    setIsEditFolderOpen(false);
+    toast.success("Folder updated successfully");
+  };
+
+  // Open edit folder dialog
+  const openEditFolderDialog = (folder: Folder) => {
+    setEditingFolder(folder);
+    setEditFolderName(folder.name);
+    setEditFolderDescription(folder.description || "");
+    setIsEditFolderOpen(true);
+  };
+
+  // Prompt for folder deletion confirmation
+  const promptDeleteFolder = (folderId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setFolderToDelete(folderId);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  // Handle delete folder with confirmation
+  const handleDeleteFolder = () => {
+    if (!folderToDelete) return;
+    
     // Check if it's a root folder or a subfolder
-    const isRootFolder = folders.some(f => f.id === folderId);
+    const isRootFolder = folders.some(f => f.id === folderToDelete);
     
     if (isRootFolder) {
-      const updatedFolders = folders.filter(folder => folder.id !== folderId);
+      const updatedFolders = folders.filter(folder => folder.id !== folderToDelete);
       setFolders(updatedFolders);
       
       // Also remove from folder tree
-      setFolderTree(folderTree.filter(folder => folder.id !== folderId));
+      setFolderTree(folderTree.filter(folder => folder.id !== folderToDelete));
     } else {
       // It's a subfolder, need to update the tree
       const updateFolderTree = (tree: FolderTree[]): FolderTree[] => {
         return tree.map(folder => {
           // Check direct children
-          const filteredChildren = folder.children.filter(child => child.id !== folderId);
+          const filteredChildren = folder.children.filter(child => child.id !== folderToDelete);
           
           if (filteredChildren.length !== folder.children.length) {
             // Found and removed the folder
@@ -204,17 +371,26 @@ export default function MyLibrary() {
     }
     
     // Update selected folder if needed
-    if (selectedFolder && selectedFolder.id === folderId) {
+    if (selectedFolder && selectedFolder.id === folderToDelete) {
       setSelectedFolder(folders.length > 0 ? folders[0] : null);
     }
     
+    setIsDeleteConfirmOpen(false);
+    setFolderToDelete(null);
     toast.success("Folder deleted successfully");
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    if (!selectedFolder) return;
+  // Prompt for item removal confirmation
+  const promptRemoveItem = (itemId: string) => {
+    setItemToRemove(itemId);
+    setIsRemoveItemConfirmOpen(true);
+  };
+
+  // Handle remove item with confirmation
+  const handleRemoveItem = () => {
+    if (!selectedFolder || !itemToRemove) return;
     
-    const updatedItems = selectedFolder.items.filter(item => item.id !== itemId);
+    const updatedItems = selectedFolder.items.filter(item => item.id !== itemToRemove);
     const updatedFolder = { ...selectedFolder, items: updatedItems };
     
     setSelectedFolder(updatedFolder);
@@ -222,6 +398,29 @@ export default function MyLibrary() {
       folder.id === selectedFolder.id ? updatedFolder : folder
     ));
     
+    // Also update the folder tree
+    const updateFolderItemsInTree = (tree: FolderTree[]): FolderTree[] => {
+      return tree.map(folder => {
+        if (folder.id === selectedFolder.id) {
+          return {
+            ...folder,
+            items: updatedItems
+          };
+        }
+        if (folder.children.length > 0) {
+          return {
+            ...folder,
+            children: updateFolderItemsInTree(folder.children)
+          };
+        }
+        return folder;
+      });
+    };
+    
+    setFolderTree(updateFolderItemsInTree(folderTree));
+    
+    setIsRemoveItemConfirmOpen(false);
+    setItemToRemove(null);
     toast.success("Item removed from folder");
   };
 
@@ -235,6 +434,10 @@ export default function MyLibrary() {
       return;
     }
     
+    // Set the content item for display in the modal
+    const contentItem = selectedFolder?.items.find(item => item.contentId === contentId) || null;
+    setSelectedContent(contentItem);
+    
     setSelectedContentId(contentId);
     setShowVersionHistory(true);
   };
@@ -247,7 +450,65 @@ export default function MyLibrary() {
 
   // Handle restore version
   const handleRestoreVersion = (version: ContentVersion) => {
-    // In a real app, this would update the content to the selected version
+    if (!selectedFolder || !selectedContentId) return;
+    
+    // Find the content item to update
+    const updatedItems = selectedFolder.items.map(item => {
+      if (item.contentId === selectedContentId) {
+        // Create a new content version
+        const newVersion: ContentVersion = {
+          id: uuidv4(),
+          contentId: selectedContentId,
+          version: version.version,
+          data: version.data,
+          createdAt: new Date().toISOString(),
+          createdBy: "You (restored)",
+          notes: `Restored from version ${version.version}`
+        };
+        
+        // Add the new version to the versions list
+        setContentVersions([...contentVersions, newVersion]);
+        
+        // Update the item with the restored version
+        return {
+          ...item,
+          version: version.version,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return item;
+    });
+    
+    // Update the folder with the new items
+    const updatedFolder = { ...selectedFolder, items: updatedItems };
+    setSelectedFolder(updatedFolder);
+    
+    // Update the folders list
+    setFolders(folders.map(folder => 
+      folder.id === selectedFolder.id ? updatedFolder : folder
+    ));
+    
+    // Also update the folder tree
+    const updateFolderItemsInTree = (tree: FolderTree[]): FolderTree[] => {
+      return tree.map(folder => {
+        if (folder.id === selectedFolder.id) {
+          return {
+            ...folder,
+            items: updatedItems
+          };
+        }
+        if (folder.children.length > 0) {
+          return {
+            ...folder,
+            children: updateFolderItemsInTree(folder.children)
+          };
+        }
+        return folder;
+      });
+    };
+    
+    setFolderTree(updateFolderItemsInTree(folderTree));
+    
     toast.success(`Restored to version ${version.version}`);
     setShowVersionHistory(false);
   };
@@ -256,6 +517,13 @@ export default function MyLibrary() {
   const handleShareFolder = () => {
     if (!shareEmail.trim()) {
       toast.error("Email address is required");
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(shareEmail)) {
+      toast.error("Please enter a valid email address");
       return;
     }
     
@@ -286,6 +554,24 @@ export default function MyLibrary() {
       contentId: `${newContentType}-${uuidv4().split('-')[0]}`,
       version: 1
     };
+
+    // Create a new version for this content
+    const newVersion: ContentVersion = {
+      id: uuidv4(),
+      contentId: newContent.contentId,
+      version: 1,
+      data: {
+        title: newContent.title,
+        type: newContent.type,
+        createdAt: newContent.createdAt
+      },
+      createdAt: new Date().toISOString(),
+      createdBy: "You",
+      notes: "Initial creation"
+    };
+    
+    // Add the new version to the versions list
+    setContentVersions([...contentVersions, newVersion]);
 
     // Update selected folder
     const updatedFolder = {
@@ -327,6 +613,31 @@ export default function MyLibrary() {
     toast.success("Content added successfully");
   };
 
+  // Handle view content
+  const handleViewContent = (item: ContentItem) => {
+    // First, check if this content already exists in the appropriate collection
+    // If not, create a toast message that in a real implementation this would navigate to the content
+    switch (item.type) {
+      case 'lesson':
+        // In a full implementation, this would navigate to the lesson detail page
+        // navigate(`/lessons/${item.contentId}`);
+        toast.info(`Viewing lesson: ${item.title}`);
+        break;
+      case 'lab':
+        // For labs, we could navigate to the labs page with the ID
+        navigate(`/labs`);
+        toast.info(`Navigating to Labs section`);
+        break;
+      case 'assessment':
+        // In a full implementation, this would navigate to the assessment detail page
+        // navigate(`/assessments/${item.contentId}`);
+        toast.info(`Viewing assessment: ${item.title}`);
+        break;
+      default:
+        toast.info(`Viewing ${item.type}: ${item.title}`);
+    }
+  };
+
   const filteredFolders = folders.filter(folder => 
     folder.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -359,6 +670,10 @@ export default function MyLibrary() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <Button variant="outline" size="sm" onClick={resetToMockData} className="flex items-center gap-1">
+              <RefreshCw className="h-4 w-4" />
+              Reset Data
+            </Button>
             <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
               <DialogTrigger asChild>
                 <Button className="flex items-center gap-2">
@@ -506,7 +821,7 @@ export default function MyLibrary() {
                                   className="text-destructive focus:text-destructive"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteFolder(folder.id);
+                                    promptDeleteFolder(folder.id);
                                   }}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
@@ -567,7 +882,7 @@ export default function MyLibrary() {
                                         className="text-destructive focus:text-destructive"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          handleDeleteFolder(subfolder.id);
+                                          promptDeleteFolder(subfolder.id);
                                         }}
                                       >
                                         <Trash2 className="h-4 w-4 mr-2" />
@@ -611,7 +926,9 @@ export default function MyLibrary() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => openEditFolderDialog(selectedFolder)}
+                      >
                         <PenLine className="h-4 w-4 mr-2" />
                         Edit Folder
                       </DropdownMenuItem>
@@ -623,7 +940,7 @@ export default function MyLibrary() {
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive focus:text-destructive"
-                        onClick={() => handleDeleteFolder(selectedFolder.id)}
+                        onClick={() => promptDeleteFolder(selectedFolder.id)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete Folder
@@ -663,7 +980,7 @@ export default function MyLibrary() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={() => handleRemoveItem(item.id)}
+                                      onClick={() => promptRemoveItem(item.id)}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -677,7 +994,13 @@ export default function MyLibrary() {
                                 </p>
                               </CardContent>
                               <CardFooter className="p-4 pt-0 flex justify-end">
-                                <Button variant="outline" size="sm">View</Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleViewContent(item)}
+                                >
+                                  View
+                                </Button>
                               </CardFooter>
                             </Card>
                           ))}
@@ -724,7 +1047,7 @@ export default function MyLibrary() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
-                                        onClick={() => handleRemoveItem(item.id)}
+                                        onClick={() => promptRemoveItem(item.id)}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -738,7 +1061,13 @@ export default function MyLibrary() {
                                   </p>
                                 </CardContent>
                                 <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button variant="outline" size="sm">View</Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleViewContent(item)}
+                                  >
+                                    View
+                                  </Button>
                                 </CardFooter>
                               </Card>
                             ))}
@@ -777,7 +1106,7 @@ export default function MyLibrary() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
-                                        onClick={() => handleRemoveItem(item.id)}
+                                        onClick={() => promptRemoveItem(item.id)}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -791,7 +1120,13 @@ export default function MyLibrary() {
                                   </p>
                                 </CardContent>
                                 <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button variant="outline" size="sm">View</Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleViewContent(item)}
+                                  >
+                                    View
+                                  </Button>
                                 </CardFooter>
                               </Card>
                             ))}
@@ -830,7 +1165,7 @@ export default function MyLibrary() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
-                                        onClick={() => handleRemoveItem(item.id)}
+                                        onClick={() => promptRemoveItem(item.id)}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -844,7 +1179,13 @@ export default function MyLibrary() {
                                   </p>
                                 </CardContent>
                                 <CardFooter className="p-4 pt-0 flex justify-end">
-                                  <Button variant="outline" size="sm">View</Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleViewContent(item)}
+                                  >
+                                    View
+                                  </Button>
                                 </CardFooter>
                               </Card>
                             ))}
@@ -881,14 +1222,35 @@ export default function MyLibrary() {
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <History className="h-5 w-5" />
-                      Version History
+                      Version History: {selectedContent?.title}
                     </DialogTitle>
                     <DialogDescription>
                       View and restore previous versions of this content
                     </DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
-                    <ScrollArea className="h-[400px] pr-4">
+                    {selectedContent && (
+                      <Card className="mb-4 bg-muted/20">
+                        <CardHeader className="py-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {getContentTypeIcon(selectedContent.type)}
+                              <CardTitle className="text-base">{selectedContent.title}</CardTitle>
+                            </div>
+                            <Badge variant="outline">
+                              {selectedContent.type}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="py-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Current Version: {selectedContent.version || 1}</span>
+                            <span>Last Updated: {new Date(selectedContent.updatedAt).toLocaleDateString()}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    <ScrollArea className="h-[320px] pr-4">
                       {getContentVersions(selectedContentId).map((version) => (
                         <Card key={version.id} className="mb-4">
                           <CardHeader className="p-4">
@@ -1035,6 +1397,74 @@ export default function MyLibrary() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddContentOpen(false)}>Cancel</Button>
               <Button onClick={handleAddContent}>Add Content</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Folder Dialog */}
+        <Dialog open={isEditFolderOpen} onOpenChange={setIsEditFolderOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Folder</DialogTitle>
+              <DialogDescription>
+                Edit the details of this folder.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="folder-name">Folder Name</Label>
+                <Input 
+                  id="folder-name" 
+                  placeholder="Enter folder name" 
+                  value={editFolderName}
+                  onChange={(e) => setEditFolderName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="folder-description">Description (Optional)</Label>
+                <Textarea 
+                  id="folder-description" 
+                  placeholder="Enter folder description"
+                  value={editFolderDescription}
+                  onChange={(e) => setEditFolderDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditFolderOpen(false)}>Cancel</Button>
+              <Button onClick={handleEditFolder}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Folder Confirmation Dialog */}
+        <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this folder? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteFolder}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Remove Item Confirmation Dialog */}
+        <Dialog open={isRemoveItemConfirmOpen} onOpenChange={setIsRemoveItemConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Removal</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove this item from the folder? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsRemoveItemConfirmOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleRemoveItem}>Remove</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

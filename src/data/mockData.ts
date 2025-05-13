@@ -1,4 +1,3 @@
-
 import { AssessmentResult } from "@/types/assessments";
 import { Lab } from "@/types/labs";
 import { LessonResult } from "@/types/lessons";
@@ -535,5 +534,635 @@ export const labs: Lab[] = [
       }
     ],
     tags: ["Biology", "Evolution", "Genetics", "Natural Selection"]
+  },
+  {
+    id: "lab-7",
+    title: "Acid-Base Solutions",
+    description: "Explore the properties of acids and bases and test the pH of common solutions.",
+    category: "chemistry",
+    gradeLevel: "9-12",
+    thumbnail: "https://phet.colorado.edu/sims/html/acid-base-solutions/latest/acid-base-solutions-600.png",
+    url: "https://phet.colorado.edu/sims/html/acid-base-solutions/latest/acid-base-solutions_en.html",
+    objectives: [
+      "Understand acid-base theory and pH scale",
+      "Identify the properties of acids and bases",
+      "Use indicators to test pH of various solutions",
+      "Analyze acid-base neutralization reactions"
+    ],
+    steps: [
+      {
+        title: "Test different solutions",
+        description: "Use pH paper and indicators to test the acidity of various solutions."
+      },
+      {
+        title: "Observe molecular structures",
+        description: "View the molecular representations of acids and bases in solution."
+      },
+      {
+        title: "Conduct neutralization reactions",
+        description: "Mix acids and bases to observe neutralization and salt formation."
+      },
+      {
+        title: "Analyze concentration effects",
+        description: "Change concentrations and observe effects on pH and conductivity."
+      }
+    ],
+    questions: [
+      {
+        text: "What makes a solution acidic at the molecular level?"
+      },
+      {
+        text: "How does an indicator work to show pH?"
+      },
+      {
+        text: "What happens during a neutralization reaction?"
+      }
+    ],
+    tags: ["Chemistry", "Acids", "Bases", "pH", "Solutions"]
+  },
+  {
+    id: "lab-8",
+    title: "Gene Expression",
+    description: "Explore how DNA is transcribed and translated to create proteins.",
+    category: "biology",
+    gradeLevel: "9-12",
+    thumbnail: "https://cdn.kastatic.org/ka-perseus-images/9695f179d14ef9b5e66a1d6aa7eb4456b3c1d94f.png",
+    url: "https://learn.genetics.utah.edu/content/basics/",
+    objectives: [
+      "Understand the central dogma of molecular biology",
+      "Visualize DNA transcription to mRNA",
+      "Model translation from mRNA to protein",
+      "Analyze how gene mutations affect protein structure"
+    ],
+    steps: [
+      {
+        title: "Examine DNA structure",
+        description: "Explore the double helix structure and base pairing rules."
+      },
+      {
+        title: "Transcribe DNA to RNA",
+        description: "Follow the process of transcription from DNA to messenger RNA."
+      },
+      {
+        title: "Translate mRNA to protein",
+        description: "Use the genetic code to translate mRNA codons into amino acids."
+      },
+      {
+        title: "Introduce mutations",
+        description: "Observe how different types of mutations affect the final protein."
+      }
+    ],
+    questions: [
+      {
+        text: "How does the structure of DNA enable it to store information?"
+      },
+      {
+        text: "What is the relationship between a gene and a protein?"
+      },
+      {
+        text: "Why might a single base mutation be harmful in some cases but not others?"
+      }
+    ],
+    tags: ["Biology", "Genetics", "DNA", "Proteins", "Molecular Biology"]
+  },
+  {
+    id: "lab-9",
+    title: "Projectile Motion",
+    description: "Investigate how objects move through the air when projected with initial velocity.",
+    category: "physics",
+    gradeLevel: "9-12",
+    thumbnail: "https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion-600.png",
+    url: "https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_en.html",
+    objectives: [
+      "Understand the physics of projectile motion",
+      "Analyze the effect of launch angle on projectile trajectory",
+      "Investigate how air resistance affects projectile paths",
+      "Calculate range, height, and flight time of projectiles"
+    ],
+    steps: [
+      {
+        title: "Set launch parameters",
+        description: "Adjust initial velocity, angle, and height for the projectile."
+      },
+      {
+        title: "Observe trajectory",
+        description: "Launch the projectile and observe its path through the air."
+      },
+      {
+        title: "Analyze vectors",
+        description: "Examine the horizontal and vertical components of motion."
+      },
+      {
+        title: "Test different objects",
+        description: "Compare trajectories of objects with different masses and air resistance."
+      }
+    ],
+    questions: [
+      {
+        text: "What launch angle maximizes the horizontal distance of a projectile?"
+      },
+      {
+        text: "How does air resistance affect the path compared to the ideal case?"
+      },
+      {
+        text: "Why do the horizontal and vertical components of motion behave independently?"
+      }
+    ],
+    tags: ["Physics", "Motion", "Kinematics", "Mechanics"]
+  },
+  {
+    id: "lab-10",
+    title: "Weather Patterns Simulation",
+    description: "Explore the factors that influence weather patterns and climate systems.",
+    category: "earth",
+    gradeLevel: "6-12",
+    thumbnail: "https://scied.ucar.edu/sites/default/files/styles/extra_large/public/2021-10/earth-weather-model.jpg",
+    url: "https://scied.ucar.edu/interactive/climate-model",
+    objectives: [
+      "Understand the factors that influence weather and climate",
+      "Model atmospheric circulation patterns",
+      "Analyze the formation of storms and weather fronts",
+      "Investigate climate change scenarios"
+    ],
+    steps: [
+      {
+        title: "Examine global wind patterns",
+        description: "Visualize prevailing winds and global circulation cells."
+      },
+      {
+        title: "Simulate ocean currents",
+        description: "Observe how ocean currents affect regional climate."
+      },
+      {
+        title: "Create weather fronts",
+        description: "Model the collision of air masses to form weather fronts."
+      },
+      {
+        title: "Adjust climate variables",
+        description: "Change greenhouse gas levels and observe climate impacts."
+      }
+    ],
+    questions: [
+      {
+        text: "How do ocean currents influence coastal climates?"
+      },
+      {
+        text: "What causes the formation of hurricanes and cyclones?"
+      },
+      {
+        text: "Explain how the greenhouse effect works and its role in climate."
+      }
+    ],
+    tags: ["Earth Science", "Meteorology", "Climate", "Atmosphere"]
+  },
+  {
+    id: "lab-11",
+    title: "Forces and Motion",
+    description: "Experiment with forces, friction, and motion to understand Newton's laws of physics.",
+    category: "physics",
+    gradeLevel: "6-12",
+    thumbnail: "https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics-600.png",
+    url: "https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics_en.html",
+    objectives: [
+      "Understand Newton's three laws of motion",
+      "Investigate the relationship between force, mass, and acceleration",
+      "Explore the effects of friction on moving objects",
+      "Analyze balanced and unbalanced forces"
+    ],
+    steps: [
+      {
+        title: "Explore force and motion",
+        description: "Apply various forces to objects and observe how they move."
+      },
+      {
+        title: "Investigate friction",
+        description: "Change surface types and observe how friction affects motion."
+      },
+      {
+        title: "Test Newton's Second Law",
+        description: "Vary mass and force to see how they relate to acceleration."
+      },
+      {
+        title: "Create balanced forces",
+        description: "Experiment with opposing forces to create equilibrium."
+      }
+    ],
+    questions: [
+      {
+        text: "How does doubling the force affect the acceleration of an object?"
+      },
+      {
+        text: "What happens to acceleration when you double the mass but keep the force constant?"
+      },
+      {
+        text: "Explain a real-world example of Newton's Third Law."
+      }
+    ],
+    tags: ["Physics", "Newton's Laws", "Forces", "Motion", "Friction"]
+  },
+  {
+    id: "lab-12",
+    title: "Periodic Table Explorer",
+    description: "Investigate the periodic table and explore patterns in element properties.",
+    category: "chemistry",
+    gradeLevel: "9-12",
+    thumbnail: "https://cdn.britannica.com/07/196607-050-88249FA1/Periodic-table-elements.jpg",
+    url: "https://ptable.com/",
+    objectives: [
+      "Understand the organization of the periodic table",
+      "Identify trends in element properties",
+      "Explore electron configurations and valence electrons",
+      "Compare and contrast metals, nonmetals, and metalloids"
+    ],
+    steps: [
+      {
+        title: "Navigate the periodic table",
+        description: "Explore the interactive table and examine element information."
+      },
+      {
+        title: "Investigate periodic trends",
+        description: "Observe patterns in atomic radius, electronegativity, and ionization energy."
+      },
+      {
+        title: "Examine electron arrangements",
+        description: "Study the electron configurations and how they relate to an element's position."
+      },
+      {
+        title: "Compare element groups",
+        description: "Analyze similarities and differences between element families."
+      }
+    ],
+    questions: [
+      {
+        text: "How does atomic radius change as you move across a period and down a group?"
+      },
+      {
+        text: "Why are noble gases so unreactive compared to other elements?"
+      },
+      {
+        text: "How does an element's position in the periodic table relate to its properties?"
+      }
+    ],
+    tags: ["Chemistry", "Periodic Table", "Elements", "Atomic Structure"]
+  },
+  {
+    id: "lab-13",
+    title: "Virtual Frog Dissection",
+    description: "Explore frog anatomy without using an actual specimen through this virtual dissection.",
+    category: "biology",
+    gradeLevel: "6-12",
+    thumbnail: "https://www.biologycorner.com/worksheets/frog/images/frog_internal.jpg",
+    url: "https://www.biologycorner.com/worksheets/frog/frog.html",
+    objectives: [
+      "Identify major organs and systems in a frog",
+      "Understand the function of different organ systems",
+      "Compare frog anatomy to human anatomy",
+      "Learn proper dissection techniques virtually"
+    ],
+    steps: [
+      {
+        title: "External examination",
+        description: "Observe the external features of the frog before dissection."
+      },
+      {
+        title: "Opening the body cavity",
+        description: "Learn the proper technique for accessing internal organs."
+      },
+      {
+        title: "Identify digestive system",
+        description: "Locate and examine the stomach, intestines, and other digestive organs."
+      },
+      {
+        title: "Explore other systems",
+        description: "Identify circulatory, respiratory, and reproductive structures."
+      }
+    ],
+    questions: [
+      {
+        text: "How is the frog's heart different from a human heart?"
+      },
+      {
+        text: "What adaptations in the frog's digestive system relate to its diet and lifestyle?"
+      },
+      {
+        text: "Compare the respiratory system of a frog to that of a human."
+      }
+    ],
+    tags: ["Biology", "Anatomy", "Dissection", "Vertebrates", "Amphibians"]
+  },
+  {
+    id: "lab-14",
+    title: "Solar System Explorer",
+    description: "Take a journey through our solar system and explore the planets, moons, and other celestial objects.",
+    category: "earth",
+    gradeLevel: "3-12",
+    thumbnail: "https://solarsystem.nasa.gov/system/resources/detail_files/2486_stsci-h-p1953a_1800.jpg",
+    url: "https://eyes.nasa.gov/apps/solar-system/",
+    objectives: [
+      "Understand the scale and structure of our solar system",
+      "Compare the physical properties of different planets",
+      "Explore moons, asteroids, and other objects in the solar system",
+      "Learn about space missions and discoveries"
+    ],
+    steps: [
+      {
+        title: "Tour the planets",
+        description: "Explore each planet's appearance, size, and unique features."
+      },
+      {
+        title: "Investigate orbital patterns",
+        description: "Observe how planets and other objects move around the sun."
+      },
+      {
+        title: "Discover moons and rings",
+        description: "Examine the moons and ring systems of the gas giants."
+      },
+      {
+        title: "Learn about space missions",
+        description: "Explore past and current missions to various parts of the solar system."
+      }
+    ],
+    questions: [
+      {
+        text: "How do the inner planets differ from the outer planets?"
+      },
+      {
+        text: "Why does Venus have such an extreme greenhouse effect compared to Earth?"
+      },
+      {
+        text: "What evidence suggests that Jupiter's moon Europa might have an ocean under its surface?"
+      }
+    ],
+    tags: ["Earth Science", "Astronomy", "Planets", "Solar System", "Space"]
+  },
+  {
+    id: "lab-15",
+    title: "Molecular Geometry Simulator",
+    description: "Build molecules and explore how electron pairs determine molecular shapes.",
+    category: "chemistry",
+    gradeLevel: "9-12",
+    thumbnail: "https://phet.colorado.edu/sims/html/molecule-shapes/latest/molecule-shapes-600.png",
+    url: "https://phet.colorado.edu/sims/html/molecule-shapes/latest/molecule-shapes_en.html",
+    objectives: [
+      "Understand VSEPR theory and molecular geometry",
+      "Predict 3D shapes based on electron pair arrangements",
+      "Differentiate between electron geometry and molecular geometry",
+      "Explore bond angles in different molecular structures"
+    ],
+    steps: [
+      {
+        title: "Build simple molecules",
+        description: "Create basic structures like water, ammonia, and methane."
+      },
+      {
+        title: "Add lone pairs",
+        description: "Observe how non-bonding electron pairs affect molecular shape."
+      },
+      {
+        title: "Measure bond angles",
+        description: "Use the angle measurement tool to verify geometric predictions."
+      },
+      {
+        title: "Compare real examples",
+        description: "Match your models with real-world molecules."
+      }
+    ],
+    questions: [
+      {
+        text: "How does a lone pair of electrons affect the shape of a molecule?"
+      },
+      {
+        text: "Why does water have a bent shape rather than a linear one?"
+      },
+      {
+        text: "What is the difference between electron geometry and molecular geometry?"
+      }
+    ],
+    tags: ["Chemistry", "Molecular Geometry", "VSEPR Theory", "Chemical Bonding"]
+  },
+  {
+    id: "lab-16",
+    title: "Simple Machines",
+    description: "Explore levers, pulleys, inclined planes and other simple machines that make work easier.",
+    category: "physics",
+    gradeLevel: "3-8",
+    thumbnail: "https://phet.colorado.edu/sims/html/forces-and-simple-machines/latest/forces-and-simple-machines-600.png",
+    url: "https://www.explorelearning.com/index.cfm?method=cResource.dspDetail&ResourceID=651",
+    objectives: [
+      "Understand the six types of simple machines",
+      "Explore how simple machines make work easier",
+      "Calculate mechanical advantage of different machines",
+      "Build compound machines from simple components"
+    ],
+    steps: [
+      {
+        title: "Investigate levers",
+        description: "Experiment with different classes of levers and observe mechanical advantage."
+      },
+      {
+        title: "Explore pulleys",
+        description: "Compare single fixed pulleys to compound pulley systems."
+      },
+      {
+        title: "Test inclined planes",
+        description: "Measure how inclined planes reduce the force needed to lift objects."
+      },
+      {
+        title: "Build compound machines",
+        description: "Combine simple machines to create more complex mechanical systems."
+      }
+    ],
+    questions: [
+      {
+        text: "How does a longer lever arm affect the force needed to lift an object?"
+      },
+      {
+        text: "Why does a pulley system with more wheels make it easier to lift heavy objects?"
+      },
+      {
+        text: "Name three examples of simple machines you use in everyday life."
+      }
+    ],
+    tags: ["Physics", "Simple Machines", "Mechanics", "Engineering", "Elementary"]
+  },
+  {
+    id: "lab-17",
+    title: "Magnetism Explorer",
+    description: "Investigate magnetic fields, magnetic materials, and electromagnets through interactive simulations.",
+    category: "physics",
+    gradeLevel: "6-12",
+    thumbnail: "https://phet.colorado.edu/sims/html/magnets-and-electromagnets/latest/magnets-and-electromagnets-600.png",
+    url: "https://phet.colorado.edu/sims/html/magnets-and-electromagnets/latest/magnets-and-electromagnets_en.html",
+    objectives: [
+      "Understand the properties of magnetic fields",
+      "Explore attraction and repulsion between magnets",
+      "Investigate how electricity creates magnetism",
+      "Discover applications of electromagnets"
+    ],
+    steps: [
+      {
+        title: "Explore bar magnets",
+        description: "Observe magnetic fields and interactions between magnets."
+      },
+      {
+        title: "Test materials",
+        description: "Identify which materials are magnetic and which are not."
+      },
+      {
+        title: "Build an electromagnet",
+        description: "Create a magnet using electricity and see how to control its strength."
+      },
+      {
+        title: "Generate electricity",
+        description: "Use magnets to generate electrical current through induction."
+      }
+    ],
+    questions: [
+      {
+        text: "What happens to the magnetic field when you break a magnet in half?"
+      },
+      {
+        text: "How can you make an electromagnet stronger?"
+      },
+      {
+        text: "Explain how a compass works using your knowledge of magnets."
+      }
+    ],
+    tags: ["Physics", "Magnetism", "Electricity", "Electromagnetism"]
+  },
+  {
+    id: "lab-18",
+    title: "Weather Station",
+    description: "Collect and analyze weather data to understand meteorological patterns and forecasting.",
+    category: "earth",
+    gradeLevel: "3-8",
+    thumbnail: "https://scied.ucar.edu/sites/default/files/styles/extra_large/public/2021-09/weather-station-kids.jpg",
+    url: "https://scied.ucar.edu/learning-zone/how-weather-works/weather-forecasting",
+    objectives: [
+      "Measure and record weather variables",
+      "Understand cloud formation and precipitation",
+      "Analyze weather patterns and make predictions",
+      "Learn about tools meteorologists use"
+    ],
+    steps: [
+      {
+        title: "Collect weather data",
+        description: "Measure temperature, pressure, humidity, and wind speed."
+      },
+      {
+        title: "Observe clouds",
+        description: "Identify different cloud types and what they indicate about weather."
+      },
+      {
+        title: "Track weather patterns",
+        description: "Record data over time to identify trends and patterns."
+      },
+      {
+        title: "Create a forecast",
+        description: "Use collected data to predict upcoming weather conditions."
+      }
+    ],
+    questions: [
+      {
+        text: "How does air pressure relate to weather conditions?"
+      },
+      {
+        text: "What causes different types of precipitation?"
+      },
+      {
+        text: "Why is it important to collect weather data from many locations?"
+      }
+    ],
+    tags: ["Earth Science", "Meteorology", "Weather", "Data Collection", "Elementary"]
+  },
+  {
+    id: "lab-19",
+    title: "DNA Extraction",
+    description: "Extract DNA from fruits or vegetables using simple household materials.",
+    category: "biology",
+    gradeLevel: "6-12",
+    thumbnail: "https://learn.genetics.utah.edu/content/labs/extraction/howto/images/step7.jpg",
+    url: "https://learn.genetics.utah.edu/content/labs/extraction/",
+    objectives: [
+      "Understand the structure and location of DNA in cells",
+      "Learn basic laboratory techniques for DNA extraction",
+      "Observe DNA with the naked eye",
+      "Connect visual observations to molecular biology concepts"
+    ],
+    steps: [
+      {
+        title: "Prepare cell material",
+        description: "Break down cell walls and membranes to access DNA."
+      },
+      {
+        title: "Separate DNA from proteins",
+        description: "Use salt and dish soap to separate DNA from other cellular materials."
+      },
+      {
+        title: "Precipitate DNA",
+        description: "Add cold alcohol to make the DNA visible as it precipitates."
+      },
+      {
+        title: "Collect and examine",
+        description: "Collect the DNA and observe its appearance and properties."
+      }
+    ],
+    questions: [
+      {
+        text: "Why is dish soap used in the DNA extraction process?"
+      },
+      {
+        text: "What does DNA look like when you extract it from cells?"
+      },
+      {
+        text: "How is this simple extraction different from techniques used in research labs?"
+      }
+    ],
+    tags: ["Biology", "Genetics", "DNA", "Laboratory Techniques", "Molecular Biology"]
+  },
+  {
+    id: "lab-20",
+    title: "Ecosystem Explorer",
+    description: "Build and observe virtual ecosystems to understand ecological relationships and balance.",
+    category: "biology",
+    gradeLevel: "3-8",
+    thumbnail: "https://content.wolfram.com/uploads/sites/10/2018/02/ecosystem-predator-prey.png",
+    url: "https://www.learner.org/wp-content/interactive/envsci/ecology/",
+    objectives: [
+      "Understand food webs and energy flow in ecosystems",
+      "Observe effects of population changes on ecosystem balance",
+      "Learn about competition, predation, and symbiotic relationships",
+      "Investigate how environmental factors affect ecosystems"
+    ],
+    steps: [
+      {
+        title: "Build a food web",
+        description: "Create connections between producers, consumers, and decomposers."
+      },
+      {
+        title: "Introduce environmental changes",
+        description: "Alter conditions like rainfall, temperature, or available resources."
+      },
+      {
+        title: "Observe population dynamics",
+        description: "Watch how species populations change over time and respond to each other."
+      },
+      {
+        title: "Test biodiversity effects",
+        description: "Compare stable, diverse ecosystems to simpler ones with fewer species."
+      }
+    ],
+    questions: [
+      {
+        text: "What happens to an ecosystem when a predator is removed?"
+      },
+      {
+        text: "How does energy flow through a food web?"
+      },
+      {
+        text: "Why is biodiversity important for ecosystem stability?"
+      }
+    ],
+    tags: ["Biology", "Ecology", "Ecosystems", "Food Webs", "Environmental Science", "Elementary"]
   }
 ];

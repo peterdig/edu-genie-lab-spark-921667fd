@@ -32,6 +32,24 @@ logger = logging.getLogger("edugenie.api")
 # Load environment variables
 load_dotenv()
 
+# Get allowed origins from environment or use defaults
+def get_allowed_origins():
+    # Default origins for development and production
+    default_origins = ["*"] if os.getenv("DEBUG", "False").lower() in ("true", "1", "t", "yes") else ["https://edu-genie-lab.vercel.app", "https://edu-genie.app"]
+    
+    # Check if additional origins are specified in environment
+    allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+    if allowed_origins_env:
+        # Split the comma-separated string into a list
+        additional_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+        # Replace wildcards with specific origins
+        if "*" in default_origins and additional_origins:
+            return additional_origins
+        # Add additional origins to the default list
+        return list(set(default_origins + additional_origins))
+    
+    return default_origins
+
 app = FastAPI(
     title="EduGenie API",
     description="API for the EduGenie educational content generation platform",
@@ -41,10 +59,10 @@ app = FastAPI(
 # Configure CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Initialize ModelManager for smart model selection

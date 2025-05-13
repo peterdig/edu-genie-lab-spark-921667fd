@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: edugenie-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.api:app
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: https://edu-genie-lab.vercel.app,https://edu-genie.app 

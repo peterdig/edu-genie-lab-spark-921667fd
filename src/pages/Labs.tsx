@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { LabCard } from "@/components/labs/LabCard";
-import { LabGenerator } from "@/components/labs/LabGenerator";
 import { VirtualLabsCollection } from "@/components/labs/VirtualLabsCollection";
 import { Lab } from "@/types/labs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button, ButtonVariant, ButtonSize } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { 
   Loader, 
   Search, 
@@ -25,7 +24,7 @@ import {
   FlaskConical
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { labs } from "@/data/mockData";
 import {
   DropdownMenu,
@@ -35,7 +34,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ReactNode } from "react";
@@ -73,8 +71,7 @@ const CardDecorator = () => (
 
 export default function Labs() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("create");
-  const [generatedLab, setGeneratedLab] = useState<Lab | null>(null);
+  const [activeTab, setActiveTab] = useState("saved");
   
   // State for saved labs with caching
   const [savedLabs, setSavedLabs] = useState<Lab[]>([]);
@@ -99,17 +96,9 @@ export default function Labs() {
       setIsLoading(true);
       
       try {
-        // Try to load from local storage first
-        const cachedData = localStorage.getItem('savedLabs');
+        // MODIFIED: Always use the latest data from mockData.ts
+        // and ignore any cached data in localStorage
         
-        if (cachedData) {
-          const parsedData = JSON.parse(cachedData);
-          setSavedLabs(parsedData);
-          setIsLoading(false);
-          return;
-        }
-        
-        // If no cache, use mock data (in real app, this would be an API call)
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
@@ -121,8 +110,10 @@ export default function Labs() {
         
         setSavedLabs(labsWithDate);
         
-        // Cache the result
+        // Update the cache
         localStorage.setItem('savedLabs', JSON.stringify(labsWithDate));
+        
+        console.log(`Loaded ${labsWithDate.length} labs from mockData.ts`);
       } catch (error) {
         console.error("Failed to load labs:", error);
         toast.error("Failed to load labs. Please try again.");
@@ -134,32 +125,6 @@ export default function Labs() {
     loadLabs();
   }, []);
   
-  // Handle lab generation
-  const handleLabGenerated = (lab: Lab) => {
-    setGeneratedLab(lab);
-    
-    // Cache the generated lab
-    try {
-      const newLab = {
-        ...lab,
-        createdAt: new Date().toISOString()
-      };
-      
-      const updated = [newLab, ...savedLabs];
-      setSavedLabs(updated);
-      
-      // Update the cache
-      localStorage.setItem('savedLabs', JSON.stringify(updated));
-    } catch (error) {
-      console.error("Failed to cache lab:", error);
-    }
-  };
-  
-  // Handle reset
-  const handleReset = () => {
-    setGeneratedLab(null);
-  };
-
   // Handle lab click
   const handleLabClick = (labId: string) => {
     navigate(`/labs/${labId}`);
@@ -182,6 +147,37 @@ export default function Labs() {
       setIsLoading(false);
       toast.success("Labs list refreshed");
     }, 500);
+  };
+  
+  // Reset labs data from mock data
+  const resetLabsData = () => {
+    setIsLoading(true);
+    
+    try {
+      // Clear the localStorage cache
+      localStorage.removeItem('savedLabs');
+      
+      // Add timestamps for sorting
+      const labsWithDate = labs.map(lab => ({
+        ...lab,
+        createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString()
+      }));
+      
+      console.log(`Reset to ${labsWithDate.length} labs from mockData.ts`);
+      
+      // Update state with the latest data
+      setSavedLabs(labsWithDate);
+      
+      // Cache the result
+      localStorage.setItem('savedLabs', JSON.stringify(labsWithDate));
+      
+      toast.success(`Labs data has been reset with the latest ${labsWithDate.length} labs`);
+    } catch (error) {
+      console.error("Failed to reset labs data:", error);
+      toast.error("Failed to reset labs data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Toggle sort direction or change sort field
@@ -285,45 +281,23 @@ export default function Labs() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Virtual Labs</h1>
           <p className="text-muted-foreground mt-1">
-            Create and explore interactive virtual lab simulations
+            Explore interactive virtual lab simulations for various science subjects
           </p>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="flex justify-between items-center">
             <TabsList className="mb-2 bg-background/50 backdrop-blur-sm">
-              <TabsTrigger value="create" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">
-                Create New
+              <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">
+                Available Labs
                 <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+1</kbd>
               </TabsTrigger>
-              <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">
-                Saved Labs
-                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+2</kbd>
-              </TabsTrigger>
               <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10 data-[state=active]:backdrop-blur-md">
-                Explore
-                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+3</kbd>
+                Explore More
+                <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded">Alt+2</kbd>
               </TabsTrigger>
             </TabsList>
           </div>
-          
-          <TabsContent value="create" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
-            {generatedLab ? (
-              <div className="space-y-4">
-                <FeatureCard>
-                  <LabCard lab={generatedLab} onClick={() => handleLabClick(generatedLab.id)} />
-                </FeatureCard>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={handleReset}>Create New Lab</Button>
-                  <Button onClick={() => navigate(`/labs/${generatedLab.id}`)}>
-                    Launch Lab
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <LabGenerator onLabGenerated={handleLabGenerated} />
-            )}
-          </TabsContent>
           
           <TabsContent value="saved" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
             <FeatureCard>
@@ -404,6 +378,16 @@ export default function Labs() {
                     >
                       <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                       <span className="sr-only">Refresh</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetLabsData}
+                      disabled={isLoading}
+                      className="ml-2"
+                    >
+                      Reset Data
                     </Button>
                   </div>
                 </div>
@@ -504,15 +488,15 @@ export default function Labs() {
                 <h3 className="mt-4 text-lg font-medium">No labs found</h3>
                 <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
                   {filteredLabs.length === 0 ? 
-                    "You haven't created any labs yet. Try creating a new one!" : 
+                    "No labs available at the moment." : 
                     "No labs match your current filters. Try adjusting your search criteria."}
                 </p>
                 <Button 
                   variant="outline" 
                   className="mt-4" 
-                  onClick={() => filteredLabs.length === 0 ? setActiveTab("create") : clearFilters()}
+                  onClick={clearFilters}
                 >
-                  {filteredLabs.length === 0 ? "Create Lab" : "Clear Filters"}
+                  Clear Filters
                 </Button>
               </div>
             ) : (
@@ -581,7 +565,7 @@ export default function Labs() {
             )}
           </TabsContent>
           
-          {/* New Explore Tab for Virtual Labs Collection */}
+          {/* Explore Tab for Virtual Labs Collection */}
           <TabsContent value="explore" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
             <VirtualLabsCollection onLabSelect={handleExternalLabSelect} />
           </TabsContent>

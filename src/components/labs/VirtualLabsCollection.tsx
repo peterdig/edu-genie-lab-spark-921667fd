@@ -180,6 +180,90 @@ const virtualLabs: VirtualLab[] = [
     difficulty: "intermediate",
     gradeLevel: "6-12",
     tags: ["Physics", "Waves", "Sound", "Light"]
+  },
+  {
+    id: "projectile-motion",
+    title: "Projectile Motion",
+    description: "Investigate the principles of projectile motion with different objects",
+    category: "physics",
+    thumbnail: "https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion-600.png",
+    url: "https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "intermediate",
+    gradeLevel: "9-12",
+    tags: ["Physics", "Motion", "Gravity", "Kinematics"]
+  },
+  {
+    id: "molecule-shapes",
+    title: "Molecule Shapes",
+    description: "Explore how electron pairs determine molecular shapes through VSEPR theory",
+    category: "chemistry",
+    thumbnail: "https://phet.colorado.edu/sims/html/molecule-shapes/latest/molecule-shapes-600.png",
+    url: "https://phet.colorado.edu/sims/html/molecule-shapes/latest/molecule-shapes_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "advanced",
+    gradeLevel: "9-12",
+    tags: ["Chemistry", "Molecular Geometry", "VSEPR", "3D Structures"]
+  },
+  {
+    id: "energy-forms",
+    title: "Energy Forms and Changes",
+    description: "Explore energy conversions in various systems",
+    category: "physics",
+    thumbnail: "https://phet.colorado.edu/sims/html/energy-forms-and-changes/latest/energy-forms-and-changes-600.png",
+    url: "https://phet.colorado.edu/sims/html/energy-forms-and-changes/latest/energy-forms-and-changes_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "intermediate",
+    gradeLevel: "6-12",
+    tags: ["Physics", "Energy", "Thermodynamics", "Heat"]
+  },
+  {
+    id: "gravity-and-orbits",
+    title: "Gravity and Orbits",
+    description: "Experiment with gravity, orbits, and the solar system",
+    category: "earth",
+    thumbnail: "https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits-600.png",
+    url: "https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "intermediate",
+    gradeLevel: "6-12",
+    tags: ["Earth Science", "Astronomy", "Gravity", "Solar System"]
+  },
+  {
+    id: "ph-scale",
+    title: "pH Scale",
+    description: "Visualize the pH scale and test various solutions",
+    category: "chemistry",
+    thumbnail: "https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale-600.png",
+    url: "https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "beginner",
+    gradeLevel: "6-12",
+    tags: ["Chemistry", "Acids", "Bases", "pH", "Solutions"]
+  },
+  {
+    id: "vector-addition",
+    title: "Vector Addition",
+    description: "Explore vector addition in 1D and 2D",
+    category: "physics",
+    thumbnail: "https://phet.colorado.edu/sims/html/vector-addition/latest/vector-addition-600.png",
+    url: "https://phet.colorado.edu/sims/html/vector-addition/latest/vector-addition_en.html",
+    source: "PhET Interactive Simulations",
+    difficulty: "intermediate",
+    gradeLevel: "9-12",
+    tags: ["Physics", "Vectors", "Forces", "Mathematics"]
+  },
+  {
+    id: "virtual-frog-dissection",
+    title: "Virtual Frog Dissection",
+    description: "Perform a frog dissection virtually with detailed anatomy exploration",
+    category: "biology",
+    thumbnail: "https://www.biologycorner.com/worksheets/frog/images/frog_internal.jpg",
+    url: "https://www.biologycorner.com/worksheets/frog/frog.html",
+    source: "Biology Corner",
+    difficulty: "intermediate",
+    gradeLevel: "6-12",
+    tags: ["Biology", "Anatomy", "Dissection", "Amphibians"]
   }
 ];
 
