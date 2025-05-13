@@ -182,3 +182,74 @@ The backend server runs on port 8888 by default. If you need to change this:
 For issues, questions, or contributions, please contact:
 - Email: support@edu-genie-app.com
 - GitHub: [Create an issue](https://github.com/your-repo/issues)
+
+## Database Setup
+
+This application uses Supabase for data storage. Follow these steps to set up the database:
+
+1. Make sure you have a Supabase account and have created a project.
+2. Copy the Supabase URL and anon key from your Supabase project dashboard.
+3. Create a `.env` file in the root directory and add the following:
+
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Run the following command to set up all required database tables:
+
+```bash
+npm run db:setup
+```
+
+This will create the following tables in your Supabase database:
+- `profiles`: User profiles and authentication data
+- `auth_events`: Tracking of authentication events
+- `collaborative_documents`: Documents for collaborative editing
+- `document_history`: Version history for documents
+- `document_collaborators`: User permissions for documents
+- `document_messages`: Chat messages for documents
+
+## Collaborative Documents
+
+The application supports real-time collaborative document editing with the following features:
+
+1. **Document Creation**: Create new documents with different types (lessons, assessments, rubrics)
+2. **Real-time Editing**: Multiple users can edit documents simultaneously
+3. **Version History**: All changes are tracked with version history
+4. **Chat**: In-document chat for collaboration
+5. **User Presence**: See who is currently viewing/editing the document
+
+### Offline Support
+
+The application provides offline support with:
+- Local storage fallback for data when database is unavailable
+- Automatic sync when connectivity is restored
+- Cache for frequent operations
+
+## Running the Application
+
+To start the development server:
+
+```bash
+npm run dev
+```
+
+To build for production:
+
+```bash
+npm run build
+```
+
+## Troubleshooting Database Issues
+
+If you encounter database issues:
+
+1. Check that your Supabase URL and key are correct in the `.env` file
+2. Ensure the database tables are created properly by running:
+   ```bash
+   npm run db:setup
+   ```
+3. Check the browser console for specific error messages
+4. Verify that your Supabase project has Row Level Security (RLS) policies configured correctly
+5. If data isn't being saved, the application will fall back to using localStorage

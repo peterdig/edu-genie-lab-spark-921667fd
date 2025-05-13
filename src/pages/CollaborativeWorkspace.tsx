@@ -560,10 +560,10 @@ export default function CollaborativeWorkspace() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="font-medium truncate">{doc.title}</div>
-                              <Badge variant="outline">{doc.type}</Badge>
+                              <Badge variant="outline">{doc.document_type}</Badge>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Last modified: {formatTimestamp(doc.last_modified)}
+                              Last modified: {formatTimestamp(doc.updated_at)}
                             </div>
                             <div className="flex -space-x-2">
                               {/* In a real app, we would fetch collaborators for each document */}
@@ -591,7 +591,7 @@ export default function CollaborativeWorkspace() {
                       <div>
                         <CardTitle>{currentDocument.title}</CardTitle>
                         <CardDescription>
-                          Version {currentDocument.version} • Last edited {formatTimestamp(currentDocument.last_modified)}
+                          Version {currentDocument.version} • Last edited {formatTimestamp(currentDocument.updated_at)}
                         </CardDescription>
                       </div>
                       <div className="flex space-x-2">
@@ -715,7 +715,7 @@ export default function CollaborativeWorkspace() {
                                   documentHistory.map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-2 text-sm hover:bg-muted rounded-md">
                                       <div className="flex items-center space-x-2">
-                                        <Badge variant="outline">v{item.version_number}</Badge>
+                                        <Badge variant="outline">v{item.version}</Badge>
                                         <span className="text-xs text-muted-foreground">
                                           {formatTimestamp(item.created_at)}
                                         </span>
@@ -1024,7 +1024,7 @@ export default function CollaborativeWorkspace() {
                               <p className="text-sm">
                                 <span className="font-medium">{user.name}</span>
                                 {' '}
-                                created version {version.version_number} of
+                                created version {version.version} of
                                 {' '}
                                 <span className="font-medium">
                                   {currentDocument?.title || "Unknown Document"}

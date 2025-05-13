@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:apply": "node scripts/apply-schemas.js",
+    "db:setup": "npm run db:apply",
+    "db:direct": "node scripts/direct-sql-setup.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -46,6 +49,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.11.0",
     "input-otp": "^1.2.4",

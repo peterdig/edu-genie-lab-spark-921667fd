@@ -13,6 +13,7 @@ import LoadingFallback from "@/components/ui/loading-fallback";
 import { ThemeProvider } from "./lib/theme-provider";
 import { useLocalStorageFallback, checkConnectivity } from "./lib/supabase";
 import { useEffect, useState, Suspense, lazy } from "react";
+import { initializeDatabase } from "./lib/database";
 
 // Lazy load pages for better initial load performance
 const DashboardPage = lazy(() => import('@/pages/Dashboard'));
@@ -111,6 +112,7 @@ const App = () => {
   const [showFallback, setShowFallback] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [dbInitialized, setDbInitialized] = useState(false);
 
   // Check connectivity to Supabase
   useEffect(() => {
@@ -121,6 +123,11 @@ const App = () => {
           setIsConnected(connected);
           if (!connected) {
             console.warn('No connectivity to Supabase detected, some features may not work properly');
+          } else {
+            // Initialize database tables if connected
+            const initialized = await initializeDatabase();
+            setDbInitialized(initialized);
+            console.log('Database initialization status:', initialized);
           }
         } catch (error) {
           console.error('Error checking connectivity:', error);

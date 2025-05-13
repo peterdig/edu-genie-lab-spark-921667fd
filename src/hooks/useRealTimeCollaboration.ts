@@ -3,13 +3,14 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext.jsx";
 import { v4 as uuidv4 } from 'uuid';
 import { useSupabaseData } from './useSupabaseHook';
+import { checkTablesExist } from "@/lib/database";
 
 // Add global cache to remember missing tables across app sessions
 // This prevents repeated failed queries to non-existent tables
 const MISSING_TABLES_CACHE = {
   'collaborative_documents': false,
-  'document_versions': false,
-  'chat_messages': false,
+  'document_history': false,
+  'document_messages': false,
   'document_collaborators': false
 };
 
@@ -19,43 +20,57 @@ const MOCK_DOCUMENTS: CollaborativeDocument[] = [
     id: "doc-1",
     title: "Lesson Plan: Introduction to Photosynthesis",
     content: "# Introduction to Photosynthesis\n\nThis lesson introduces students to the basic concepts of photosynthesis.\n\n## Learning Objectives\n\n- Understand the process of photosynthesis\n- Identify the key components involved\n- Explain how plants convert light energy into chemical energy",
-    type: "lesson",
+    document_type: "lesson",
     version: 3,
-    last_modified: new Date(Date.now() - 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 86400000).toISOString(),
     created_by: "user-1",
     created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-    team_id: "team-1"
+    updated_by: "user-1",
+    is_archived: false,
+    is_public: false,
+    metadata: {}
   },
+  // Keep other mock documents, but update the structure to match the database schema
   {
     id: "doc-2",
     title: "Weekly Quiz: Cell Biology",
     content: "# Cell Biology Quiz\n\n1. What is the powerhouse of the cell?\n2. Name three organelles found in a eukaryotic cell.\n3. Explain the difference between passive and active transport.",
-    type: "assessment",
+    document_type: "assessment",
     version: 2,
-    last_modified: new Date(Date.now() - 3 * 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 86400000).toISOString(),
     created_by: "user-1",
     created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-    team_id: "team-1"
+    updated_by: "user-1",
+    is_archived: false,
+    is_public: false,
+    metadata: {}
   },
   {
     id: "doc-3",
     title: "Project Rubric: Scientific Method Report",
     content: "# Scientific Method Report Rubric\n\n## Research Question (20%)\n- Excellent: Question is clear, focused, and testable\n- Good: Question is clear and testable\n- Needs Improvement: Question is unclear or difficult to test\n\n## Methodology (30%)\n- Excellent: Methods are clearly explained and appropriate\n- Good: Methods are appropriate but explanation lacks detail\n- Needs Improvement: Methods are inappropriate or poorly explained",
-    type: "rubric",
+    document_type: "rubric",
     version: 1,
-    last_modified: new Date(Date.now() - 5 * 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 5 * 86400000).toISOString(),
     created_by: "user-1",
     created_at: new Date(Date.now() - 14 * 86400000).toISOString(),
-    team_id: "team-1"
+    updated_by: "user-1",
+    is_archived: false,
+    is_public: false,
+    metadata: {}
   }
 ];
 
+// Update to match database schema
 const MOCK_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: "msg-1",
     document_id: "doc-1",
     user_id: "user-2",
     message: "I really like how you structured this lesson plan!",
+    message_type: "chat",
+    is_system: false,
+    metadata: {},
     created_at: new Date(Date.now() - 2 * 86400000).toISOString()
   },
   {
@@ -63,6 +78,9 @@ const MOCK_CHAT_MESSAGES: ChatMessage[] = [
     document_id: "doc-1",
     user_id: "user-1",
     message: "Thanks! I added some more details about the light-dependent reactions.",
+    message_type: "chat",
+    is_system: false,
+    metadata: {},
     created_at: new Date(Date.now() - 1.5 * 86400000).toISOString()
   },
   {
@@ -70,15 +88,19 @@ const MOCK_CHAT_MESSAGES: ChatMessage[] = [
     document_id: "doc-1",
     user_id: "user-3",
     message: "Could we add some diagrams to help visual learners?",
+    message_type: "chat",
+    is_system: false,
+    metadata: {},
     created_at: new Date(Date.now() - 1 * 86400000).toISOString()
   }
 ];
 
+// Update to match database schema
 const MOCK_VERSIONS: DocumentVersion[] = [
   {
     id: "ver-1",
     document_id: "doc-1",
-    version_number: 3,
+    version: 3,
     content: "# Introduction to Photosynthesis\n\nThis lesson introduces students to the basic concepts of photosynthesis.\n\n## Learning Objectives\n\n- Understand the process of photosynthesis\n- Identify the key components involved\n- Explain how plants convert light energy into chemical energy",
     created_by: "user-1",
     created_at: new Date(Date.now() - 86400000).toISOString()
@@ -86,7 +108,7 @@ const MOCK_VERSIONS: DocumentVersion[] = [
   {
     id: "ver-2",
     document_id: "doc-1",
-    version_number: 2,
+    version: 2,
     content: "# Introduction to Photosynthesis\n\nThis lesson introduces students to the basic concepts of photosynthesis.\n\n## Learning Objectives\n\n- Understand the process of photosynthesis\n- Identify the key components involved",
     created_by: "user-1",
     created_at: new Date(Date.now() - 3 * 86400000).toISOString()
@@ -94,30 +116,34 @@ const MOCK_VERSIONS: DocumentVersion[] = [
   {
     id: "ver-3",
     document_id: "doc-1",
-    version_number: 1,
+    version: 1,
     content: "# Introduction to Photosynthesis\n\nThis lesson introduces students to the basic concepts of photosynthesis.",
     created_by: "user-1",
     created_at: new Date(Date.now() - 5 * 86400000).toISOString()
   }
 ];
 
+// Update interfaces to match database schema
 interface CollaborativeDocument {
   id: string;
   title: string;
-  content: string;
-  type: "lesson" | "assessment" | "rubric" | "note";
+  content: string | any; // Can be string or JSON
+  document_type: string;
   version: number;
-  last_modified: string;
   created_by: string;
   created_at: string;
-  team_id: string;
+  updated_by: string;
+  updated_at: string;
+  is_archived: boolean;
+  is_public: boolean;
+  metadata: Record<string, any>;
 }
 
 interface DocumentVersion {
   id: string;
   document_id: string;
-  version_number: number;
-  content: string;
+  version: number;
+  content: string | any;
   created_by: string;
   created_at: string;
 }
@@ -127,6 +153,9 @@ interface ChatMessage {
   document_id: string;
   user_id: string;
   message: string;
+  message_type: string;
+  is_system: boolean;
+  metadata: Record<string, any>;
   created_at: string;
 }
 
@@ -174,12 +203,13 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     data: localDocuments, 
     addItem: addLocalDocument, 
     updateItem: updateLocalDocument,
-    queryByField: queryLocalDocuments
+    queryByField: queryLocalDocuments,
+    isUsingFallback
   } = useSupabaseData<CollaborativeDocument>(
     'collaborative_documents', 
     'edgenie_collaborative_documents', 
     MOCK_DOCUMENTS, // Use mock data as default
-    true
+    false  // Don't force fallback - let it try to use Supabase first
   );
   
   const { 
@@ -187,152 +217,128 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     addItem: addLocalVersion,
     queryByField: queryLocalVersions 
   } = useSupabaseData<DocumentVersion>(
-    'document_versions', 
+    'document_history', 
     'edgenie_document_versions', 
     MOCK_VERSIONS, // Use mock data as default
-    true
+    false  // Don't force fallback
   );
   
   const { 
     data: localMessages, 
     addItem: addLocalMessage 
   } = useSupabaseData<ChatMessage>(
-    'chat_messages', 
+    'document_messages', 
     'edgenie_chat_messages', 
     MOCK_CHAT_MESSAGES, // Use mock data as default
-    true
+    false  // Don't force fallback
   );
-  
-  // Fetch documents with debounce to prevent multiple simultaneous requests
-  const fetchDocuments = useCallback(async () => {
-    if (!isAuthenticated && !user) {
-      // Don't load data if not authenticated - will show login screen
-      setLoading(false);
-      return;
-    }
-    
-    if (loadingOperationRef.current) {
-      return; // Prevent concurrent fetch operations
-    }
 
-    // Throttle requests to prevent excessive API calls
-    const now = Date.now();
-    const lastRequest = lastRequestTimeRef.current['documents'] || 0;
-    if (now - lastRequest < 2000) { // 2 second minimum between requests
-      return;
-    }
-    lastRequestTimeRef.current['documents'] = now;
-    
-    console.log("Fetching documents for team:", memoizedTeamId);
-    
-    // Set a minimum loading time to prevent flickering
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    
-    loadingOperationRef.current = true;
-    setLoading(true);
-    
-    try {
-      // Add a shorter simulated delay to show loading state consistently
-      await new Promise(resolve => setTimeout(resolve, 300));
+  // Check if required tables exist in the database
+  useEffect(() => {
+    const checkTables = async () => {
+      if (!isAuthenticated || !user) return;
       
-      // Skip Supabase if we already know the table is missing
-      if (tablesMissing['collaborative_documents']) {
-        console.log("Using localStorage directly - table previously not found");
-        if (memoizedTeamId) {
-          const result = await queryLocalDocuments('team_id', memoizedTeamId);
-          setDocuments(result && result.length > 0 ? result : MOCK_DOCUMENTS);
-        } else {
-          setDocuments(localDocuments.length > 0 ? localDocuments : MOCK_DOCUMENTS);
-        }
-      } else {
-        // Try Supabase first
-        try {
-          const { data, error } = await supabase
-            .from('collaborative_documents')
-            .select('*')
-            .eq('team_id', memoizedTeamId || '')
-            .order('last_modified', { ascending: false });
-            
-          if (error) {
-            // Check for specific error indicating table doesn't exist
-            if (error.code === '42P01') {
-              // Update cache for future requests
-              setTablesMissing(prev => ({ ...prev, 'collaborative_documents': true }));
-              MISSING_TABLES_CACHE['collaborative_documents'] = true;
-              
-              // Log once instead of repeatedly
-              console.log("Table 'collaborative_documents' does not exist, using localStorage fallback");
-              throw error;
-            } else {
-              throw error;
-            }
-          }
+      try {
+        const tables = await checkTablesExist();
+        const missingTables = {
+          'collaborative_documents': !tables.collaborative_documents,
+          'document_history': !tables.document_history,
+          'document_messages': !tables.document_messages,
+          'document_collaborators': !tables.document_collaborators
+        };
+        
+        // Update the global cache
+        Object.assign(MISSING_TABLES_CACHE, missingTables);
+        setTablesMissing(missingTables);
+        
+        // Log missing tables
+        const missing = Object.entries(missingTables)
+          .filter(([_, isMissing]) => isMissing)
+          .map(([table]) => table);
           
-          if (data && data.length > 0) {
-            setDocuments(data);
-            console.log("Documents fetched successfully from Supabase:", data.length);
-          } else {
-            // Use mock data if no documents found in Supabase
-            if (memoizedTeamId) {
-              const result = await queryLocalDocuments('team_id', memoizedTeamId);
-              setDocuments(result && result.length > 0 ? result : MOCK_DOCUMENTS);
-            } else {
-              setDocuments(localDocuments.length > 0 ? localDocuments : MOCK_DOCUMENTS);
-            }
-          }
-        } catch (err) {
-          console.error("Error fetching from Supabase, using local fallback:", err);
-          // Use local fallback
-          if (memoizedTeamId) {
-            const result = await queryLocalDocuments('team_id', memoizedTeamId);
-            setDocuments(result && result.length > 0 ? result : MOCK_DOCUMENTS);
-          } else {
-            setDocuments(localDocuments.length > 0 ? localDocuments : MOCK_DOCUMENTS);
-          }
+        if (missing.length > 0) {
+          console.warn('Missing tables required for collaboration:', missing.join(', '));
         }
+      } catch (err) {
+        console.error('Error checking for required tables:', err);
       }
-    } catch (error) {
-      console.error("Error in fetchDocuments:", error);
-      setError(error as Error);
-    } finally {
-      // Use timeout to ensure minimum loading time
-      const endTime = Date.now();
-      const startTime = lastRequestTimeRef.current['documents'] || 0;
-      const elapsed = endTime - startTime;
-      const minLoadTime = 500; // Minimum loading time in ms
+    };
+    
+    if (isAuthenticated && user) {
+      checkTables();
+    }
+  }, [isAuthenticated, user]);
+  
+  // Load documents from backend
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    const fetchDocuments = async () => {
+      setLoading(true);
+      loadingOperationRef.current = true;
       
-      const remainingTime = Math.max(0, minLoadTime - elapsed);
-      
-      loadingTimeoutRef.current = setTimeout(() => {
+      try {
+        // Check if we should use Supabase or localStorage
+        if (!isUsingFallback && !tablesMissing.collaborative_documents) {
+          // Use Supabase
+          console.log('Fetching documents from Supabase');
+          const query = memoizedTeamId 
+            ? supabase
+                .from('collaborative_documents')
+                .select('*')
+                .eq('metadata->team_id', memoizedTeamId)
+            : supabase
+                .from('collaborative_documents')
+                .select('*')
+                .eq('created_by', user?.id);
+                
+          const { data, error } = await query;
+          
+          if (error) {
+            if (error.code === '42P01') {
+              // Table doesn't exist
+              setTablesMissing(prev => ({ ...prev, collaborative_documents: true }));
+              MISSING_TABLES_CACHE.collaborative_documents = true;
+              console.warn('Table collaborative_documents does not exist, using local fallback');
+              setDocuments(localDocuments);
+            } else {
+              throw error;
+            }
+          } else if (data && data.length > 0) {
+            setDocuments(data);
+          } else {
+            // No documents found, use local fallback for initial data
+            console.log('No documents found in Supabase, using local fallback for initial data');
+            setDocuments(localDocuments);
+          }
+        } else {
+          // Use localStorage
+          console.log('Using localStorage for documents');
+          setDocuments(localDocuments);
+        }
+      } catch (err) {
+        console.error('Error fetching documents:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        // Fallback to local storage
+        setDocuments(localDocuments);
+      } finally {
         setLoading(false);
         loadingOperationRef.current = false;
-        loadingTimeoutRef.current = null;
-      }, remainingTime);
-    }
-  }, [isAuthenticated, user, memoizedTeamId, localDocuments, queryLocalDocuments, tablesMissing]);
-  
-  // Main fetch effect - use fetchDocuments callback
-  useEffect(() => {
-    fetchDocuments();
-    
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
+        setInitialized(true);
       }
-      loadingOperationRef.current = false;
     };
-  }, [fetchDocuments]);
+    
+    fetchDocuments();
+  }, [isAuthenticated, user, memoizedTeamId, localDocuments, isUsingFallback, tablesMissing.collaborative_documents]);
   
   // Memoize helper functions to prevent unecessary re-renders
   const fetchDocumentHistory = useCallback(async (documentId: string): Promise<DocumentVersion[]> => {
     try {
       const { data, error } = await supabase
-        .from('document_versions')
+        .from('document_history')
         .select('*')
         .eq('document_id', documentId)
-        .order('version_number', { ascending: false });
+        .order('version', { ascending: false });
         
       if (error) throw error;
       
@@ -356,7 +362,7 @@ export const useRealTimeCollaboration = (teamId?: string) => {
   const fetchChatMessages = useCallback(async (documentId: string): Promise<ChatMessage[]> => {
     try {
       const { data, error } = await supabase
-        .from('chat_messages')
+        .from('document_messages')
         .select('*')
         .eq('document_id', documentId)
         .order('created_at', { ascending: true });
@@ -507,7 +513,7 @@ export const useRealTimeCollaboration = (teamId?: string) => {
           console.log('Document updated:', payload);
           if (payload.new && payload.new.id === documentId) {
             // Only update if not by the current user to avoid conflicts
-            if (payload.new.last_modified_by !== user?.id) {
+            if (payload.new.updated_by !== user?.id) {
               setCurrentDocument(payload.new as CollaborativeDocument);
               setDocumentContent(payload.new.content);
             }
@@ -543,7 +549,7 @@ export const useRealTimeCollaboration = (teamId?: string) => {
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages',
+          table: 'document_messages',
           filter: `document_id=eq.${documentId}`
         }, (payload) => {
           console.log('New chat message:', payload);
@@ -577,197 +583,259 @@ export const useRealTimeCollaboration = (teamId?: string) => {
   
   // Create a new document
   const createDocument = async (
-    title: string, 
-    content: string = "", 
-    type: "lesson" | "assessment" | "rubric" | "note" = "note"
+    title: string,
+    content: string = "",
+    type: string = "document"
   ) => {
-    if (!user || !isAuthenticated) {
+    if (!isAuthenticated || !user) {
       throw new Error("You must be authenticated to create a document");
     }
     
+    const newDocument: Omit<CollaborativeDocument, 'id' | 'created_at'> = {
+      title,
+      content,
+      document_type: type,
+      version: 1,
+      created_by: user.id,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+      is_archived: false,
+      is_public: false,
+      metadata: memoizedTeamId ? { team_id: memoizedTeamId } : {}
+    };
+    
     try {
-      const now = new Date().toISOString();
-      const newDocument: Omit<CollaborativeDocument, 'id' | 'created_at'> = {
-        title,
-        content,
-        type,
-        version: 1,
-        last_modified: now,
-        created_by: user.id,
-        team_id: teamId || user.id
-      };
-      
-      // Try to save to Supabase
-      try {
+      // Check if we should use Supabase or localStorage
+      if (!isUsingFallback && !tablesMissing.collaborative_documents) {
+        // Use Supabase
+        console.log('Creating document in Supabase');
         const { data, error } = await supabase
           .from('collaborative_documents')
           .insert(newDocument)
-          .select()
-          .single();
+          .select();
           
-        if (error) throw error;
-        
-        if (data) {
-          setDocuments(prev => [data, ...prev]);
-          return data;
+        if (error) {
+          if (error.code === '42P01') {
+            // Table doesn't exist
+            setTablesMissing(prev => ({ ...prev, collaborative_documents: true }));
+            MISSING_TABLES_CACHE.collaborative_documents = true;
+            console.warn('Table collaborative_documents does not exist, using local fallback');
+            const localDoc = await addLocalDocument(newDocument);
+            setDocuments(prev => [...prev, localDoc]);
+            return localDoc;
+          } else {
+            throw error;
+          }
         }
-      } catch (err) {
-        console.error("Error saving to Supabase, using local fallback:", err);
-        // Save to local storage as fallback
-        const localDoc = await addLocalDocument(newDocument as any);
-        setDocuments(prev => [localDoc, ...prev]);
-        return localDoc;
+        
+        if (data && data.length > 0) {
+          const createdDoc = data[0];
+          setDocuments(prev => [...prev, createdDoc]);
+          return createdDoc;
+        }
       }
+      
+      // Use localStorage fallback
+      const localDoc = await addLocalDocument(newDocument);
+      setDocuments(prev => [...prev, localDoc]);
+      return localDoc;
     } catch (err) {
-      console.error("Error creating document:", err);
+      console.error('Error creating document:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      
+      // Fallback to localStorage in case of error
+      try {
+        const localDoc = await addLocalDocument(newDocument);
+        setDocuments(prev => [...prev, localDoc]);
+        return localDoc;
+      } catch (fallbackErr) {
+        console.error('Error in localStorage fallback:', fallbackErr);
+        throw err; // Rethrow original error
+      }
     }
   };
   
   // Save document changes
   const saveDocument = async (content: string) => {
-    if (!currentDocument || !user) return null;
+    if (!currentDocument || !isAuthenticated || !user) {
+      throw new Error("No document selected or user not authenticated");
+    }
+    
+    // Throttle requests - don't save more than once every 2 seconds
+    const now = Date.now();
+    const lastRequestTime = lastRequestTimeRef.current[currentDocument.id] || 0;
+    if (now - lastRequestTime < 2000) {
+      console.log('Throttling save request');
+      return currentDocument;
+    }
+    
+    lastRequestTimeRef.current[currentDocument.id] = now;
+    
+    const updatedDocument = {
+      ...currentDocument,
+      content,
+      version: currentDocument.version + 1,
+      updated_by: user.id,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Create a version record
+    const versionRecord: Omit<DocumentVersion, 'id' | 'created_at'> = {
+      document_id: currentDocument.id,
+      version: currentDocument.version,  // Store previous version
+      content: currentDocument.content,  // Store previous content
+      created_by: user.id
+    };
     
     try {
-      const now = new Date().toISOString();
-      
-      // Create new version record
-      const versionData: Omit<DocumentVersion, 'id' | 'created_at'> = {
-        document_id: currentDocument.id,
-        version_number: currentDocument.version + 1,
-        content: currentDocument.content, // Save previous version
-        created_by: user.id
-      };
-      
-      // Update document data
-      const documentUpdate = {
-        content,
-        version: currentDocument.version + 1,
-        last_modified: now,
-        last_modified_by: user.id
-      };
-      
-      // Try to save to Supabase
-      try {
-        // Save version history
-        const { error: versionError } = await supabase
-          .from('document_versions')
-          .insert(versionData);
-          
-        if (versionError) throw versionError;
-        
-        // Update document
+      // Try to use Supabase if available
+      if (!isUsingFallback && !tablesMissing.collaborative_documents) {
+        // Update document in Supabase
         const { data, error } = await supabase
           .from('collaborative_documents')
-          .update(documentUpdate)
+          .update(updatedDocument)
           .eq('id', currentDocument.id)
-          .select()
-          .single();
+          .select();
           
-        if (error) throw error;
-        
-        if (data) {
-          // Update state
-          setCurrentDocument(data);
-          setDocumentContent(data.content);
+        if (error) {
+          if (error.code === '42P01') {
+            // Table doesn't exist
+            setTablesMissing(prev => ({ ...prev, collaborative_documents: true }));
+            MISSING_TABLES_CACHE.collaborative_documents = true;
+            console.warn('Table collaborative_documents does not exist, using local fallback');
+          } else {
+            throw error;
+          }
+        } else if (data && data.length > 0) {
+          // Document updated successfully
+          setCurrentDocument(data[0]);
+          setDocumentContent(content);
           
           // Update documents list
           setDocuments(prev => 
-            prev.map(doc => doc.id === data.id ? data : doc)
+            prev.map(doc => doc.id === currentDocument.id ? data[0] : doc)
           );
           
-          // Fetch updated version history
-          const { data: versions } = await supabase
-            .from('document_versions')
-            .select('*')
-            .eq('document_id', currentDocument.id)
-            .order('version_number', { ascending: false });
-            
-          if (versions) {
-            setDocumentHistory(versions);
+          // Try to save version history if the table exists
+          if (!tablesMissing.document_history) {
+            try {
+              const { error: versionError } = await supabase
+                .from('document_history')
+                .insert(versionRecord);
+                
+              if (versionError && versionError.code === '42P01') {
+                setTablesMissing(prev => ({ ...prev, document_history: true }));
+                MISSING_TABLES_CACHE.document_history = true;
+              }
+            } catch (versionErr) {
+              console.error('Error saving version history to Supabase:', versionErr);
+            }
           }
           
-          return data;
-        }
-      } catch (err) {
-        console.error("Error saving to Supabase, using local fallback:", err);
-        
-        // Save version to local storage
-        await addLocalVersion(versionData as any);
-        
-        // Update document in local storage
-        const updatedDoc = await updateLocalDocument(
-          currentDocument.id, 
-          documentUpdate
-        );
-        
-        if (updatedDoc) {
-          // Update state
-          setCurrentDocument(updatedDoc);
-          setDocumentContent(updatedDoc.content);
-          
-          // Update documents list
-          setDocuments(prev => 
-            prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc)
-          );
-          
-          // Get updated version history
-          const versions = await queryLocalVersions('document_id', currentDocument.id);
-          if (versions) {
-            setDocumentHistory(versions);
-          }
-          
-          return updatedDoc;
+          return data[0];
         }
       }
       
-      return null;
+      // Use localStorage fallback
+      const localDoc = await updateLocalDocument(currentDocument.id, updatedDocument);
+      if (localDoc) {
+        setCurrentDocument(localDoc);
+        setDocumentContent(content);
+        
+        // Update documents list
+        setDocuments(prev => 
+          prev.map(doc => doc.id === currentDocument.id ? localDoc : doc)
+        );
+        
+        // Save version history locally
+        await addLocalVersion(versionRecord);
+        
+        return localDoc;
+      }
+      
+      throw new Error("Failed to update document");
     } catch (err) {
-      console.error("Error saving document:", err);
+      console.error('Error saving document:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      return null;
+      
+      // Last resort fallback to localStorage
+      try {
+        const localDoc = await updateLocalDocument(currentDocument.id, updatedDocument);
+        if (localDoc) {
+          setCurrentDocument(localDoc);
+          setDocumentContent(content);
+          // Update documents list
+          setDocuments(prev => 
+            prev.map(doc => doc.id === currentDocument.id ? localDoc : doc)
+          );
+          // Save version history locally
+          await addLocalVersion(versionRecord);
+          return localDoc;
+        }
+        throw new Error("Failed to update document in fallback storage");
+      } catch (fallbackErr) {
+        console.error('Error in localStorage fallback:', fallbackErr);
+        throw err; // Rethrow original error
+      }
     }
   };
   
   // Send a chat message
   const sendChatMessage = async (message: string) => {
-    if (!currentDocument || !user || !message.trim()) return null;
+    if (!currentDocument || !isAuthenticated || !user) {
+      throw new Error("No document selected or user not authenticated");
+    }
+    
+    const newMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
+      document_id: currentDocument.id,
+      user_id: user.id,
+      message,
+      message_type: 'chat',
+      is_system: false,
+      metadata: {}
+    };
     
     try {
-      const newMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
-        document_id: currentDocument.id,
-        user_id: user.id,
-        message: message.trim()
-      };
-      
-      // Try to save to Supabase
-      try {
+      // Try Supabase if available
+      if (!isUsingFallback && !tablesMissing.document_messages) {
         const { data, error } = await supabase
-          .from('chat_messages')
+          .from('document_messages')
           .insert(newMessage)
-          .select()
-          .single();
+          .select();
           
-        if (error) throw error;
-        
-        if (data) {
-          setChatMessages(prev => [...prev, data]);
-          return data;
+        if (error) {
+          if (error.code === '42P01') {
+            // Table doesn't exist
+            setTablesMissing(prev => ({ ...prev, document_messages: true }));
+            MISSING_TABLES_CACHE.document_messages = true;
+            console.warn('Table document_messages does not exist, using local fallback');
+          } else {
+            throw error;
+          }
+        } else if (data && data.length > 0) {
+          // Message sent successfully
+          setChatMessages(prev => [...prev, data[0]]);
+          return data[0];
         }
-      } catch (err) {
-        console.error("Error saving to Supabase, using local fallback:", err);
-        // Save to local storage as fallback
-        const localMessage = await addLocalMessage(newMessage as any);
-        setChatMessages(prev => [...prev, localMessage]);
-        return localMessage;
       }
       
-      return null;
+      // Use localStorage fallback
+      const localMessage = await addLocalMessage(newMessage);
+      setChatMessages(prev => [...prev, localMessage]);
+      return localMessage;
     } catch (err) {
-      console.error("Error sending chat message:", err);
+      console.error('Error sending chat message:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      return null;
+      
+      // Last resort fallback to localStorage
+      try {
+        const localMessage = await addLocalMessage(newMessage);
+        setChatMessages(prev => [...prev, localMessage]);
+        return localMessage;
+      } catch (fallbackErr) {
+        console.error('Error in localStorage fallback:', fallbackErr);
+        throw err; // Rethrow original error
+      }
     }
   };
   
@@ -781,7 +849,7 @@ export const useRealTimeCollaboration = (teamId?: string) => {
         // Try to fetch from Supabase
         try {
           const { data, error } = await supabase
-            .from('document_versions')
+            .from('document_history')
             .select('*')
             .eq('id', versionId)
             .single();
@@ -826,7 +894,9 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     createDocument,
     saveDocument,
     sendChatMessage,
-    loadDocumentVersion
+    loadDocumentVersion,
+    isUsingLocalStorage: isUsingFallback || Object.values(tablesMissing).some(missing => missing),
+    tablesMissing
   }), [
     documents,
     currentDocument,
@@ -840,6 +910,8 @@ export const useRealTimeCollaboration = (teamId?: string) => {
     createDocument,
     saveDocument,
     sendChatMessage,
-    loadDocumentVersion
+    loadDocumentVersion,
+    isUsingFallback,
+    tablesMissing
   ]);
 }; 

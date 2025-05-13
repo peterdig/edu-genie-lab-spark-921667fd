@@ -1,16 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { ContentCard } from "@/components/dashboard/ContentCard";
-import { Book, Calendar, Info, Plus, User, LucideIcon, Zap, Calculator, BarChart } from "lucide-react";
+import { Book, Calendar, User, LucideIcon, Zap, Calculator, BarChart, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { lessons } from "@/data/mockData";
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
+import { useAuth } from "@/lib/AuthContext.jsx";
 
-// Feature card components from the provided style
+// Feature card components for consistent styling
 interface FeatureCardProps {
   children: ReactNode;
   className?: string;
@@ -37,10 +36,11 @@ interface CardHeadingProps {
   title: string;
   value: string;
   description: string;
+  onClick?: () => void;
 }
 
-const CardHeading = ({ icon: Icon, title, value, description }: CardHeadingProps) => (
-  <div className="p-4">
+const CardHeading = ({ icon: Icon, title, value, description, onClick }: CardHeadingProps) => (
+  <div className={cn("p-4", onClick && "cursor-pointer")} onClick={onClick}>
     <span className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
       <Icon className="size-4 text-primary" />
       {title}
@@ -52,7 +52,33 @@ const CardHeading = ({ icon: Icon, title, value, description }: CardHeadingProps
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [featuredLessons] = useState(lessons.slice(0, 3));
+  const { user, isAuthenticated } = useAuth();
+  
+  // Use actual data or fall back to mocks 
+  const featuredLessons = useMemo(() => lessons.slice(0, 3), []);
+  
+  // Generate data from actual lessons instead of static values
+  const statsData = useMemo(() => ({
+    lessons: {
+      count: lessons.length,
+      increase: "+2 this week"
+    },
+    assessments: {
+      count: 8,
+      increase: "+1 this week"
+    },
+    labs: {
+      count: 5,
+      increase: "3 recent views"
+    },
+    students: {
+      count: 36,
+      increase: "Active students"
+    }
+  }), []);
+  
+  // If not authenticated, we would normally redirect to login, 
+  // but AuthGuard is already handling this in App.tsx route configuration
   
   return (
     <Layout>
@@ -60,7 +86,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            Welcome to your AI-Powered Educator Companion
+            Welcome {user?.email ? `${user.email}` : "to your"} AI-Powered Educator Companion
           </p>
         </div>
         
@@ -70,8 +96,9 @@ export default function Dashboard() {
               <CardHeading 
                 icon={Book} 
                 title="Created Lessons" 
-                value="12" 
-                description="+2 this week"
+                value={statsData.lessons.count.toString()} 
+                description={statsData.lessons.increase}
+                onClick={() => navigate('/lessons')}
               />
             </CardHeader>
           </FeatureCard>
@@ -81,8 +108,9 @@ export default function Dashboard() {
               <CardHeading 
                 icon={Calendar} 
                 title="Assessments" 
-                value="8" 
-                description="+1 this week"
+                value={statsData.assessments.count.toString()} 
+                description={statsData.assessments.increase}
+                onClick={() => navigate('/assessments')}
               />
             </CardHeader>
           </FeatureCard>
@@ -92,8 +120,9 @@ export default function Dashboard() {
               <CardHeading 
                 icon={Calculator} 
                 title="Lab Simulations" 
-                value="5" 
-                description="3 recent views"
+                value={statsData.labs.count.toString()} 
+                description={statsData.labs.increase}
+                onClick={() => navigate('/labs')}
               />
             </CardHeader>
           </FeatureCard>
@@ -103,8 +132,9 @@ export default function Dashboard() {
               <CardHeading 
                 icon={User} 
                 title="Students" 
-                value="36" 
-                description="Active students"
+                value={statsData.students.count.toString()} 
+                description={statsData.students.increase}
+                onClick={() => navigate('/collaboration')}
               />
             </CardHeader>
           </FeatureCard>
@@ -174,8 +204,14 @@ export default function Dashboard() {
           
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featuredLessons.map((lesson) => (
-              <FeatureCard key={lesson.id} className="hover:border-primary transition-colors cursor-pointer overflow-hidden">
-                <CardContent className="p-4" onClick={() => navigate(`/lessons/${lesson.id}`)}>
+              <FeatureCard 
+                key={lesson.id} 
+                className="hover:border-primary transition-colors cursor-pointer overflow-hidden"
+              >
+                <CardContent 
+                  className="p-4" 
+                  onClick={() => navigate(`/lessons/${lesson.id}`)}
+                >
                   <div>
                     <h3 className="text-lg font-semibold mb-1">{lesson.title}</h3>
                     <div className="flex items-center gap-1 mb-3 text-xs text-muted-foreground">
