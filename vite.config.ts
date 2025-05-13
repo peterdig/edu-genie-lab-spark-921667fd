@@ -10,11 +10,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Add explicit alias for the lessons file
-      "@lib/lessons": path.resolve(__dirname, "./src/lib/lessons.ts"),
+      // Add explicit aliases for common imported files with extensions
+      "@/lib/NotificationContext": path.resolve(__dirname, "./src/lib/NotificationContext.tsx"),
+      "@/lib/NotificationContext.tsx": path.resolve(__dirname, "./src/lib/NotificationContext.tsx"),
+      "@/lib/NotificationContext.jsx": path.resolve(__dirname, "./src/lib/NotificationContext.jsx"),
     },
-    // Add extensions to improve module resolution
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
   },
   server: {
     host: "::",
