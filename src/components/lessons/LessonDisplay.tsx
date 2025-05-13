@@ -4,11 +4,68 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LessonResult } from "@/types/lessons";
 import { toast } from "sonner";
-import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2, File, RefreshCw, Bookmark, BookmarkCheck, ArrowDownToLine, Pencil } from "lucide-react";
+import { Book, Calendar, CheckSquare, Download, Edit, Printer, Share2, File, RefreshCw, Bookmark, BookmarkCheck, ArrowDownToLine, Pencil, Save } from "lucide-react";
 import { generateTeachingTip } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Helper function to add a lesson to recent lessons
+const addRecentLesson = (lessonId: string) => {
+  try {
+    // Get existing recent lessons
+    const stored = localStorage.getItem('recentLessons');
+    const recent = stored ? JSON.parse(stored) : [];
+    
+    // Remove the lesson if it already exists in the list
+    const filtered = recent.filter((l: any) => l.id !== lessonId);
+    
+    // Add the lesson with current timestamp to the beginning
+    const updated = [{ id: lessonId, timestamp: Date.now() }, ...filtered];
+    
+    // Limit to 5 most recent lessons
+    const limited = updated.slice(0, 5);
+    
+    localStorage.setItem('recentLessons', JSON.stringify(limited));
+    return limited;
+  } catch (e) {
+    console.error('Error updating recent lessons in localStorage:', e);
+    return [];
+  }
+};
+
+// Helper function to save a lesson to localStorage
+const saveLesson = (lesson: LessonResult) => {
+  try {
+    // Get saved lessons
+    const storedLessons = localStorage.getItem('savedLessons');
+    const savedLessons = storedLessons ? JSON.parse(storedLessons) : [];
+    
+    // Check if lesson already exists
+    const existingIndex = savedLessons.findIndex((l: LessonResult) => l.id === lesson.id);
+    
+    // Enhanced lesson with saved timestamp
+    const enhancedLesson = {
+      ...lesson,
+      savedAt: new Date().toISOString()
+    };
+    
+    // Update or add the lesson
+    if (existingIndex >= 0) {
+      savedLessons[existingIndex] = enhancedLesson;
+    } else {
+      savedLessons.push(enhancedLesson);
+    }
+    
+    // Save back to localStorage
+    localStorage.setItem('savedLessons', JSON.stringify(savedLessons));
+    
+    return true;
+  } catch (e) {
+    console.error('Error saving lesson to localStorage:', e);
+    return false;
+  }
+};
 
 interface LessonDisplayProps {
   lesson: LessonResult;
@@ -22,16 +79,29 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
   const [exportFormat, setExportFormat] = useState<"text" | "pdf" | "word">("text");
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [notes, setNotes] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [customPlan, setCustomPlan] = useState(lesson.plan || "");
   
-  // Check if lesson is bookmarked on load
+  // Add lesson to recent lessons when component mounts and check if it's saved
   useEffect(() => {
+    // Add to recent lessons
+    addRecentLesson(lesson.id);
+    
+    // Check if lesson is bookmarked on load
     try {
       const bookmarkedLessons = JSON.parse(localStorage.getItem('bookmarkedLessons') || '[]');
       const isFound = bookmarkedLessons.some((bm: any) => bm.id === lesson.id);
       setIsBookmarked(isFound);
+      
+      // Check if lesson is saved
+      const storedLessons = localStorage.getItem('savedLessons');
+      if (storedLessons) {
+        const savedLessons = JSON.parse(storedLessons);
+        const isSavedLesson = savedLessons.some((l: LessonResult) => l.id === lesson.id);
+        setIsSaved(isSavedLesson);
+      }
       
       // Load notes if any
       const savedNotes = localStorage.getItem(`lesson-notes-${lesson.id}`);
@@ -39,9 +109,23 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
         setNotes(savedNotes);
       }
     } catch (e) {
-      console.error("Failed to load bookmarks", e);
+      console.error("Failed to load bookmarks or saved lessons", e);
     }
   }, [lesson.id]);
+  
+  const handleSave = () => {
+    const success = saveLesson(lesson);
+    if (success) {
+      setIsSaved(true);
+      toast.success("Lesson saved successfully", {
+        description: "You can access this lesson from the Saved Lessons tab"
+      });
+    } else {
+      toast.error("Failed to save lesson", {
+        description: "Please try again later"
+      });
+    }
+  };
   
   const handleDownload = () => {
     toast.info(`Downloading lesson plan as ${exportFormat}...`);
@@ -198,6 +282,25 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
                 </TooltipTrigger>
                 <TooltipContent>
                   {isBookmarked ? 'Remove bookmark' : 'Bookmark lesson'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleSave}
+                    className={isSaved ? "text-primary" : ""}
+                    disabled={isSaved}
+                  >
+                    <Save className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSaved ? 'Lesson already saved' : 'Save lesson'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -491,10 +594,18 @@ export function LessonDisplay({ lesson, onReset }: LessonDisplayProps) {
         <Button variant="outline" onClick={onReset}>
           Create New Lesson
         </Button>
-        <Button className="flex items-center gap-2">
-          <Edit className="h-4 w-4" />
-          <span>Edit Lesson</span>
-        </Button>
+        <div className="flex gap-2">
+          {!isSaved && (
+            <Button onClick={handleSave} className="flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              <span>Save Lesson</span>
+            </Button>
+          )}
+          <Button className="flex items-center gap-2">
+            <Edit className="h-4 w-4" />
+            <span>Edit Lesson</span>
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

@@ -190,7 +190,7 @@ export function useSupabaseData<T extends { id: string }>(
             
             return newItem;
           }
-
+          
           if (insertedData && insertedData.length > 0) {
             const updatedData = [...data, insertedData[0] as T];
             setData(updatedData);
@@ -411,9 +411,9 @@ export function useSupabaseData<T extends { id: string }>(
             .from(tableName)
             .select('*')
             .eq(field as string, value);
-            
+
           if (error) throw error;
-          
+            
           return queryData as T[];
         } catch (innerError) {
           console.error(`Error querying ${tableName} by field in Supabase:`, innerError);

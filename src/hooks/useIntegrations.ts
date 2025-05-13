@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/AuthContext.jsx";
 import { useSupabaseData } from './useSupabaseHook';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'sonner';
 
 // Integration platform types
 export interface IntegrationPlatform {
@@ -14,6 +15,8 @@ export interface IntegrationPlatform {
   auth_url: string;
   api_base_url: string;
   created_at: string;
+  connected: boolean;
+  lastSync?: string;
 }
 
 // Connected platform types
@@ -66,7 +69,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "lms",
     auth_url: "https://canvas.instructure.com/oauth2/authorize",
     api_base_url: "https://canvas.instructure.com/api/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "google-classroom",
@@ -76,7 +80,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "lms",
     auth_url: "https://accounts.google.com/o/oauth2/auth",
     api_base_url: "https://classroom.googleapis.com/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "schoology",
@@ -86,7 +91,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "lms",
     auth_url: "https://app.schoology.com/oauth/authorize",
     api_base_url: "https://api.schoology.com/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "blackboard",
@@ -96,7 +102,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "lms",
     auth_url: "https://blackboard.com/auth",
     api_base_url: "https://blackboard.com/learn/api/public/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "powerschool",
@@ -106,7 +113,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "sis",
     auth_url: "https://powerschool.com/oauth",
     api_base_url: "https://powerschool.com/api/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "clever",
@@ -116,7 +124,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "sis",
     auth_url: "https://clever.com/oauth",
     api_base_url: "https://api.clever.com/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   },
   {
     id: "khan-academy",
@@ -126,7 +135,8 @@ const DEFAULT_PLATFORMS: IntegrationPlatform[] = [
     category: "content",
     auth_url: "https://khanacademy.org/auth",
     api_base_url: "https://khanacademy.org/api/v1",
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    connected: false
   }
 ];
 
@@ -199,15 +209,275 @@ const DEFAULT_SYNC_OPTIONS: DataSyncOption[] = [
   }
 ];
 
+// Types for our integrations
+export interface SyncOption {
+  id: string;
+  platform_id: string;
+  name: string;
+  description: string;
+  direction: 'import' | 'export' | 'two-way';
+  enabled: boolean;
+  last_sync?: string;
+}
+
+export interface SyncStats {
+  importedCourses: number;
+  importedAssignments: number;
+  exportedAssignments: number;
+  exportedGrades: number;
+  lastFullSync: string;
+}
+
+// Mock data for available platforms
+const MOCK_PLATFORMS: IntegrationPlatform[] = [
+  {
+    id: 'canvas',
+    name: 'Canvas LMS',
+    description: 'Integrate with Canvas to sync courses, assignments, and grades',
+    icon_name: 'GraduationCap',
+    category: 'lms',
+    connected: false
+  },
+  {
+    id: 'google-classroom',
+    name: 'Google Classroom',
+    description: 'Connect to Google Classroom to import courses and assignments',
+    icon_name: 'BookOpen',
+    category: 'lms',
+    connected: false
+  },
+  {
+    id: 'schoology',
+    name: 'Schoology',
+    description: 'Sync content and grades with Schoology LMS',
+    icon_name: 'FileText',
+    category: 'lms',
+    connected: false
+  },
+  {
+    id: 'blackboard',
+    name: 'Blackboard Learn',
+    description: 'Integrate with Blackboard to manage courses and assessments',
+    icon_name: 'GraduationCap',
+    category: 'lms',
+    connected: false
+  },
+  {
+    id: 'clever',
+    name: 'Clever',
+    description: 'Single sign-on and data sync with Clever for education',
+    icon_name: 'Globe',
+    category: 'sis',
+    connected: false
+  },
+  {
+    id: 'khan-academy',
+    name: 'Khan Academy',
+    description: 'Import content and track progress from Khan Academy',
+    icon_name: 'Library',
+    category: 'content',
+    connected: false
+  },
+  {
+    id: 'microsoft-teams',
+    name: 'Microsoft Teams',
+    description: 'Integrate with Teams for classroom collaboration',
+    icon_name: 'Globe',
+    category: 'communication',
+    connected: false
+  },
+  {
+    id: 'quizlet',
+    name: 'Quizlet',
+    description: 'Import flashcards and study sets from Quizlet',
+    icon_name: 'FileText',
+    category: 'content',
+    connected: false
+  }
+];
+
+// Default sync options by platform type
+const DEFAULT_SYNC_OPTIONS_BY_PLATFORM: Record<string, SyncOption[]> = {
+  'canvas': [
+    {
+      id: 'canvas-courses',
+      platform_id: 'canvas',
+      name: 'Courses and Sections',
+      description: 'Import courses and sections from Canvas',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'canvas-assignments',
+      platform_id: 'canvas',
+      name: 'Assignments and Due Dates',
+      description: 'Import assignments, quizzes, and due dates',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'canvas-grades',
+      platform_id: 'canvas',
+      name: 'Grades and Feedback',
+      description: 'Export grades and feedback to Canvas',
+      direction: 'export',
+      enabled: true
+    }
+  ],
+  'google-classroom': [
+    {
+      id: 'google-courses',
+      platform_id: 'google-classroom',
+      name: 'Classrooms',
+      description: 'Import classrooms from Google Classroom',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'google-assignments',
+      platform_id: 'google-classroom',
+      name: 'Assignments',
+      description: 'Import assignments from Google Classroom',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'google-attachments',
+      platform_id: 'google-classroom',
+      name: 'Attachments and Materials',
+      description: 'Sync attachments and course materials',
+      direction: 'two-way',
+      enabled: false
+    }
+  ],
+  'schoology': [
+    {
+      id: 'schoology-courses',
+      platform_id: 'schoology',
+      name: 'Courses',
+      description: 'Import courses from Schoology',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'schoology-materials',
+      platform_id: 'schoology',
+      name: 'Course Materials',
+      description: 'Import course materials and resources',
+      direction: 'import',
+      enabled: true
+    }
+  ],
+  'blackboard': [
+    {
+      id: 'blackboard-courses',
+      platform_id: 'blackboard',
+      name: 'Courses',
+      description: 'Import courses from Blackboard',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'blackboard-assessments',
+      platform_id: 'blackboard',
+      name: 'Assessments',
+      description: 'Import assessments from Blackboard',
+      direction: 'import',
+      enabled: true
+    }
+  ],
+  'clever': [
+    {
+      id: 'clever-roster',
+      platform_id: 'clever',
+      name: 'Student Roster',
+      description: 'Import student roster data from Clever',
+      direction: 'import',
+      enabled: true
+    }
+  ],
+  'khan-academy': [
+    {
+      id: 'khan-content',
+      platform_id: 'khan-academy',
+      name: 'Content',
+      description: 'Import Khan Academy content',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'khan-progress',
+      platform_id: 'khan-academy',
+      name: 'Progress Tracking',
+      description: 'Track progress in Khan Academy courses',
+      direction: 'import',
+      enabled: true
+    }
+  ],
+  'microsoft-teams': [
+    {
+      id: 'teams-classes',
+      platform_id: 'microsoft-teams',
+      name: 'Teams Classes',
+      description: 'Import classes from Microsoft Teams',
+      direction: 'import',
+      enabled: true
+    },
+    {
+      id: 'teams-assignments',
+      platform_id: 'microsoft-teams',
+      name: 'Assignments',
+      description: 'Sync assignments with Microsoft Teams',
+      direction: 'two-way',
+      enabled: true
+    }
+  ],
+  'quizlet': [
+    {
+      id: 'quizlet-sets',
+      platform_id: 'quizlet',
+      name: 'Study Sets',
+      description: 'Import study sets from Quizlet',
+      direction: 'import',
+      enabled: true
+    }
+  ]
+};
+
+// Initial sync stats
+const INITIAL_SYNC_STATS: SyncStats = {
+  importedCourses: 0,
+  importedAssignments: 0,
+  exportedAssignments: 0,
+  exportedGrades: 0,
+  lastFullSync: ''
+};
+
+// Helper to generate a timestamp
+const getCurrentTimestamp = () => new Date().toISOString();
+
+// Store data in localStorage
+const STORAGE_KEYS = {
+  PLATFORMS: 'edgenie-integration-platforms',
+  SYNC_OPTIONS: 'edgenie-sync-options',
+  SYNC_STATS: 'edgenie-sync-stats',
+  CONNECTED_PLATFORMS: 'edgenie-connected-platforms'
+};
+
 export function useIntegrations() {
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [initialized, setInitialized] = useState(false);
   
+  const [platforms, setPlatforms] = useState<IntegrationPlatform[]>([]);
+  const [syncOptions, setSyncOptions] = useState<SyncOption[]>([]);
+  const [syncStats, setSyncStats] = useState<SyncStats>(INITIAL_SYNC_STATS);
+  const [connectedPlatformsList, setConnectedPlatformsList] = useState<ConnectedPlatform[]>([]);
+  
   // Use Supabase hooks with localStorage fallback
   const { 
-    data: platforms, 
+    data: platformsData, 
     loading: platformsLoading 
   } = useSupabaseData<IntegrationPlatform>(
     'integration_platforms', 
@@ -231,7 +501,7 @@ export function useIntegrations() {
   );
   
   const { 
-    data: syncOptions, 
+    data: syncOptionsData, 
     loading: syncOptionsLoading, 
     updateItem: updateSyncOption,
     queryByField: querySyncOptions
@@ -266,13 +536,62 @@ export function useIntegrations() {
     }
   }, [platformsLoading, connectionsLoading, syncOptionsLoading, syncLogsLoading]);
   
+  // Initialize data from localStorage or defaults
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        setLoading(true);
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Load platforms from localStorage or use defaults
+        const storedPlatforms = localStorage.getItem(STORAGE_KEYS.PLATFORMS);
+        const platformData = storedPlatforms ? JSON.parse(storedPlatforms) : MOCK_PLATFORMS;
+        
+        // Load sync options from localStorage or use defaults
+        const storedSyncOptions = localStorage.getItem(STORAGE_KEYS.SYNC_OPTIONS);
+        const syncOptionData = storedSyncOptions ? JSON.parse(storedSyncOptions) : [];
+        
+        // Load sync stats from localStorage or use defaults
+        const storedSyncStats = localStorage.getItem(STORAGE_KEYS.SYNC_STATS);
+        const syncStatsData = storedSyncStats ? JSON.parse(storedSyncStats) : INITIAL_SYNC_STATS;
+        
+        // Load connected platforms from localStorage
+        const storedConnectedPlatforms = localStorage.getItem(STORAGE_KEYS.CONNECTED_PLATFORMS);
+        const connectedPlatformsData = storedConnectedPlatforms ? JSON.parse(storedConnectedPlatforms) : [];
+        
+        setPlatforms(platformData);
+        setSyncOptions(syncOptionData);
+        setSyncStats(syncStatsData);
+        setConnectedPlatformsList(connectedPlatformsData);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to initialize integrations'));
+        console.error('Error initializing integrations:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (isAuthenticated) {
+      initialize();
+    }
+  }, [isAuthenticated]);
+  
   // Get available platforms with connection status - memoize this function
   const getAvailablePlatforms = useCallback(() => {
     if (!platforms) return [];
     
     return platforms.map(platform => {
-      const isConnected = connectedPlatforms?.some(conn => conn.platform_id === platform.id && conn.is_active);
+      // Check against our explicitly managed connected platforms list
+      const isConnected = connectedPlatformsList?.some(conn => 
+        conn.platform_id === platform.id && conn.is_active
+      ) || connectedPlatforms?.some(conn => 
+        conn.platform_id === platform.id && conn.is_active
+      );
+      
       const connected = isConnected ? 
+        connectedPlatformsList?.find(conn => conn.platform_id === platform.id) || 
         connectedPlatforms?.find(conn => conn.platform_id === platform.id) : 
         null;
       
@@ -282,14 +601,21 @@ export function useIntegrations() {
         lastSync: connected?.last_sync
       };
     });
-  }, [platforms, connectedPlatforms]);
+  }, [platforms, connectedPlatforms, connectedPlatformsList]);
   
   // Get only connected platforms - memoize this function
   const getConnectedPlatforms = useCallback(() => {
-    if (!connectedPlatforms || !platforms) return [];
+    // Merge connected platforms from both sources
+    const allConnections = [...(connectedPlatformsList || []), ...(connectedPlatforms || [])]
+      .filter((conn, index, self) => 
+        // Remove duplicates by ID
+        index === self.findIndex(c => c.id === conn.id)
+      )
+      .filter(conn => conn.is_active);
     
-    return connectedPlatforms
-      .filter(conn => conn.is_active)
+    if (!allConnections.length || !platforms) return [];
+    
+    return allConnections
       .map(conn => {
         const platform = platforms.find(p => p.id === conn.platform_id);
         if (!platform) return null;
@@ -301,7 +627,7 @@ export function useIntegrations() {
         };
       })
       .filter(Boolean) as (IntegrationPlatform & { connectionId: string, lastSync: string })[];
-  }, [connectedPlatforms, platforms]);
+  }, [connectedPlatforms, platforms, connectedPlatformsList]);
   
   // Get sync options for a specific platform - memoize this function
   const getPlatformSyncOptions = useCallback((platformId: string) => {
@@ -332,8 +658,10 @@ export function useIntegrations() {
       // For now, simulate a successful connection
       const now = new Date().toISOString();
       
-      // Check if there's already an inactive connection for this platform
-      const existingConnection = connectedPlatforms?.find(
+      // Check in both sources for existing connections
+      const existingConnection = connectedPlatformsList?.find(
+        conn => conn.platform_id === platformId
+      ) || connectedPlatforms?.find(
         conn => conn.platform_id === platformId
       );
       
@@ -350,67 +678,93 @@ export function useIntegrations() {
           last_sync: now
         };
         
-        const connection = await updateConnectedPlatform(existingConnection.id, updatedConnection);
-        
-        if (!connection) {
-          throw new Error("Failed to reactivate connection");
+        // Update in database via hook if available
+        let connection = existingConnection;
+        if (updateConnectedPlatform) {
+          connection = await updateConnectedPlatform(existingConnection.id, updatedConnection);
         }
+        
+        // Also update in local state
+        setConnectedPlatformsList(prevList => {
+          const newList = prevList.filter(conn => conn.id !== existingConnection.id);
+          return [...newList, updatedConnection];
+        });
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(
+          STORAGE_KEYS.CONNECTED_PLATFORMS, 
+          JSON.stringify([...connectedPlatformsList.filter(conn => conn.id !== existingConnection.id), updatedConnection])
+        );
         
         // Sync options might already exist, but still check
         await createDefaultSyncOptions(platformId, now);
         
         // Add success log
-        await addSyncLog({
-          id: uuidv4(),
-          user_id: user.id,
-          platform_id: platformId,
-          data_type: "connection",
-          direction: "import",
-          status: "success",
-          items_processed: 1,
-          items_succeeded: 1,
-          items_failed: 0,
-          created_at: now
-        });
+        if (addSyncLog) {
+          await addSyncLog({
+            id: uuidv4(),
+            user_id: user.id,
+            platform_id: platformId,
+            data_type: "connection",
+            direction: "import",
+            status: "success",
+            items_processed: 1,
+            items_succeeded: 1,
+            items_failed: 0,
+            created_at: now
+          });
+        }
         
         return connection;
       } else {
         // Create a new connection
-        const newConnection: Omit<ConnectedPlatform, 'id' | 'created_at'> = {
+        const newConnection: ConnectedPlatform = {
+          id: uuidv4(),
           user_id: user.id,
           platform_id: platformId,
           access_token: `mock-token-${platformId}-${Date.now()}`,
           refresh_token: `mock-refresh-${platformId}-${Date.now()}`,
           token_expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour
           is_active: true,
-          last_sync: now
+          last_sync: now,
+          created_at: now
         };
         
         console.log("Creating new platform connection:", newConnection);
         
-        // Add connection
-        const connection = await addConnectedPlatform(newConnection);
-        
-        if (!connection) {
-          throw new Error("Failed to store connection");
+        // Add connection to database if hook is available
+        let connection = newConnection;
+        if (addConnectedPlatform) {
+          connection = await addConnectedPlatform(newConnection);
         }
+        
+        // Also update in local state
+        setConnectedPlatformsList(prevList => [...prevList, newConnection]);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(
+          STORAGE_KEYS.CONNECTED_PLATFORMS, 
+          JSON.stringify([...connectedPlatformsList, newConnection])
+        );
         
         // Create default sync options
         await createDefaultSyncOptions(platformId, now);
         
-        // Add success log
-        await addSyncLog({
-          id: uuidv4(),
-          user_id: user.id,
-          platform_id: platformId,
-          data_type: "connection",
-          direction: "import",
-          status: "success",
-          items_processed: 1,
-          items_succeeded: 1,
-          items_failed: 0,
-          created_at: now
-        });
+        // Add success log if hook available
+        if (addSyncLog) {
+          await addSyncLog({
+            id: uuidv4(),
+            user_id: user.id,
+            platform_id: platformId,
+            data_type: "connection",
+            direction: "import",
+            status: "success",
+            items_processed: 1,
+            items_succeeded: 1,
+            items_failed: 0,
+            created_at: now
+          });
+        }
         
         return connection;
       }
@@ -430,9 +784,10 @@ export function useIntegrations() {
       console.log("Creating default sync options for", platformId);
       
       // Create some default sync options based on platform category
-      const syncOptionTemplates = DEFAULT_SYNC_OPTIONS.filter(
-        option => option.platform_id === platformId
-      );
+      const syncOptionTemplates = DEFAULT_SYNC_OPTIONS_BY_PLATFORM[platformId] || [];
+      
+      // Array to collect new options for state update
+      const newOptions: SyncOption[] = [];
       
       if (syncOptionTemplates.length > 0) {
         // Add these templates with new IDs
@@ -441,9 +796,17 @@ export function useIntegrations() {
           try {
             const newOption = {
               ...template,
-              id: `${platformId}-${template.data_type}-${Date.now()}`,
+              id: `${platformId}-${template.data_type || 'option'}-${Date.now()}`,
+              last_sync: undefined
             };
-            await updateSyncOption(newOption.id, newOption);
+            
+            // Update in database if hook available
+            if (updateSyncOption) {
+              await updateSyncOption(newOption.id, newOption);
+            }
+            
+            // Collect for state update
+            newOptions.push(newOption);
           } catch (e) {
             console.warn("Error creating sync option:", e);
           }
@@ -465,7 +828,7 @@ export function useIntegrations() {
             id: `${platformId}-assignments-${Date.now()}`,
             name: "Assignments",
             description: "Two-way sync of assignments",
-            direction: "both" as const,
+            direction: "two-way" as const,
             enabled: true,
             platform_id: platformId,
             data_type: "assignments" as const,
@@ -476,20 +839,37 @@ export function useIntegrations() {
         for (const option of defaultOptions) {
           await new Promise(resolve => setTimeout(resolve, 0)); // Prevent blocking
           try {
-            await updateSyncOption(option.id, option);
+            // Update in database if hook available
+            if (updateSyncOption) {
+              await updateSyncOption(option.id, option);
+            }
+            
+            // Collect for state update
+            newOptions.push(option);
           } catch (e) {
             console.warn("Error creating sync option:", e);
           }
         }
       }
+      
+      // Update local state with new options
+      setSyncOptions(prev => [...prev, ...newOptions]);
+      
+      // Update localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.SYNC_OPTIONS, 
+        JSON.stringify([...syncOptions, ...newOptions])
+      );
     }
   };
   
   // Disconnect from a platform
   const disconnectPlatform = async (platformId: string) => {
     try {
-      // Find the connection
-      const connection = connectedPlatforms?.find(
+      // Find the connection in both sources
+      const connection = connectedPlatformsList?.find(
+        conn => conn.platform_id === platformId && conn.is_active
+      ) || connectedPlatforms?.find(
         conn => conn.platform_id === platformId && conn.is_active
       );
       
@@ -500,29 +880,47 @@ export function useIntegrations() {
       
       console.log("Disconnecting platform:", platformId, "connection:", connection.id);
       
-      // In a real implementation:
-      // 1. Revoke tokens with the platform's API
-      // 2. Delete or mark connection as inactive
-      
-      // For now, mark it as inactive instead of deleting
-      await updateConnectedPlatform(connection.id, {
+      // Update connection to inactive
+      const updatedConnection = {
         ...connection,
         is_active: false
-      });
+      };
       
-      // Add a sync log entry for disconnection
-      await addSyncLog({
-        id: uuidv4(),
-        user_id: connection.user_id,
-        platform_id: platformId,
-        data_type: "connection", 
-        direction: "export", // Technically not importing/exporting data
-        status: "success",
-        items_processed: 1,
-        items_succeeded: 1,
-        items_failed: 0,
-        created_at: new Date().toISOString()
-      });
+      // Update in database if hook available
+      if (updateConnectedPlatform) {
+        await updateConnectedPlatform(connection.id, updatedConnection);
+      }
+      
+      // Update in local state
+      setConnectedPlatformsList(prevList => 
+        prevList.map(conn => 
+          conn.id === connection.id ? updatedConnection : conn
+        )
+      );
+      
+      // Update localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.CONNECTED_PLATFORMS,
+        JSON.stringify(connectedPlatformsList.map(conn => 
+          conn.id === connection.id ? updatedConnection : conn
+        ))
+      );
+      
+      // Add a sync log entry for disconnection if hook available
+      if (addSyncLog) {
+        await addSyncLog({
+          id: uuidv4(),
+          user_id: connection.user_id,
+          platform_id: platformId,
+          data_type: "connection", 
+          direction: "export", // Technically not importing/exporting data
+          status: "success",
+          items_processed: 1,
+          items_succeeded: 1,
+          items_failed: 0,
+          created_at: new Date().toISOString()
+        });
+      }
       
       return true;
     } catch (err) {
@@ -544,12 +942,32 @@ export function useIntegrations() {
       
       console.log(`Toggling sync option ${syncOptionId} to ${enabled}`);
       
-      // Update the option
-      await updateSyncOption(syncOptionId, {
+      // Create updated option
+      const updatedOption = {
         ...option,
         enabled,
         last_sync: enabled ? option.last_sync : undefined // Clear last sync if disabling
-      });
+      };
+      
+      // Update in database if hook available
+      if (updateSyncOption) {
+        await updateSyncOption(syncOptionId, updatedOption);
+      }
+      
+      // Update in local state
+      setSyncOptions(prevOptions => 
+        prevOptions.map(opt => 
+          opt.id === syncOptionId ? updatedOption : opt
+        )
+      );
+      
+      // Update localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.SYNC_OPTIONS,
+        JSON.stringify(syncOptions.map(opt => 
+          opt.id === syncOptionId ? updatedOption : opt
+        ))
+      );
       
       return true;
     } catch (err) {
@@ -562,8 +980,10 @@ export function useIntegrations() {
   // Sync data with a platform
   const syncData = async (platformId: string, dataType?: string) => {
     try {
-      // Find the connection
-      const connection = connectedPlatforms?.find(
+      // Find the connection in both sources
+      const connection = connectedPlatformsList?.find(
+        conn => conn.platform_id === platformId && conn.is_active
+      ) || connectedPlatforms?.find(
         conn => conn.platform_id === platformId && conn.is_active
       );
       
@@ -592,39 +1012,128 @@ export function useIntegrations() {
         return false;
       }
       
-      // Remove artificial delay - in a real app, this would be an actual API call
-      // that naturally takes time, no need to simulate
-      
       // Simulate successful sync
       const now = new Date().toISOString();
       
       // Update connection's last sync time
-      await updateConnectedPlatform(connection.id, {
+      const updatedConnection = {
         ...connection,
         last_sync: now
-      });
+      };
       
-      // Process sync options in parallel instead of sequentially
+      // Update in database if hook available
+      if (updateConnectedPlatform) {
+        await updateConnectedPlatform(connection.id, updatedConnection);
+      }
+      
+      // Update in local state
+      setConnectedPlatformsList(prevList => 
+        prevList.map(conn => 
+          conn.id === connection.id ? updatedConnection : conn
+        )
+      );
+      
+      // Update localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.CONNECTED_PLATFORMS,
+        JSON.stringify(connectedPlatformsList.map(conn => 
+          conn.id === connection.id ? updatedConnection : conn
+        ))
+      );
+      
+      // Process sync options
+      const updatedOptions: SyncOption[] = [];
+      
+      // Update each sync option and create log entries
       await Promise.all(syncFilter.map(async (option) => {
-        await updateSyncOption(option.id, {
+        const updatedOption = {
           ...option,
           last_sync: now
+        };
+        
+        // Update in database if hook available
+        if (updateSyncOption) {
+          await updateSyncOption(option.id, updatedOption);
+        }
+        
+        // Collect updated option
+        updatedOptions.push(updatedOption);
+        
+        // Add a sync log entry if hook available
+        if (addSyncLog) {
+          return addSyncLog({
+            id: uuidv4(),
+            user_id: connection.user_id,
+            platform_id: platformId,
+            data_type: option.data_type,
+            direction: option.direction === 'two-way' ? 'both' : option.direction,
+            status: "success",
+            items_processed: Math.floor(Math.random() * 100) + 1,
+            items_succeeded: Math.floor(Math.random() * 100) + 1,
+            items_failed: 0,
+            created_at: now
+          });
+        }
+      }));
+      
+      // Update options in local state
+      setSyncOptions(prevOptions => {
+        const newOptions = [...prevOptions];
+        
+        // Replace updated options
+        updatedOptions.forEach(updatedOption => {
+          const index = newOptions.findIndex(opt => opt.id === updatedOption.id);
+          if (index !== -1) {
+            newOptions[index] = updatedOption;
+          }
         });
         
-        // Add a sync log entry
-        return addSyncLog({
-          id: uuidv4(),
-          user_id: connection.user_id,
-          platform_id: platformId,
-          data_type: option.data_type,
-          direction: option.direction,
-          status: "success",
-          items_processed: Math.floor(Math.random() * 100) + 1,
-          items_succeeded: Math.floor(Math.random() * 100) + 1,
-          items_failed: 0,
-          created_at: now
-        });
-      }));
+        return newOptions;
+      });
+      
+      // Update options in localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.SYNC_OPTIONS,
+        JSON.stringify(syncOptions.map(opt => {
+          const updated = updatedOptions.find(u => u.id === opt.id);
+          return updated || opt;
+        }))
+      );
+      
+      // Update sync stats
+      const newSyncStats = {
+        ...syncStats,
+        lastFullSync: now,
+        // Update counts based on the sync operations
+        importedCourses: syncStats.importedCourses + (
+          syncFilter.some(opt => opt.data_type === 'courses' && 
+            (opt.direction === 'import' || opt.direction === 'two-way')) ? 
+            Math.floor(Math.random() * 5) + 1 : 0
+        ),
+        importedAssignments: syncStats.importedAssignments + (
+          syncFilter.some(opt => opt.data_type === 'assignments' && 
+            (opt.direction === 'import' || opt.direction === 'two-way')) ? 
+            Math.floor(Math.random() * 10) + 1 : 0
+        ),
+        exportedAssignments: syncStats.exportedAssignments + (
+          syncFilter.some(opt => opt.data_type === 'assignments' && 
+            (opt.direction === 'export' || opt.direction === 'two-way')) ? 
+            Math.floor(Math.random() * 8) + 1 : 0
+        ),
+        exportedGrades: syncStats.exportedGrades + (
+          syncFilter.some(opt => opt.data_type === 'grades' && 
+            (opt.direction === 'export' || opt.direction === 'two-way')) ? 
+            Math.floor(Math.random() * 15) + 1 : 0
+        ),
+      };
+      
+      setSyncStats(newSyncStats);
+      
+      // Update localStorage
+      localStorage.setItem(
+        STORAGE_KEYS.SYNC_STATS,
+        JSON.stringify(newSyncStats)
+      );
       
       return true;
     } catch (err) {
@@ -633,19 +1142,21 @@ export function useIntegrations() {
       
       // Add error log
       try {
-        await addSyncLog({
-          id: uuidv4(),
-          user_id: user?.id || "unknown",
-          platform_id: platformId,
-          data_type: dataType || "all",
-          direction: "both",
-          status: "error",
-          items_processed: 0,
-          items_succeeded: 0,
-          items_failed: 1,
-          error_message: err instanceof Error ? err.message : String(err),
-          created_at: new Date().toISOString()
-        });
+        if (addSyncLog) {
+          await addSyncLog({
+            id: uuidv4(),
+            user_id: user?.id || "unknown",
+            platform_id: platformId,
+            data_type: dataType || "all",
+            direction: "both",
+            status: "error",
+            items_processed: 0,
+            items_succeeded: 0,
+            items_failed: 1,
+            error_message: err instanceof Error ? err.message : String(err),
+            created_at: new Date().toISOString()
+          });
+        }
       } catch (logErr) {
         console.error("Failed to log sync error:", logErr);
       }
@@ -695,37 +1206,57 @@ export function useIntegrations() {
   
   // Memoize getSyncStats for better performance
   const getSyncStats = useCallback(async () => {
-    // This would normally be calculated from real data in the database
-    // For now, return mock stats
-    
-    // Get actual sync logs if available
-    const allLogs = syncLogs || [];
-    
-    // Fall back to mock data if no logs available
-    return {
-      importedCourses: allLogs.filter(log => 
-        log.data_type === 'courses' && log.direction === 'import' && log.status === 'success'
-      ).reduce((sum, log) => sum + log.items_succeeded, 0) || 12,
+    try {
+      // First get from local state if available
+      if (syncStats.lastFullSync) {
+        return syncStats;
+      }
       
-      importedAssignments: allLogs.filter(log => 
-        log.data_type === 'assignments' && log.direction === 'import' && log.status === 'success'
-      ).reduce((sum, log) => sum + log.items_succeeded, 0) || 42,
+      // Otherwise try localStorage
+      const storedStats = localStorage.getItem(STORAGE_KEYS.SYNC_STATS);
+      if (storedStats) {
+        const parsedStats = JSON.parse(storedStats);
+        // Update state while we're at it
+        setSyncStats(parsedStats);
+        return parsedStats;
+      }
       
-      exportedAssignments: allLogs.filter(log => 
-        log.data_type === 'assignments' && log.direction === 'export' && log.status === 'success'
-      ).reduce((sum, log) => sum + log.items_succeeded, 0) || 18,
+      // If we have connection data but no stats, calculate basic stats
+      if (connectedPlatformsList.length > 0 || (connectedPlatforms && connectedPlatforms.length > 0)) {
+        // Get the most recent sync time from any platform
+        const allConnections = [...(connectedPlatformsList || []), ...(connectedPlatforms || [])];
+        const lastSyncTimes = allConnections
+          .filter(conn => conn.is_active && conn.last_sync)
+          .map(conn => new Date(conn.last_sync).getTime());
+        
+        const lastSync = lastSyncTimes.length > 0 
+          ? new Date(Math.max(...lastSyncTimes)).toISOString()
+          : new Date().toISOString();
+        
+        // Create some basic stats based on connected platforms
+        const newStats = {
+          importedCourses: Math.floor(Math.random() * 10) + allConnections.length * 2,
+          importedAssignments: Math.floor(Math.random() * 25) + allConnections.length * 5,
+          exportedAssignments: Math.floor(Math.random() * 15) + allConnections.length * 3,
+          exportedGrades: Math.floor(Math.random() * 30) + allConnections.length * 4,
+          lastFullSync: lastSync
+        };
+        
+        // Save to state and localStorage
+        setSyncStats(newStats);
+        localStorage.setItem(STORAGE_KEYS.SYNC_STATS, JSON.stringify(newStats));
+        
+        return newStats;
+      }
       
-      exportedGrades: allLogs.filter(log => 
-        log.data_type === 'grades' && log.direction === 'export' && log.status === 'success'
-      ).reduce((sum, log) => sum + log.items_succeeded, 0) || 87,
-      
-      lastFullSync: connectedPlatforms && connectedPlatforms.length > 0 
-        ? connectedPlatforms.sort((a, b) => 
-            new Date(b.last_sync).getTime() - new Date(a.last_sync).getTime()
-          )[0]?.last_sync
-        : new Date(Date.now() - 86400000 * 2).toISOString() // 2 days ago
-    };
-  }, [syncLogs, connectedPlatforms]);
+      // Fall back to empty stats
+      return INITIAL_SYNC_STATS;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to get sync stats'));
+      console.error('Error getting sync stats:', err);
+      return INITIAL_SYNC_STATS;
+    }
+  }, [syncStats, connectedPlatforms, connectedPlatformsList]);
   
   return {
     platforms,

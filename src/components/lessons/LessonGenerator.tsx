@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { AlertCircle, CircleHelp, Loader, Zap, Info, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { AlertCircle, HelpCircle, Loader, Zap, Info, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { LessonResult } from "@/types/lessons";
 import { generateLesson } from "@/lib/api";
 import { OpenRouterModel, fetchAvailableModels, fetchRecommendedModels, checkApiStatus, getModelStats } from "@/lib/openrouter";
@@ -34,10 +34,10 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface LessonGeneratorProps {
-  onLessonGenerated: (lesson: LessonResult) => void;
+  onGenerate: (lesson: LessonResult) => void;
 }
 
-export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
+export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retries, setRetries] = useState(0);
@@ -181,7 +181,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
       }
       
       setRetries(0);
-      onLessonGenerated(lesson);
+      onGenerate(lesson);
       toast.success("Lesson plan generated successfully!");
     } catch (error) {
       console.error("Failed to generate lesson:", error);
@@ -464,7 +464,7 @@ export function LessonGenerator({ onLessonGenerated }: LessonGeneratorProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-5 w-5" type="button">
-                      <CircleHelp className="h-4 w-4" />
+                      <HelpCircle className="h-4 w-4" />
                             <span className="sr-only">AI Model info</span>
                     </Button>
                         </TooltipTrigger>

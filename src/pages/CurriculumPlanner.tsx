@@ -450,43 +450,146 @@ export default function CurriculumPlanner() {
   
   return (
     <Layout>
-      <div className="container mx-auto py-6 max-w-7xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Curriculum Planner</h1>
-            <p className="text-muted-foreground">Plan your curriculum by dragging and dropping content into the schedule</p>
-          </div>
+      <div className="container mx-auto py-4">
+        {/* Top Navigation Bar with Week Selection */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 bg-card/90 shadow-sm border-muted/60 rounded-md p-3">
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExportPlan}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
+            <Calendar className="h-5 w-5 text-primary hidden md:block" />
+          <div>
+              <h2 className="text-xl font-bold">Curriculum Planner</h2>
+              {currentWeekData && (
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(currentWeekData.days[0].date)} — {formatDate(currentWeekData.days[currentWeekData.days.length-1].date)}
+                </p>
+              )}
+          </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
+          <div className="flex items-center gap-2">
+              <Select value={currentWeek.toString()} onValueChange={(value) => setCurrentWeek(parseInt(value))}>
+                <SelectTrigger className="w-[150px] h-9">
+                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground md:hidden" />
+                  <span>Week {currentWeek}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {weeks.map((week) => (
+                    <SelectItem key={week.id} value={week.weekNumber.toString()}>
+                      Week {week.weekNumber}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Dialog open={isAddWeekDialogOpen} onOpenChange={setIsAddWeekDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Plus className="h-4 w-4" />
             </Button>
-            <Button onClick={handleSavePlan}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Plan
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Week</DialogTitle>
+                    <DialogDescription>
+                      Enter the week number to add to your curriculum plan.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="week-number">Week Number</Label>
+                      <Input
+                        id="week-number"
+                        type="number"
+                        min="1"
+                        value={newWeekNumber}
+                        onChange={(e) => setNewWeekNumber(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddWeekDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleAddWeek}>Add Week</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            {currentWeekData && weekStats && (
+              <div className="flex items-center gap-3 px-3 py-1 bg-muted/30 rounded-md text-xs">
+                <div className="flex items-center gap-1">
+                  <Book className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>{weekStats.typeCount.lesson}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Beaker className="h-3.5 w-3.5 text-blue-500" />
+                  <span>{weekStats.typeCount.lab}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-amber-500" />
+                  <span>{weekStats.typeCount.assessment}</span>
+                </div>
+                <div className="hidden md:flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-primary" />
+                  <span>
+                    {weekStats.itemsWithDuration > 0 
+                      ? `${Math.round(weekStats.totalDurationMinutes / 60)}h` 
+                      : "0h"}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={handleExportPlan} className="h-9">
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button size="sm" onClick={handleSavePlan} className="h-9">
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                <span className="hidden sm:inline">Save</span>
             </Button>
+            </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-12 gap-6">
-          {/* Wrap everything in a single DragDropContext */}
+        <div className="grid grid-cols-12 gap-4">
+          {/* Main Content Area */}
           <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            {/* Available Content Sidebar */}
-            <Card className="col-span-12 md:col-span-3 glass-card">
+            {/* Content Library */}
+            <div className="col-span-12 md:col-span-3 lg:col-span-2">
+              <Card className="bg-card/90 shadow-sm border-muted/60 h-full">
               <CardHeader className="pb-3">
-                <CardTitle>Available Content</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Book className="h-5 w-5 text-primary" />
+                    <CardTitle>Content Library</CardTitle>
+                  </div>
                 <CardDescription>
-                  Drag items to add to your schedule
+                    Drag items to your schedule
                 </CardDescription>
-                <div className="flex flex-col gap-2 mt-2">
+                  <div className="flex flex-col gap-2 pt-2">
+                    <div className="relative">
                   <Input
                     placeholder="Search content..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full"
-                  />
+                        className="w-full h-9 pl-8"
+                      />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4 absolute left-2.5 top-2.5 text-muted-foreground"
+                      >
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35" />
+                      </svg>
+                    </div>
                   <Select value={contentTypeFilter} onValueChange={setContentTypeFilter}>
-                    <SelectTrigger>
+                      <SelectTrigger className="h-9">
                       <SelectValue placeholder="Filter by type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -498,16 +601,27 @@ export default function CurriculumPlanner() {
                   </Select>
                 </div>
               </CardHeader>
-              <CardContent>
+                <CardContent className="p-0 border-t">
+                  <div className="flex items-center px-3 py-2 justify-between sticky top-0 z-10 bg-muted/30 border-b border-muted/60">
+                    <div className="flex items-center gap-1.5">
+                      <Book className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Available Items</h3>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium">
+                        {filteredContent.length} {filteredContent.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+                  </div>
                 <Droppable droppableId="available-content">
                   {(provided, snapshot) => (
-                    <ScrollArea className="h-[300px] md:h-[500px]">
+                      <ScrollArea className="h-[650px]">
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
                         className={cn(
-                          "space-y-2 p-1",
-                          snapshot.isDraggingOver && "bg-muted/50 rounded-md p-2 droppable-area active"
+                            "p-3 space-y-2",
+                            snapshot.isDraggingOver && "bg-muted/50 droppable-area active"
                         )}
                       >
                         {filteredContent.length > 0 ? (
@@ -518,30 +632,35 @@ export default function CurriculumPlanner() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   className={cn(
-                                    "p-3 bg-card border rounded-md flex items-start gap-3 hover:border-primary/50 transition-colors draggable-item",
-                                    snapshot.isDragging && "shadow-lg border-primary ring-2 ring-primary/20 dragging"
-                                  )}
+                                      "p-3 bg-card/90 border rounded-md flex items-start gap-2 transition-all draggable-item",
+                                      snapshot.isDragging && "shadow-lg border-primary dragging",
+                                      item.type === "lab" && "border-blue-500/20 border-l-blue-500 border-l-4",
+                                      item.type === "assessment" && "border-amber-500/20 border-l-amber-500 border-l-4",
+                                      item.type === "lesson" && "border-emerald-500/20 border-l-emerald-500 border-l-4"
+                                    )}
+                                    data-type={item.type}
                                 >
                                   <div 
                                     {...provided.dragHandleProps}
-                                    className="mt-0.5 cursor-grab"
+                                      className="mt-1 cursor-grab"
                                   >
                                     <GripHorizontal className="h-4 w-4 text-muted-foreground drag-handle" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
+                                      <div className="flex items-center gap-1 mb-1.5">
                                       {getContentTypeIcon(item.type)}
                                       <span className="text-xs font-medium uppercase text-muted-foreground">{item.type}</span>
                                     </div>
-                                    <h4 className="font-medium text-sm truncate">{item.title}</h4>
+                                      <h4 className="font-medium text-sm item-title">{item.title}</h4>
                                   </div>
                                 </div>
                               )}
                             </Draggable>
                           ))
                         ) : (
-                          <div className="py-8 text-center text-muted-foreground">
-                            <p>No content available</p>
+                            <div className="py-10 text-center text-muted-foreground">
+                              <p>No content found</p>
+                              <p className="text-xs mt-1">Try adjusting your filters</p>
                           </div>
                         )}
                         {provided.placeholder}
@@ -550,76 +669,58 @@ export default function CurriculumPlanner() {
                   )}
                 </Droppable>
               </CardContent>
+                <CardFooter className="flex justify-between border-t py-2 text-xs text-muted-foreground">
+                  <div>Drag items to your schedule</div>
+                  <div className="text-primary">
+                    {filteredContent.length} available
+                  </div>
+                </CardFooter>
             </Card>
+            </div>
             
-            {/* Weekly Schedule */}
-            <div className="col-span-12 md:col-span-9">
-              <Card className="glass-card">
+            {/* Weekly Schedule Panel - LARGER */}
+            <div className="col-span-12 md:col-span-9 lg:col-span-10">
+              <Card className="bg-card/90 shadow-sm border-muted/60">
                 <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <CardTitle>Weekly Schedule</CardTitle>
-                      <CardDescription>
-                        Drag and drop content to plan your week
-                      </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      <CardTitle>Week {currentWeek} Schedule</CardTitle>
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Select value={currentWeek.toString()} onValueChange={(value) => setCurrentWeek(parseInt(value))}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Select week" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {weeks.map((week) => (
-                            <SelectItem key={week.id} value={week.weekNumber.toString()}>
-                              Week {week.weekNumber}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Dialog open={isAddWeekDialogOpen} onOpenChange={setIsAddWeekDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="icon">
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add New Week</DialogTitle>
-                            <DialogDescription>
-                              Enter the week number to add to your curriculum plan.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                              <Label htmlFor="week-number">Week Number</Label>
-                              <Input
-                                id="week-number"
-                                type="number"
-                                min="1"
-                                value={newWeekNumber}
-                                onChange={(e) => setNewWeekNumber(parseInt(e.target.value) || 1)}
-                              />
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="content-type-indicator lesson"></span>
+                        <span className="text-xs">Lesson</span>
                             </div>
+                      <div className="flex items-center gap-2">
+                        <span className="content-type-indicator lab"></span>
+                        <span className="text-xs">Lab</span>
                           </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddWeekDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAddWeek}>Add Week</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <div className="flex items-center gap-2">
+                        <span className="content-type-indicator assessment"></span>
+                        <span className="text-xs">Assessment</span>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   {currentWeekData ? (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      {currentWeekData.days.map((day) => (
-                        <div key={day.id} className="flex flex-col h-full">
-                          <div className="bg-muted/50 p-2 rounded-t-md border border-border week-day-header">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-0 border-t h-full">
+                      {currentWeekData.days.map((day, dayIndex) => (
+                        <div key={day.id} className={cn(
+                          "flex flex-col h-full", 
+                          dayIndex > 0 && "md:border-l border-muted/60"
+                        )}>
+                          <div className="bg-muted/30 px-3 py-2 week-day-header sticky top-0 z-10 border-b border-muted/60">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <h3 className="text-sm font-medium">{formatDate(day.date)}</h3>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium">
+                                  {day.items.length} {day.items.length === 1 ? 'item' : 'items'}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -629,8 +730,8 @@ export default function CurriculumPlanner() {
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                                 className={cn(
-                                  "flex-1 p-2 border border-t-0 border-border rounded-b-md bg-background/50 min-h-[250px] md:min-h-[400px] droppable-area",
-                                  snapshot.isDraggingOver && "bg-primary/5 border-primary/30 active can-drop"
+                                  "flex-1 p-3 min-h-[550px] droppable-area h-full",
+                                  snapshot.isDraggingOver && "bg-primary/5 active can-drop"
                                 )}
                               >
                                 <div className="space-y-2">
@@ -641,9 +742,13 @@ export default function CurriculumPlanner() {
                                           ref={provided.innerRef}
                                           {...provided.draggableProps}
                                           className={cn(
-                                            "p-2 bg-card border rounded-md item-content draggable-item",
-                                            snapshot.isDragging && "shadow-lg border-primary ring-2 ring-primary/20 dragging"
+                                            "p-3 bg-card/90 border rounded-md item-content draggable-item transition-all",
+                                            snapshot.isDragging && "shadow-lg border-primary dragging",
+                                            item.type === "lab" && "border-blue-500/20 border-l-blue-500 border-l-4",
+                                            item.type === "assessment" && "border-amber-500/20 border-l-amber-500 border-l-4",
+                                            item.type === "lesson" && "border-emerald-500/20 border-l-emerald-500 border-l-4"
                                           )}
+                                          data-type={item.type}
                                         >
                                           <div className="flex items-start gap-2">
                                             <div
@@ -653,19 +758,19 @@ export default function CurriculumPlanner() {
                                               <GripHorizontal className="h-4 w-4 text-muted-foreground drag-handle" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 mb-1">
+                                              <div className="flex items-center gap-1 mb-1.5">
                                                 {getContentTypeIcon(item.type)}
                                                 <span className="text-xs font-medium uppercase text-muted-foreground">{item.type}</span>
                                               </div>
-                                              <h4 className="font-medium text-sm truncate item-title">{item.title}</h4>
+                                              <h4 className="font-medium text-sm mb-1 item-title">{item.title}</h4>
                                               {item.duration && (
-                                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground item-duration">
+                                                <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground item-duration">
                                                   <Clock className="h-3 w-3" />
                                                   <span>{item.duration}</span>
                                                 </div>
                                               )}
                                               {item.notes && (
-                                                <div className="mt-1 text-xs text-muted-foreground line-clamp-1 item-notes">
+                                                <div className="mt-1.5 text-xs text-muted-foreground line-clamp-2 item-notes">
                                                   {item.notes}
                                                 </div>
                                               )}
@@ -676,6 +781,7 @@ export default function CurriculumPlanner() {
                                                 size="icon"
                                                 className="h-6 w-6"
                                                 onClick={() => handleEditItem(day.id, item)}
+                                                title="Edit item"
                                               >
                                                 <Pencil className="h-3 w-3" />
                                               </Button>
@@ -684,8 +790,9 @@ export default function CurriculumPlanner() {
                                                 size="icon"
                                                 className="h-6 w-6"
                                                 onClick={() => handleRemoveItem(day.id, item.id)}
+                                                title="Remove item"
                                               >
-                                                <X className="h-3 w-3" />
+                                                <Trash2 className="h-3 w-3" />
                                               </Button>
                                             </div>
                                           </div>
@@ -696,8 +803,11 @@ export default function CurriculumPlanner() {
                                   {provided.placeholder}
                                 </div>
                                 {day.items.length === 0 && (
-                                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm drop-placeholder">
+                                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                                    <div className="text-center">
                                     <p>Drop items here</p>
+                                      <p className="text-xs mt-1 text-muted-foreground/70">Drag content from library</p>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -707,106 +817,26 @@ export default function CurriculumPlanner() {
                       ))}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-muted-foreground">
-                      <p>No week data available</p>
+                    <div className="py-36 text-center text-muted-foreground">
+                      <p className="font-medium">No week data available</p>
+                      <p className="text-sm mt-1">Select a different week or add a new one</p>
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="flex justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Tip: Drag items from the sidebar to add them to your schedule
-                  </p>
+                <CardFooter className="flex justify-between border-t py-2 text-xs text-muted-foreground">
+                  <div>Tip: Drag items from library to schedule them</div>
+                  <div className="text-primary">
+                    {weekStats && weekStats.totalItems > 0 
+                      ? `${weekStats.totalItems} item${weekStats.totalItems !== 1 ? 's' : ''} scheduled` 
+                      : 'No items scheduled'
+                    }
+                  </div>
                 </CardFooter>
               </Card>
             </div>
           </DragDropContext>
         </div>
       </div>
-      
-      {/* Weekly Summary */}
-      {currentWeekData && weekStats && (
-        <div className="container mx-auto max-w-7xl mt-6 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Week {currentWeek} Summary</CardTitle>
-              <CardDescription>
-                Overview of your curriculum plan for this week
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Content Distribution</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Book className="h-4 w-4 text-primary" />
-                        <span>Lessons</span>
-                      </div>
-                      <span className="font-medium">{weekStats.typeCount.lesson}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Beaker className="h-4 w-4 text-primary" />
-                        <span>Labs</span>
-                      </div>
-                      <span className="font-medium">{weekStats.typeCount.lab}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4 text-primary" />
-                        <span>Assessments</span>
-                      </div>
-                      <span className="font-medium">{weekStats.typeCount.assessment}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Daily Workload</h3>
-                  <div className="flex items-end h-[100px] gap-2">
-                    {weekStats.dailyCount.map((count, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div 
-                          className="w-full bg-primary/80 rounded-t-sm transition-all duration-500"
-                          style={{ 
-                            height: `${count ? Math.max(20, (count / Math.max(1, weekStats.maxWorkloadDay)) * 100) : 0}px` 
-                          }}
-                        />
-                        <span className="text-xs mt-1">{currentWeekData.days[index].date.split('-')[2]}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Week at a Glance</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Total Items</span>
-                      <span className="font-medium">{weekStats.totalItems}</span>
-                    </div>
-                    {weekStats.itemsWithDuration > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Estimated Time</span>
-                        <span className="font-medium">{Math.round(weekStats.totalDurationMinutes / 60)} hours</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Most Active Day</span>
-                      <span className="font-medium">
-                        {weekStats.maxWorkloadDay > 0 
-                          ? `${currentWeekData.days[weekStats.dailyCount.indexOf(weekStats.maxWorkloadDay)].date.split('-')[2]} (${weekStats.maxWorkloadDay} items)` 
-                          : 'None'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
       
       {/* Item Edit Dialog */}
       <Dialog open={isItemDialogOpen} onOpenChange={(open) => {
@@ -822,9 +852,12 @@ export default function CurriculumPlanner() {
           </DialogHeader>
           {currentEditItem && (
             <div className="grid gap-4 py-4">
+              <div className="flex gap-3 items-center">
+                <div className={`w-2 h-full self-stretch bg-${currentEditItem.item.type === 'lesson' ? 'emerald' : currentEditItem.item.type === 'lab' ? 'blue' : 'amber'}-500 rounded-full`}></div>
               <div>
                 <h3 className="font-medium">{currentEditItem.item.title}</h3>
                 <p className="text-sm text-muted-foreground">{currentEditItem.item.type}</p>
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="duration">Duration</Label>
@@ -837,6 +870,7 @@ export default function CurriculumPlanner() {
                   })}
                   placeholder="e.g. 1 hour"
                 />
+                <p className="text-xs text-muted-foreground">Specify how long this activity will take</p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="notes">Notes</Label>
@@ -850,6 +884,7 @@ export default function CurriculumPlanner() {
                   placeholder="Add notes about this item..."
                   className="min-h-[100px]"
                 />
+                <p className="text-xs text-muted-foreground">Add any additional information or instructions</p>
               </div>
             </div>
           )}

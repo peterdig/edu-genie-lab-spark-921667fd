@@ -16,7 +16,8 @@ import {
   Share2,
   X,
   MessageSquare,
-  Link
+  Link,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,7 +95,7 @@ export function AppSidebar() {
             <Book className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-lg">EduCompanion</h2>
+            <h2 className="font-bold text-lg">EduGenie</h2>
             <p className="text-xs text-muted-foreground">AI-Powered Education</p>
           </div>
         </div>
@@ -153,6 +154,15 @@ export function AppSidebar() {
               <NavItem icon={Share2} label="Collaboration" to="/collaboration" />
               <NavItem icon={MessageSquare} label="Collaborative Workspace" to="/collaborative-workspace" />
               <NavItem icon={Link} label="Integrations" to="/integrations" />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel>Apps & Downloads</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <NavItem icon={Download} label="Download Apps" to="/download" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

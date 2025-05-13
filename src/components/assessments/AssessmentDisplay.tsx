@@ -119,37 +119,43 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
         
         {question.type === 'multiple-choice' && question.options && (
           <div className="ml-6 mt-3 space-y-2">
-            {question.options.map((option, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-sm ${activeTab === 'answer-key' && isCorrectAnswer(option, i, question.answer) ? 'bg-primary text-primary-foreground border-primary' : ''}`}>
-                  {String.fromCharCode(97 + i)}
+            {question.options.map((option, i) => {
+              const isCorrect = activeTab === 'answer-key' || activeTab === 'preview' 
+                ? isCorrectAnswer(option, i, question.answer)
+                : false;
+              
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-sm ${isCorrect ? 'bg-primary text-primary-foreground border-primary' : ''}`}>
+                    {String.fromCharCode(97 + i)}
+                  </div>
+                  <span>{option}</span>
+                  {isCorrect && (
+                    <CheckCircle className="h-4 w-4 text-primary ml-1" />
+                  )}
                 </div>
-                <span>{option}</span>
-                {activeTab === 'answer-key' && isCorrectAnswer(option, i, question.answer) && (
-                  <CheckCircle className="h-4 w-4 text-primary ml-1" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         
         {question.type === 'true-false' && (
           <div className="ml-6 mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full border flex items-center justify-center text-sm">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-sm ${(activeTab === 'answer-key' || activeTab === 'preview') && question.answer === 'True' ? 'bg-primary text-primary-foreground border-primary' : ''}`}>
                 A
               </div>
               <span>True</span>
-              {activeTab === 'answer-key' && question.answer === 'True' && (
+              {(activeTab === 'answer-key' || activeTab === 'preview') && question.answer === 'True' && (
                 <CheckCircle className="h-4 w-4 text-primary ml-1" />
               )}
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full border flex items-center justify-center text-sm">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-sm ${(activeTab === 'answer-key' || activeTab === 'preview') && question.answer === 'False' ? 'bg-primary text-primary-foreground border-primary' : ''}`}>
                 B
               </div>
               <span>False</span>
-              {activeTab === 'answer-key' && question.answer === 'False' && (
+              {(activeTab === 'answer-key' || activeTab === 'preview') && question.answer === 'False' && (
                 <CheckCircle className="h-4 w-4 text-primary ml-1" />
               )}
             </div>
@@ -158,13 +164,24 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
         
         {(question.type === 'short-answer' || question.type === 'essay') && (
           <div className="ml-6 mt-3">
-            {activeTab === 'preview' ? (
-              <div className="h-12 border-b border-dashed" />
-            ) : (
+            {activeTab === 'preview' || activeTab === 'answer-key' ? (
               <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm italic">Sample answer: {question.answer}</p>
+                <p className="text-sm italic">Answer: {question.answer || "No sample answer provided"}</p>
               </div>
+            ) : (
+              <div className="h-12 border-b border-dashed" />
             )}
+          </div>
+        )}
+        
+        {/* Show a dedicated answer section for clarity in the answer key only */}
+        {question.answer && (activeTab === 'answer-key') && question.type !== 'short-answer' && question.type !== 'essay' && (
+          <div className="ml-6 mt-3">
+            <div className="p-2 bg-muted/50 rounded-md inline-block">
+              <p className="text-sm font-medium text-primary">
+                Full Answer: {question.answer}
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -204,7 +221,7 @@ export function AssessmentDisplay({ assessment, onReset }: AssessmentDisplayProp
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">
-            <TabsTrigger value="preview">Student View</TabsTrigger>
+            <TabsTrigger value="preview">Questions & Answers</TabsTrigger>
             <TabsTrigger value="answer-key">Answer Key</TabsTrigger>
             <TabsTrigger value="export">Export Options</TabsTrigger>
           </TabsList>

@@ -1,4 +1,3 @@
-
 export interface LessonResult {
   id: string;
   title: string;
@@ -17,4 +16,6 @@ export interface LessonResult {
   }[];
   tags: string[];
   createdAt: string;
+  timestamp?: number;  // For tracking when the lesson was last viewed
+  savedAt?: string;    // For tracking when the lesson was saved
 }

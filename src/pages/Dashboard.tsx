@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { Book, Calendar, User, LucideIcon, Zap, Calculator, BarChart, Plus } from "lucide-react";
+import { Book, Calendar, User, LucideIcon, Zap, Calculator, BarChart, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { lessons } from "@/data/mockData";
@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
 import { useAuth } from "@/lib/AuthContext.jsx";
+import { LessonResult } from "@/types/lessons";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getSavedLessons } from "@/lib/lessons";
+import { ContentCard } from "@/components/dashboard/ContentCard";
 
 // Feature card components for consistent styling
 interface FeatureCardProps {
@@ -53,10 +57,19 @@ const CardHeading = ({ icon: Icon, title, value, description, onClick }: CardHea
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const [savedLessons, setSavedLessons] = useState<LessonResult[]>([]);
   
-  // Use actual data or fall back to mocks 
-  const featuredLessons = useMemo(() => lessons.slice(0, 3), []);
+  // Load saved lessons on component mount
+  useEffect(() => {
+    // Load saved lessons
+    const saved = getSavedLessons();
+    setSavedLessons(saved.slice(0, 3)); // Only show 3 most recent saved
+  }, []);
   
+  const handleLessonClick = (lessonId: string) => {
+    navigate(`/lessons/${lessonId}`);
+  };
+
   // Generate data from actual lessons instead of static values
   const statsData = useMemo(() => ({
     lessons: {
@@ -77,9 +90,6 @@ export default function Dashboard() {
     }
   }), []);
   
-  // If not authenticated, we would normally redirect to login, 
-  // but AuthGuard is already handling this in App.tsx route configuration
-  
   return (
     <Layout>
       <div className="space-y-6 w-full max-w-7xl mx-auto">
@@ -90,6 +100,7 @@ export default function Dashboard() {
           </p>
         </div>
         
+        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <FeatureCard>
             <CardHeader className="pb-0 pt-4">
@@ -140,6 +151,7 @@ export default function Dashboard() {
           </FeatureCard>
         </div>
         
+        {/* Quick Actions */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Quick Actions</h2>
@@ -149,7 +161,7 @@ export default function Dashboard() {
               <Button 
                 variant="ghost" 
                 className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
-                onClick={() => navigate('/lessons')}
+                onClick={() => navigate('/lessons/new')}
               >
                 <div className="relative">
                   <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
@@ -163,7 +175,7 @@ export default function Dashboard() {
               <Button 
                 variant="ghost" 
                 className="h-24 w-full flex-col rounded-none bg-transparent hover:bg-primary/5"
-                onClick={() => navigate('/assessments')}
+                onClick={() => navigate('/assessments/new')}
               >
                 <div className="relative">
                   <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_10%,theme(colors.primary/10%),transparent_70%)]"></div>
@@ -188,70 +200,67 @@ export default function Dashboard() {
             </FeatureCard>
           </div>
         </div>
-        
+
+        {/* Saved Lessons Section */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Recent Lessons</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold">Saved Lessons</h2>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Save className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Your saved lesson plans
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => navigate('/lessons')}
+              onClick={() => navigate('/lessons?tab=saved')}
               className="rounded-lg border-primary/20 hover:bg-primary/5 hover:text-primary"
             >
               View All
+              <Plus className="ml-2 h-3 w-3" />
             </Button>
           </div>
           
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredLessons.map((lesson) => (
-              <FeatureCard 
-                key={lesson.id} 
-                className="hover:border-primary transition-colors cursor-pointer overflow-hidden"
-              >
-                <CardContent 
-                  className="p-4" 
-                  onClick={() => navigate(`/lessons/${lesson.id}`)}
-                >
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">{lesson.title}</h3>
-                    <div className="flex items-center gap-1 mb-3 text-xs text-muted-foreground">
-                      <Book className="h-3 w-3" />
-                      <span>Grade {lesson.gradeLevel} • {lesson.duration}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {lesson.overview}
-                    </p>
-                    
-                    <div className="flex flex-wrap gap-1 mt-4">
-                      {lesson.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </FeatureCard>
-            ))}
-            
-            <FeatureCard className="border-dashed hover:border-primary transition-colors cursor-pointer overflow-hidden h-[250px]">
-              <div 
-                className="flex flex-col items-center justify-center h-full"
-                onClick={() => navigate('/lessons')}
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 [background:radial-gradient(125%_125%_at_50%_50%,theme(colors.primary/10%),transparent_70%)]"></div>
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                    <Plus className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                <span className="font-medium text-primary">Create New Lesson</span>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Generate a new AI-powered lesson plan
+          {savedLessons.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedLessons.map((lesson) => (
+                <ContentCard
+                  key={lesson.id}
+                  title={lesson.title}
+                  description={lesson.overview}
+                  metadata={`${lesson.gradeLevel} • ${lesson.duration}`}
+                  timestamp={lesson.savedAt ? new Date(lesson.savedAt).toLocaleDateString() : undefined}
+                  tags={lesson.tags}
+                  onClick={() => handleLessonClick(lesson.id)}
+                  icon={<Save className="h-4 w-4" />}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <Save className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-center text-muted-foreground">
+                  No saved lessons yet. Save a lesson to access it quickly here!
                 </p>
-              </div>
-            </FeatureCard>
-          </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4"
+                  onClick={() => navigate('/lessons/new')}
+                >
+                  Create New Lesson
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </Layout>

@@ -6,7 +6,7 @@ import { TeacherToolbox } from "@/components/lessons/TeacherToolbox";
 import { LessonResult } from "@/types/lessons";
 import { ContentCard } from "@/components/dashboard/ContentCard";
 import { lessons } from "@/data/mockData";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import { generateTeachingTip } from "@/lib/api";
 import { fetchRecommendedModels } from "@/lib/openrouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard } from "lucide-react";
+import { RefreshCw, Filter, Book, Download, BookmarkCheck, Keyboard, Clock, Save } from "lucide-react";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -148,12 +148,58 @@ const KeyboardShortcutsDialog = () => (
   </ScrollArea>
 );
 
+// Get recent lessons from localStorage or create default (same function as in Dashboard)
+const getRecentLessons = (): {id: string, timestamp: number}[] => {
+  try {
+    const stored = localStorage.getItem('recentLessons');
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Error reading recent lessons from localStorage:', e);
+    return [];
+  }
+};
+
+// Add a lesson to recent lessons (same function as in Dashboard)
+const addRecentLesson = (lessonId: string) => {
+  try {
+    const recent = getRecentLessons();
+    
+    // Remove the lesson if it already exists in the list
+    const filtered = recent.filter(l => l.id !== lessonId);
+    
+    // Add the lesson with current timestamp to the beginning
+    const updated = [{ id: lessonId, timestamp: Date.now() }, ...filtered];
+    
+    // Limit to 5 most recent lessons
+    const limited = updated.slice(0, 5);
+    
+    localStorage.setItem('recentLessons', JSON.stringify(limited));
+    return limited;
+  } catch (e) {
+    console.error('Error updating recent lessons in localStorage:', e);
+    return [];
+  }
+};
+
+// Get saved lessons from localStorage
+const getSavedLessons = (): LessonResult[] => {
+  try {
+    const stored = localStorage.getItem('savedLessons');
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Error reading saved lessons from localStorage:', e);
+    return [];
+  }
+};
+
 export default function Lessons() {
   const navigate = useNavigate();
+  const { lessonId } = useParams(); // Get lessonId from URL if available
   const [activeTab, setActiveTab] = useState("create");
   const [generatedLesson, setGeneratedLesson] = useState<LessonResult | null>(null);
-  const [savedLessons, setSavedLessons] = useState(lessons);
+  const [savedLessonsList, setSavedLessonsList] = useState<LessonResult[]>([]);
   const [bookmarkedLessons, setBookmarkedLessons] = useState<any[]>([]);
+  const [recentLessons, setRecentLessons] = useState<LessonResult[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
@@ -164,12 +210,70 @@ export default function Lessons() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const teachingTipRef = useRef<HTMLDivElement>(null);
   
+  // Handle specific lesson viewing if ID is provided in URL
+  useEffect(() => {
+    if (lessonId) {
+      // First check mock data
+      let lesson = lessons.find(l => l.id === lessonId);
+      
+      // If not in mock data, check saved lessons
+      if (!lesson) {
+        const savedLessons = getSavedLessons();
+        lesson = savedLessons.find(l => l.id === lessonId);
+      }
+      
+      // If not in saved lessons, check localStorage for generated lessons
+      if (!lesson) {
+        try {
+          const generatedLessons = JSON.parse(localStorage.getItem("generatedLessons") || "[]");
+          lesson = generatedLessons.find((l: LessonResult) => l.id === lessonId);
+        } catch (e) {
+          console.error("Failed to load generated lessons:", e);
+        }
+      }
+      
+      if (lesson) {
+        setGeneratedLesson(lesson);
+        setActiveTab("create"); // Switch to create tab to show the lesson
+        // Add to recent lessons
+        addRecentLesson(lessonId);
+      } else {
+        toast.error("Lesson not found");
+        navigate("/lessons");
+      }
+    }
+  }, [lessonId, navigate]);
+  
+  // Load recent and saved lessons
+  useEffect(() => {
+    // Load recent lessons
+    const recentIds = getRecentLessons();
+    if (recentIds.length > 0) {
+      // Get lesson details for each ID in the recent list
+      const recentDetails = recentIds
+        .map(recent => {
+          const lesson = lessons.find(l => l.id === recent.id);
+          return lesson ? { ...lesson, timestamp: recent.timestamp } : null;
+        })
+        .filter(Boolean) as (LessonResult & { timestamp: number })[];
+      
+      setRecentLessons(recentDetails);
+    }
+    
+    // Load saved lessons
+    const savedLessons = getSavedLessons();
+    setSavedLessonsList(savedLessons);
+    
+  }, []);
+  
   const handleLessonGenerated = (lesson: LessonResult) => {
     setGeneratedLesson(lesson);
     // Save to localStorage for persistence
     try {
       const existingLessons = JSON.parse(localStorage.getItem("generatedLessons") || "[]");
       localStorage.setItem("generatedLessons", JSON.stringify([...existingLessons, lesson]));
+      // Also add to recent lessons
+      addRecentLesson(lesson.id);
     } catch (e) {
       console.error("Failed to save lesson to localStorage", e);
     }
@@ -199,44 +303,60 @@ export default function Lessons() {
       const tip = await generateTeachingTip("education", modelToUse);
       setTeachingTip(tip);
       if (showToast) {
-        toast.success("Teaching tip refreshed");
+        toast.success("Teaching tip refreshed!", {
+          position: "bottom-right",
+          style: { backgroundColor: "hsl(var(--primary))", color: "white" }
+        });
       }
     } catch (error) {
       console.error("Failed to fetch teaching tip:", error);
-      
-      // Handle error with informative message
+      setTeachingTip("Teaching tip unavailable at the moment. Please try again later.");
       if (showToast) {
-        toast.error("Unable to load teaching tip. The AI model may be temporarily unavailable.", {
-          duration: 4000,
-          action: {
-            label: "Try Again",
-            onClick: () => fetchRandomTip()
-          }
+        toast.error("Failed to fetch teaching tip. Please try again.", {
+          position: "bottom-right"
         });
-      }
-      
-      // Keep previous tip if available, only clear if this is initial load
-      if (!teachingTip) {
-        setTeachingTip("");
       }
     } finally {
       setIsLoadingTip(false);
     }
   };
 
-  // Load bookmarked lessons
   const loadBookmarks = () => {
     try {
       const bookmarked = JSON.parse(localStorage.getItem('bookmarkedLessons') || '[]');
       setBookmarkedLessons(bookmarked);
-      toast.success("Bookmarks refreshed");
     } catch (e) {
       console.error("Failed to load bookmarks", e);
-      toast.error("Failed to load bookmarks");
+      setBookmarkedLessons([]);
+    }
+  };
+  
+  const loadSavedLessons = () => {
+    try {
+      const saved = getSavedLessons();
+      setSavedLessonsList(saved);
+      toast.success("Saved lessons refreshed");
+    } catch (e) {
+      console.error("Failed to load saved lessons", e);
+      toast.error("Failed to load saved lessons");
+    }
+  };
+  
+  // Handle lesson selection from saved or recent lessons
+  const handleLessonSelect = (lessonId: string) => {
+    const lesson = lessons.find(l => l.id === lessonId);
+    
+    // If not found in mock data, check saved lessons
+    const savedLesson = savedLessonsList.find(l => l.id === lessonId);
+    
+    if (lesson || savedLesson) {
+      setGeneratedLesson(lesson || savedLesson);
+      setActiveTab("create"); // Switch to create tab to show the lesson
+      // Add to recent lessons
+      addRecentLesson(lessonId);
     }
   };
 
-  // Keyboard shortcut handler
   const handleKeyDown = (e: KeyboardEvent) => {
     // General shortcuts
     if (e.altKey) {
@@ -264,442 +384,298 @@ export default function Lessons() {
         case '3': // Navigate to Bookmarked tab
           setActiveTab("bookmarked");
           break;
+        case '4': // Navigate to Recent tab
+          setActiveTab("recent");
+          break;
       }
     }
   };
 
-  // Fetch teaching tip on component mount and initialize default model if needed
   useEffect(() => {
     const initializePage = async () => {
-      let currentModel = localStorage.getItem("defaultModel");
-      if (!currentModel) {
-        try {
-          const recommended = await fetchRecommendedModels();
-          if (recommended && recommended.length > 0) {
-            currentModel = recommended[0];
-            localStorage.setItem("defaultModel", currentModel);
-            console.log("Initialized defaultModel for session:", currentModel);
-          }
-        } catch (error) {
-          console.error("Failed to fetch recommended models for initial default:", error);
-          // If fetching recommended models fails, fetchRandomTip will use its internal fallback
-        }
-      }
-      fetchRandomTip(false, currentModel || undefined); // Pass the determined model
+      // Add keyboard shortcuts listener
+      window.addEventListener('keydown', handleKeyDown);
+      
+      // Load bookmarks from localStorage
+      loadBookmarks();
+      
+      // Fetch teaching tip on initial load
+      await fetchRandomTip(false);
     };
-
-    initializePage();
-    loadBookmarks();
     
-    // Check for previously generated lesson in localStorage
-    try {
-      const savedLessons = JSON.parse(localStorage.getItem("generatedLessons") || "[]");
-      if (savedLessons.length > 0) {
-        // Optional: restore most recent lesson
-        // setGeneratedLesson(savedLessons[savedLessons.length - 1]);
-      }
-    } catch (e) {
-      console.error("Failed to load lessons from localStorage", e);
-    }
-
-    // Add keyboard shortcut event listener
-    window.addEventListener('keydown', handleKeyDown);
+    initializePage();
+    
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showToolbox]);
-  
-  // Filter lessons based on search query and grade filter
-  const filteredLessons = savedLessons.filter((lesson) => {
-    const matchesSearch = 
-      searchQuery === "" || 
-      lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lesson.overview.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lesson.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-    const matchesGrade = 
-      gradeFilter === "all" || 
-      lesson.gradeLevel === gradeFilter;
-      
-    const matchesSubject =
-      subjectFilter === "all" ||
-      lesson.subject.toLowerCase().includes(subjectFilter.toLowerCase());
-      
+  }, []);
+
+  // Apply filters to lessons
+  const filteredLessons = lessons.filter(lesson => {
+    const matchesSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          lesson.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          lesson.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+                          
+    const matchesGrade = gradeFilter === "all" || lesson.gradeLevel.includes(gradeFilter);
+    const matchesSubject = subjectFilter === "all" || lesson.subject.toLowerCase() === subjectFilter.toLowerCase();
+    
     return matchesSearch && matchesGrade && matchesSubject;
   });
-  
+
   return (
-    <TooltipProvider>
     <Layout>
-      <div className="w-full h-full min-h-screen">
-        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Lessons</h1>
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                Create and manage AI-generated lesson plans
-              </p>
-            </div>
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-                <Dialog open={keyboardShortcutsOpen} onOpenChange={setKeyboardShortcutsOpen}>
-                  <DialogTrigger asChild>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-9 w-9">
-                          <Keyboard className="h-4 w-4" />
-                          <span className="sr-only">Keyboard shortcuts</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">Keyboard shortcuts</TooltipContent>
-                    </Tooltip>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Keyboard Shortcuts</DialogTitle>
-                      <DialogDescription>
-                        Quickly navigate and control EdGenie using these keyboard shortcuts.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <KeyboardShortcutsDialog />
-                  </DialogContent>
-                </Dialog>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowToolbox(!showToolbox)}
-                className="flex items-center gap-2 text-xs sm:text-sm"
-              >
-                {showToolbox ? "Hide Toolbox" : "Teacher Tools"}
-              </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Alt + T</p>
-                  </TooltipContent>
-                </Tooltip>
-                
-              <DarkModeToggle />
-            </div>
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="flex justify-between mb-4">
+          <h1 className="text-3xl font-bold tracking-tight">Lessons</h1>
+          
+          <div className="flex items-center space-x-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setKeyboardShortcutsOpen(true)}
+                  >
+                    <Keyboard className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Keyboard Shortcuts
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <DarkModeToggle />
           </div>
-
-            <div ref={teachingTipRef}>
-              {isLoadingTip ? (
-                <TeachingTipSkeleton />
-              ) : teachingTip ? (
-            <Card className="bg-primary/5 border border-primary/20 hover:shadow-md transition-shadow duration-200 mb-6">
-              <CardContent className="flex items-center justify-between p-3 sm:p-4">
-                <p className="text-xs sm:text-sm italic flex-1">{teachingTip}</p>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="ml-2 sm:ml-4 flex-shrink-0" 
-                          onClick={() => fetchRandomTip()} 
-                  disabled={isLoadingTip}
-                          aria-label="Refresh teaching tip"
-                >
-                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isLoadingTip ? 'animate-spin' : ''}`} />
-                </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>New teaching tip (Alt+R)</p>
-                      </TooltipContent>
-                    </Tooltip>
-              </CardContent>
-            </Card>
-              ) : null}
-            </div>
-
-          <div className={`grid ${showToolbox ? 'lg:grid-cols-4' : 'grid-cols-1'} gap-6`}>
-            <div className={`${showToolbox ? 'lg:col-span-3' : 'w-full'} space-y-6`}>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 w-full">
-                <div className="overflow-x-auto">
-                  <TabsList className="mb-2 w-full sm:w-auto flex justify-start">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger value="create" className="flex-1 sm:flex-initial text-xs sm:text-sm">
-                            Create New
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">Alt+1</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger value="saved" className="flex-1 sm:flex-initial text-xs sm:text-sm">
-                            Saved Lessons
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">Alt+2</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger value="bookmarked" className="flex-1 sm:flex-initial text-xs sm:text-sm">
-                            Bookmarked
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">Alt+3</TooltipContent>
-                      </Tooltip>
-                  </TabsList>
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full md:w-3/4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="create">Create Lesson</TabsTrigger>
+                <TabsTrigger value="saved">
+                  <span className="flex items-center">
+                    <Save className="mr-1 h-4 w-4" />
+                    Saved
+                    {savedLessonsList.length > 0 && 
+                      <Badge variant="secondary" className="ml-1">{savedLessonsList.length}</Badge>
+                    }
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="bookmarked">Bookmarked</TabsTrigger>
+                <TabsTrigger value="recent">
+                  <span className="flex items-center">
+                    <Clock className="mr-1 h-4 w-4" />
+                    Recent
+                    {recentLessons.length > 0 && 
+                      <Badge variant="secondary" className="ml-1">{recentLessons.length}</Badge>
+                    }
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="create" className="space-y-4">
+                {generatedLesson ? (
+                  <ErrorBoundary>
+                    <LessonDisplay lesson={generatedLesson} onReset={handleReset} />
+                  </ErrorBoundary>
+                ) : (
+                  <ErrorBoundary>
+                    <LessonGenerator onGenerate={handleLessonGenerated} />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="saved" className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-medium">Saved Lessons</h2>
+                  <Button variant="outline" size="sm" onClick={loadSavedLessons}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
                 </div>
                 
-                  <TabsContent value="create" className="mt-4 w-full focus-visible:outline-none focus-visible:ring-0">
-                  <ErrorBoundary>
-                    {generatedLesson ? (
-                      <LessonDisplay lesson={generatedLesson} onReset={handleReset} />
-                    ) : (
-                      <LessonGenerator onLessonGenerated={handleLessonGenerated} />
-                    )}
-                  </ErrorBoundary>
-                </TabsContent>
+                {savedLessonsList.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <Save className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-center text-muted-foreground">
+                        No saved lessons yet. Click the save button on a lesson to save it here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {savedLessonsList.map((lesson) => (
+                      <ContentCard
+                        key={lesson.id}
+                        title={lesson.title}
+                        description={lesson.overview}
+                        metadata={`Grade ${lesson.gradeLevel} • ${lesson.subject}`}
+                        icon={<Save className="h-4 w-4 text-primary" />}
+                        timestamp={lesson.savedAt ? new Date(lesson.savedAt).toLocaleDateString() : undefined}
+                        tags={lesson.tags.slice(0, 2)}
+                        onClick={() => handleLessonSelect(lesson.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="bookmarked" className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-medium">Bookmarked Lessons</h2>
+                  <Button variant="outline" size="sm" onClick={loadBookmarks}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
                 
-                  <TabsContent value="saved" className="space-y-6 mt-4 focus-visible:outline-none focus-visible:ring-0">
-                  <ErrorBoundary>
-                    <Card className="overflow-hidden">
-                      <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                            <div className="relative w-full sm:max-w-xs">
-                          <Input 
-                            placeholder="Search lessons..." 
-                                className="w-full text-sm pr-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                          />
-                              {searchQuery && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                                  onClick={() => setSearchQuery("")}
-                                  aria-label="Clear search"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                  </svg>
-                                </Button>
-                              )}
-                            </div>
-                          <div className="flex gap-3 w-full sm:w-auto">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setShowFilters(!showFilters)}
-                              className="flex items-center gap-2 text-xs sm:text-sm flex-1 sm:flex-initial"
-                              size="sm"
-                            >
-                              <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span>Filters</span>
-                            </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                  <p>{showFilters ? 'Hide' : 'Show'} grade and subject filters</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                              onClick={() => {
-                                setSearchQuery("");
-                                setGradeFilter("all");
-                                setSubjectFilter("all");
-                              }}
-                            >
-                              Clear
-                            </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                  <p>Reset all search filters</p>
-                                </TooltipContent>
-                              </Tooltip>
-                          </div>
-                        </div>
+                {bookmarkedLessons.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <BookmarkCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-center text-muted-foreground">
+                        No bookmarked lessons yet. Click the bookmark icon on a lesson to save it here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {bookmarkedLessons.map((bookmark) => {
+                      // Find full lesson details from the bookmark
+                      const lessonDetails = lessons.find(l => l.id === bookmark.id);
+                      return (
+                        <ContentCard
+                          key={bookmark.id}
+                          title={bookmark.title}
+                          description={lessonDetails?.overview || "No overview available"}
+                          metadata={`Grade ${bookmark.gradeLevel} • ${bookmark.subject}`}
+                          icon={<BookmarkCheck className="h-4 w-4 text-primary" />}
+                          timestamp={bookmark.timestamp ? new Date(bookmark.timestamp).toLocaleDateString() : undefined}
+                          onClick={() => handleLessonSelect(bookmark.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="recent" className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-medium">Recently Viewed Lessons</h2>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      const recentIds = getRecentLessons();
+                      if (recentIds.length > 0) {
+                        const recentDetails = recentIds
+                          .map(recent => {
+                            const lesson = lessons.find(l => l.id === recent.id);
+                            return lesson ? { ...lesson, timestamp: recent.timestamp } : null;
+                          })
+                          .filter(Boolean) as (LessonResult & { timestamp: number })[];
                         
-                        {showFilters && (
-                            <div className="flex flex-col sm:flex-row gap-4 mt-6 animate-in fade-in-50 duration-300">
-                            <Select 
-                              value={gradeFilter} 
-                              onValueChange={setGradeFilter}
-                            >
-                              <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm">
-                                <SelectValue placeholder="Filter by grade level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Grades</SelectItem>
-                                <SelectItem value="k-2">K-2</SelectItem>
-                                <SelectItem value="3-5">3-5</SelectItem>
-                                <SelectItem value="6-8">6-8</SelectItem>
-                                <SelectItem value="9-12">9-12</SelectItem>
-                                <SelectItem value="college">College</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            
-                            <Select 
-                              value={subjectFilter} 
-                              onValueChange={setSubjectFilter}
-                            >
-                              <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm">
-                                <SelectValue placeholder="Filter by subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Subjects</SelectItem>
-                                <SelectItem value="math">Mathematics</SelectItem>
-                                <SelectItem value="science">Science</SelectItem>
-                                <SelectItem value="english">English/Language Arts</SelectItem>
-                                <SelectItem value="history">History/Social Studies</SelectItem>
-                                <SelectItem value="art">Art</SelectItem>
-                                <SelectItem value="music">Music</SelectItem>
-                                <SelectItem value="pe">Physical Education</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {filteredLessons.length === 0 ? (
-                      <div className="text-center py-12 bg-background rounded-lg shadow-sm border">
-                        <p className="text-muted-foreground text-sm">No lessons match your search criteria.</p>
-                        <Button 
-                          variant="link" 
-                          onClick={() => {
-                            setSearchQuery("");
-                            setGradeFilter("all");
-                            setSubjectFilter("all");
-                          }}
-                          className="text-xs sm:text-sm mt-2"
-                        >
-                          Clear filters
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {filteredLessons.map((lesson) => (
-                          <ContentCard
-                            key={lesson.id}
-                            title={lesson.title}
-                            description={`Grade ${lesson.gradeLevel} • ${lesson.duration}`}
-                            tags={lesson.tags}
-                            onClick={() => navigate(`/lessons/${lesson.id}`)}
-                            className="hover:shadow-md transition-shadow duration-200"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                                <Book className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span>{lesson.subject}</span>
-                              </div>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-6 w-6 sm:h-7 sm:w-7"
-                                      aria-label="Download lesson"
-                                    >
-                                <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                              </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left">Download lesson</TooltipContent>
-                                </Tooltip>
-                            </div>
-                            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-3">
-                              {lesson.overview}
-                            </p>
-                          </ContentCard>
-                        ))}
-                      </div>
-                    )}
-                  </ErrorBoundary>
-                </TabsContent>
+                        setRecentLessons(recentDetails);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
                 
-                  <TabsContent value="bookmarked" className="space-y-6 mt-4 focus-visible:outline-none focus-visible:ring-0">
-                  <ErrorBoundary>
-                    {bookmarkedLessons.length === 0 ? (
-                      <div className="text-center py-12 bg-background rounded-lg shadow-sm border">
-                        <p className="text-muted-foreground text-sm">No bookmarked lessons yet.</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                          Click the bookmark icon on any lesson to save it here for quick access.
-                        </p>
-                        <Button 
-                          variant="link" 
-                          onClick={() => setActiveTab("saved")}
-                          className="mt-4 text-xs sm:text-sm"
-                        >
-                          Browse lessons
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {bookmarkedLessons.map((bookmark) => (
-                          <Card key={bookmark.id} className="hover:shadow-md transition-shadow duration-200">
-                            <CardContent className="p-4 sm:p-5">
-                              <div className="flex justify-between items-start">
-                                <h3 className="font-medium text-sm sm:text-base">{bookmark.title}</h3>
-                                <BookmarkCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary flex-shrink-0 ml-2" />
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-2">
-                                <Book className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span>{bookmark.subject} • Grade {bookmark.gradeLevel}</span>
-                              </div>
-                              <div className="flex justify-end mt-4 sm:mt-5">
-                                <Button 
-                                  size="sm" 
-                                  className="text-xs sm:text-sm"
-                                  onClick={() => {
-                                    // In a real app, this would load the lesson
-                                    toast.info("This would load the lesson");
-                                  }}
-                                >
-                                  View Lesson
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex justify-end">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="text-xs sm:text-sm" 
-                        onClick={loadBookmarks}
-                      >
-                        Refresh Bookmarks
-                      </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p>Update the bookmarks list</p>
-                          </TooltipContent>
-                        </Tooltip>
-                    </div>
-                  </ErrorBoundary>
-                </TabsContent>
-              </Tabs>
-            </div>
-            
-            {showToolbox && (
-                <div className="lg:col-span-1 animate-in slide-in-from-right-8 duration-300">
-                <ErrorBoundary>
+                {recentLessons.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-center text-muted-foreground">
+                        No recently viewed lessons. View a lesson to have it appear here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {recentLessons.map((lesson) => (
+                      <ContentCard
+                        key={lesson.id}
+                        title={lesson.title}
+                        description={lesson.overview}
+                        metadata={`Grade ${lesson.gradeLevel} • ${lesson.subject}`}
+                        icon={<Clock className="h-4 w-4" />}
+                        timestamp={lesson.timestamp ? new Date(lesson.timestamp).toLocaleDateString() : undefined}
+                        tags={lesson.tags.slice(0, 2)}
+                        onClick={() => handleLessonSelect(lesson.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+          
+          <div className="w-full md:w-1/4">
+            <div className="sticky top-24">
+              {/* Render the toolbox component if enabled */}
+              {showToolbox && (
+                <div className="mb-6">
                   <TeacherToolbox />
-                </ErrorBoundary>
+                </div>
+              )}
+              
+              {/* Teaching tip card */}
+              <div ref={teachingTipRef}>
+                {isLoadingTip ? (
+                  <TeachingTipSkeleton />
+                ) : (
+                  <Alert className="bg-primary/5 border border-primary/20 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <AlertDescription className="text-sm">
+                          {teachingTip || "No teaching tip available. Try refreshing."}
+                        </AlertDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-2"
+                        onClick={() => fetchRandomTip()}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Alert>
+                )}
               </div>
-            )}
+              
+              {/* Teacher tools toggle */}
+              <Button
+                variant={showToolbox ? "default" : "outline"}
+                className="w-full mb-4"
+                onClick={() => setShowToolbox(!showToolbox)}
+              >
+                {showToolbox ? "Hide Teacher Tools" : "Show Teacher Tools"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* Keyboard shortcuts dialog */}
+      <Dialog open={keyboardShortcutsOpen} onOpenChange={setKeyboardShortcutsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>
+              Use these keyboard shortcuts to quickly navigate and use the application.
+            </DialogDescription>
+          </DialogHeader>
+          <KeyboardShortcutsDialog />
+        </DialogContent>
+      </Dialog>
     </Layout>
-    </TooltipProvider>
   );
 }

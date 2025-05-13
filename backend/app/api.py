@@ -230,10 +230,12 @@ async def generate_assessment(request: AssessmentRequest):
         Bloom's taxonomy levels to target: {", ".join(request.bloomsLevels)}
         {f"Additional instructions: {request.additionalInstructions}" if request.additionalInstructions else ""}
         
-        IMPORTANT: EVERY question MUST include an "answer" field with the correct answer or sample answer.
-        For multiple-choice questions, provide the full correct answer option text.
-        For true-false questions, provide "True" or "False".
-        For short-answer and essay questions, provide a sample correct answer.
+        EXTREMELY IMPORTANT: 
+        - EVERY question MUST include an "answer" field with the correct answer.
+        - For multiple-choice questions, the "answer" MUST be the FULL TEXT of the correct option, not just A, B, C, D.
+        - For true-false questions, the "answer" MUST be either "True" or "False".
+        - For short-answer and essay questions, provide a sample correct answer.
+        - Do not skip providing an answer for ANY question type.
         
         Format your response as a JSON object with the following structure:
         {{
@@ -245,7 +247,7 @@ async def generate_assessment(request: AssessmentRequest):
                     "text": "Question text",
                     "type": "one of: multiple-choice, true-false, short-answer, essay",
                     "options": ["option 1", "option 2", "option 3", "option 4"] (for multiple-choice and true-false only),
-                    "answer": "Correct answer or sample answer - THIS IS REQUIRED",
+                    "answer": "FULL TEXT of the correct answer - THIS IS REQUIRED FOR ALL QUESTIONS",
                     "bloomsLevel": "Targeted Bloom's level"
                 }},
                 ...
@@ -253,7 +255,7 @@ async def generate_assessment(request: AssessmentRequest):
             "tags": ["relevant", "tags", "for", "this", "assessment"]
         }}
 
-        IMPORTANT: Your response must be a valid JSON object with no additional text before or after. Every question MUST have an answer.
+        IMPORTANT: Your response must be a valid JSON object with no additional text before or after. EVERY QUESTION MUST HAVE AN ANSWER FIELD FILLED IN.
         """
         
         model = get_model_by_id(request.model)
@@ -302,6 +304,34 @@ async def generate_assessment(request: AssessmentRequest):
                 else:
                     question["answer"] = "Sample answer placeholder - requires manual input"
                     print(f"Setting default answer placeholder for {question.get('type')}")
+            # For multiple choice, ensure the answer is the full text of an option, not just a letter
+            elif question.get("type") == "multiple-choice" and question.get("options"):
+                options = question.get("options", [])
+                answer = question.get("answer", "")
+                
+                # Check if the answer is just a letter like "A", "B", "C", "D"
+                if len(answer) == 1 and answer.upper() in "ABCD":
+                    # Convert letter to index (A=0, B=1, etc.)
+                    index = ord(answer.upper()) - ord('A')
+                    # Make sure index is valid
+                    if 0 <= index < len(options):
+                        question["answer"] = options[index]
+                        print(f"Converting letter answer '{answer}' to full text: '{question['answer']}'")
+                # Also check for answers like "(A)" or "A)"
+                elif (len(answer) <= 3 and 
+                      (answer.upper().startswith("(") or answer.upper().endswith(")")) and
+                      any(letter in answer.upper() for letter in "ABCD")):
+                    # Extract the letter
+                    letter = ''.join(c for c in answer.upper() if c in "ABCD")
+                    index = ord(letter) - ord('A')
+                    # Make sure index is valid
+                    if 0 <= index < len(options):
+                        question["answer"] = options[index]
+                        print(f"Converting parenthesized letter answer '{answer}' to full text: '{question['answer']}'")
+                # If answer is not in the options, default to the first option
+                elif answer not in options:
+                    print(f"Answer '{answer}' not found in options, setting to first option")
+                    question["answer"] = options[0]
         
         # Create the assessment result
         assessment_result = AssessmentResult(

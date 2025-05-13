@@ -5,14 +5,15 @@
  * Usage: node apply-schemas.js
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs/promises';
+import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from both .env and .env.local
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local' });
 
 // Get current file and directory path in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -41,55 +42,50 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 const SQL_FILES = [
   'rpc-functions.sql',
   'auth-tables.sql',
-  'collaborative-docs-tables.sql'
+  'collaborative-docs-tables.sql',
+  'migrations/20240513_setup_downloads.sql'
 ];
 
-// This function executes a SQL statement directly with the Supabase REST API
-async function executeSqlDirectly(sql) {
+// Function to execute SQL using Supabase client
+async function executeSql(sql) {
   try {
-    // Break down SQL statements to be executed one by one
-    const statements = sql
-      .replace(/--.*$/gm, '') // Remove comments
-      .split(';')
-      .filter(stmt => stmt.trim().length > 0);
+    const { data, error } = await supabase.rpc('execute_sql', { sql });
     
-    console.log(`Found ${statements.length} SQL statements to execute directly.`);
-    
-    // For each statement, make a POST request to the SQL API
-    for (let i = 0; i < statements.length; i++) {
-      const stmt = statements[i].trim();
-      
-      try {
-        // Use direct SQL REST API endpoint
-        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Prefer': 'resolution=merge-duplicates'
-          },
-          body: JSON.stringify({ query: stmt })
-        });
+    if (error) {
+      // If the execute_sql function doesn't exist, try creating it first
+      if (error.message.includes('function') && error.message.includes('does not exist')) {
+        const createFunctionSql = `
+          CREATE OR REPLACE FUNCTION execute_sql(sql text)
+          RETURNS void
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $$
+          BEGIN
+            EXECUTE sql;
+          END;
+          $$;
+        `;
         
-        if (!response.ok) {
-          console.warn(`⚠️ Warning executing statement ${i+1}, status: ${response.status}`);
-          if (stmt.length < 200) {
-            console.log('Statement:', stmt);
-          } else {
-            console.log('Statement:', stmt.substring(0, 100) + '...');
-          }
-        } else {
-          process.stdout.write('.');
+        const { error: createError } = await supabase.rpc('execute_sql', { sql: createFunctionSql });
+        if (!createError) {
+          // Try executing the original SQL again
+          return await supabase.rpc('execute_sql', { sql });
         }
-      } catch (stmtErr) {
-        console.warn(`⚠️ Exception executing statement ${i+1}:`, stmtErr.message);
+      }
+      
+      // If that didn't work, try direct query
+      const { error: queryError } = await supabase.query(sql);
+      if (queryError) {
+        console.warn('Error executing SQL:', queryError.message);
+        return false;
       }
     }
     
-    console.log('\nDirect SQL execution completed');
+    return true;
   } catch (err) {
-    console.error('Error executing SQL directly:', err);
+    console.warn('Error executing SQL:', err.message);
+    return false;
   }
 }
 
@@ -98,138 +94,92 @@ async function main() {
   console.log(`Using Supabase URL: ${supabaseUrl}`);
   
   try {
-    // Try to create the execute_sql function first if it doesn't exist
-    const rpcFunctionsPath = path.join(__dirname, '..', 'supabase', 'rpc-functions.sql');
-    console.log('\nAttempting to create RPC functions first...');
-    const rpcSql = await fs.readFile(rpcFunctionsPath, 'utf8');
-    await executeSqlDirectly(rpcSql);
-    
     // First create the profiles table if it doesn't exist
     console.log('\nAttempting to create profiles table...');
-    try {
-      const { error } = await supabase.rpc('create_profiles_table');
-      if (error) {
-        console.warn('Warning creating profiles table:', error.message);
-        // Try direct SQL approach for creating profiles
-        await executeSqlDirectly(`
-          CREATE TABLE IF NOT EXISTS public.profiles (
-            id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-            email TEXT UNIQUE,
-            full_name TEXT,
-            avatar_url TEXT,
-            role TEXT,
-            preferences JSONB DEFAULT '{}',
-            last_login TIMESTAMP WITH TIME ZONE,
-            login_count INTEGER DEFAULT 0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-          );
-          
-          ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-          
-          CREATE POLICY "Users can view their own profile" 
-            ON public.profiles 
-            FOR SELECT 
-            USING (auth.uid() = id);
-            
-          CREATE POLICY "Users can update their own profile" 
-            ON public.profiles 
-            FOR UPDATE 
-            USING (auth.uid() = id);
-        `);
-      } else {
-        console.log('✅ Profiles table created or already exists');
-      }
-    } catch (profileErr) {
-      console.warn('Error creating profiles table:', profileErr);
-    }
-    
-    // Verify connection
-    try {
-      const { data, error } = await supabase.from('profiles').select('count(*)', { count: 'exact', head: true });
+    const profilesSql = `
+      CREATE TABLE IF NOT EXISTS public.profiles (
+        id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+        email TEXT UNIQUE,
+        full_name TEXT,
+        avatar_url TEXT,
+        role TEXT,
+        preferences JSONB DEFAULT '{}',
+        last_login TIMESTAMP WITH TIME ZONE,
+        login_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
       
-      if (error) {
-        console.error('WARNING: Could not connect to Supabase or access the profiles table.');
-        console.error('Error details:', error);
+      ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+      
+      DO $$ 
+      BEGIN
+        -- Drop existing policies if they exist
+        DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
+        DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+        DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+        DROP POLICY IF EXISTS "Enable insert for authenticated users" ON profiles;
+        DROP POLICY IF EXISTS "Enable select for authenticated users" ON profiles;
+        DROP POLICY IF EXISTS "Enable update for own profile" ON profiles;
         
-        // Check if table doesn't exist (which is expected for first-time setup)
-        if (error.code === '42P01') {
-          console.log('The profiles table does not exist yet. This is normal for first-time setup.');
-        }
-      } else {
-        console.log('Successfully connected to Supabase.');
-      }
-    } catch (connectionErr) {
-      console.warn('Warning checking connection:', connectionErr);
+        -- Create new policies
+        CREATE POLICY "Enable insert for authenticated users" 
+          ON profiles 
+          FOR INSERT 
+          TO authenticated 
+          WITH CHECK (id = auth.uid());
+        
+        CREATE POLICY "Enable select for authenticated users" 
+          ON profiles 
+          FOR SELECT 
+          TO authenticated 
+          USING (true);
+        
+        CREATE POLICY "Enable update for own profile" 
+          ON profiles 
+          FOR UPDATE 
+          TO authenticated 
+          USING (id = auth.uid());
+      END $$;
+    `;
+    
+    const success = await executeSql(profilesSql);
+    if (success) {
+      console.log('✅ Profiles table and policies created or updated');
+    } else {
+      console.warn('⚠️ Warning setting up profiles table');
     }
     
+    // Apply each schema file
     const supabaseDirPath = path.join(__dirname, '..', 'supabase');
-    
-    // Apply each SQL file
     for (const sqlFile of SQL_FILES) {
-      // Skip rpc-functions.sql since we already applied it
-      if (sqlFile === 'rpc-functions.sql') continue;
-      
       const filePath = path.join(supabaseDirPath, sqlFile);
       console.log(`\nApplying schema from: ${sqlFile}`);
       
       try {
-        // Read SQL file
         const sqlContent = await fs.readFile(filePath, 'utf8');
+        const success = await executeSql(sqlContent);
         
-        // Try using the RPC function first
-        try {
-          // Split SQL content into separate statements
-          const statements = sqlContent
-            .replace(/--.*$/gm, '') // Remove comments
-            .split(';')
-            .filter(stmt => stmt.trim().length > 0);
-          
-          console.log(`Found ${statements.length} SQL statements to execute.`);
-          
-          // Execute each statement
-          for (let i = 0; i < statements.length; i++) {
-            const stmt = statements[i].trim();
-            try {
-              const { error } = await supabase.rpc('execute_sql', { sql: stmt });
-              
-              if (error) {
-                console.warn(`⚠️ Warning executing statement ${i+1}:`, error.message);
-                
-                // Only log the statement on error if it's not too long
-                if (stmt.length < 200) {
-                  console.log('Statement:', stmt);
-                } else {
-                  console.log('Statement:', stmt.substring(0, 100) + '...');
-                }
-              } else {
-                process.stdout.write('.');
-              }
-            } catch (stmtErr) {
-              console.warn(`⚠️ Exception executing statement ${i+1}:`, stmtErr.message);
-            }
-          }
-        } catch (rpcErr) {
-          console.warn('Error using RPC function, trying direct SQL execution:', rpcErr.message);
-          await executeSqlDirectly(sqlContent);
-        }
-        
-        console.log(`\n✅ Applied schema file: ${sqlFile}`);
-      } catch (fileErr) {
-        if (fileErr.code === 'ENOENT') {
-          console.error(`❌ ERROR: SQL file not found: ${sqlFile}`);
+        if (success) {
+          console.log(`✅ Successfully applied ${sqlFile}`);
         } else {
-          console.error(`❌ ERROR processing ${sqlFile}:`, fileErr);
+          console.warn(`⚠️ Warning applying ${sqlFile}`);
+        }
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          console.warn(`File not found: ${sqlFile}`);
+        } else {
+          console.error(`Error applying ${sqlFile}:`, err);
         }
       }
     }
     
     console.log('\n=== Schema Application Complete ===');
-    console.log('You can now start your application.');
+    
   } catch (err) {
-    console.error('Unhandled error:', err);
+    console.error('Error:', err);
     process.exit(1);
   }
 }
 
-main(); 
+main().catch(console.error); 

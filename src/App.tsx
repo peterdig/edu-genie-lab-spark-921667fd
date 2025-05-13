@@ -35,6 +35,7 @@ const CollaborativeWorkspace = lazy(() => import('@/pages/CollaborativeWorkspace
 const IntegrationsHub = lazy(() => import('@/pages/IntegrationsHub'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Lessons = lazy(() => import('@/pages/Lessons'));
+const MobileDownload = lazy(() => import('@/pages/MobileDownload'));
 
 // Create a wrapper component for LazyCollaboration that provides SidebarProvider
 const CollaborationWithSidebar = () => (
@@ -197,6 +198,21 @@ const App = () => {
                       </Suspense>
                     } />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/login" element={
+                      <Suspense fallback={<LoadingFallback />}>
+                        <Login />
+                      </Suspense>
+                    } />
+                    <Route path="/signup" element={
+                      <Suspense fallback={<LoadingFallback />}>
+                        <Signup />
+                      </Suspense>
+                    } />
+                    <Route path="/download" element={
+                      <Suspense fallback={<LoadingFallback />}>
+                        <MobileDownload />
+                      </Suspense>
+                    } />
                     <Route path="/dashboard" element={
                       <AuthGuard>
                         <Suspense fallback={<LoadingFallback />}>
@@ -238,16 +254,6 @@ const App = () => {
                           <Settings />
                         </Suspense>
                       </AuthGuard>
-                    } />
-                    <Route path="/login" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <Login />
-                      </Suspense>
-                    } />
-                    <Route path="/signup" element={
-                      <Suspense fallback={<LoadingFallback />}>
-                        <Signup />
-                      </Suspense>
                     } />
                     <Route path="/my-library" element={
                       <AuthGuard>

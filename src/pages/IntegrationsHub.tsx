@@ -157,6 +157,10 @@ export default function IntegrationsHub() {
     setConnecting(platform.id);
     
     try {
+      toast.info(`Connecting to ${platform.name}...`, {
+        duration: 2000
+      });
+      
       const connection = await connectPlatform(platform.id);
       if (connection) {
         // Set as active platform
@@ -167,7 +171,9 @@ export default function IntegrationsHub() {
         setSyncStats(updatedStats);
         
         // Show success message
-        toast.success(`Successfully connected to ${platform.name}`);
+        toast.success(`Successfully connected to ${platform.name}`, {
+          description: 'You can now sync data with this platform'
+        });
         
         // Switch to connected tab
         setActiveTab("connected");
@@ -176,7 +182,9 @@ export default function IntegrationsHub() {
       }
     } catch (error) {
       console.error("Error connecting to platform:", error);
-      toast.error(`Failed to connect to ${platform.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to connect to ${platform.name}`, {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setConnecting(null);
     }
@@ -185,6 +193,8 @@ export default function IntegrationsHub() {
   // Handle disconnecting a platform
   const handleDisconnect = async (platform: any) => {
     try {
+      toast.info(`Disconnecting from ${platform.name}...`);
+      
       const success = await disconnectPlatform(platform.id);
       if (success) {
         toast.success(`Successfully disconnected from ${platform.name}`);
@@ -204,7 +214,10 @@ export default function IntegrationsHub() {
   // Handle toggling a sync option
   const handleToggleSync = async (syncOption: any) => {
     try {
-      const updated = await toggleSyncOption(syncOption.id, !syncOption.enabled);
+      const newState = !syncOption.enabled;
+      toast.info(`${newState ? 'Enabling' : 'Disabling'} ${syncOption.name} sync...`);
+      
+      const updated = await toggleSyncOption(syncOption.id, newState);
       if (updated) {
         toast.success(`${syncOption.enabled ? 'Disabled' : 'Enabled'} ${syncOption.name} sync for ${
           availablePlatforms.find(p => p.id === syncOption.platform_id)?.name
@@ -223,11 +236,18 @@ export default function IntegrationsHub() {
     setSyncingPlatform(platformId);
     
     try {
+      const platformName = availablePlatforms.find(p => p.id === platformId)?.name || 'platform';
+      toast.info(`Syncing data with ${platformName}...`, {
+        description: 'This may take a few moments'
+      });
+      
       const success = await syncData(platformId);
       if (success) {
         toast.success(`Successfully synchronized data for ${
           availablePlatforms.find(p => p.id === platformId)?.name
-        }`);
+        }`, {
+          description: 'All enabled data types were synced'
+        });
         
         // Refresh stats
         const stats = await getSyncStats();
@@ -239,7 +259,9 @@ export default function IntegrationsHub() {
       }
     } catch (error) {
       console.error("Error syncing platform:", error);
-      toast.error(`Synchronization failed`);
+      toast.error(`Synchronization failed`, {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setSyncingPlatform(null);
     }
@@ -250,20 +272,28 @@ export default function IntegrationsHub() {
     setSyncingAll(true);
     
     try {
+      toast.info("Starting synchronization for all connected platforms...", {
+        description: 'This may take a few moments'
+      });
+      
       // Sync each connected platform
       const syncPromises = connectedPlatforms.map(platform => 
         syncData(platform.id)
       );
       
       await Promise.all(syncPromises);
-      toast.success("All data synchronized successfully");
+      toast.success("All data synchronized successfully", {
+        description: 'Updated data for all connected platforms'
+      });
       
       // Refresh stats
       const stats = await getSyncStats();
       setSyncStats(stats);
     } catch (error) {
       console.error("Error during sync all:", error);
-      toast.error("Some synchronization operations failed");
+      toast.error("Some synchronization operations failed", {
+        description: error instanceof Error ? error.message : 'Some platforms may not have synced correctly'
+      });
     } finally {
       setSyncingAll(false);
     }
