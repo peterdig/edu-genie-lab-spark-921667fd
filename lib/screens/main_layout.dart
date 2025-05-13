@@ -5,6 +5,7 @@ import 'lesson_planning/lesson_planning_screen.dart';
 import 'quiz_generator/quiz_generator_screen.dart';
 import 'virtual_labs/virtual_labs_screen.dart';
 import 'resource_summarizer/resource_summarizer_screen.dart';
+import 'lesson_planning/speech_to_plan_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -126,7 +127,13 @@ class _MainLayoutState extends State<MainLayout> {
               'Speech-to-Plan',
               -1,
               theme,
-              onTap: () => _showFeatureNotAvailable('Speech-to-Plan'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SpeechToPlanScreen()),
+                );
+              },
             ),
             _buildDrawerItem(
               Icons.science_outlined,

@@ -275,7 +275,7 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
           ),
           footer: (context) => pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.end,
-            children: [
+        children: [
               pw.Text(
                 'Page ${context.pageNumber} of ${context.pagesCount}',
                 style: pw.TextStyle(
@@ -441,9 +441,9 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
           children: [
             Text(
               'Create Quiz',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
@@ -567,7 +567,7 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
               ],
             ),
             
-            const SizedBox(height: 24),
+          const SizedBox(height: 24),
             
             // Generate button
             Center(
@@ -615,7 +615,7 @@ class _QuizGeneratorScreenState extends State<QuizGeneratorScreen> {
                     IconButton(
                       icon: const Icon(Icons.edit),
                       tooltip: 'Create New Quiz',
-                      onPressed: () {
+            onPressed: () {
                         setState(() {
                           _showQuiz = false;
                           _contentController.clear();

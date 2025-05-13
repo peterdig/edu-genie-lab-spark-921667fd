@@ -86,6 +86,15 @@ class QuizGenerationResponse(BaseModel):
     questions: List[QuizQuestion]
     created_at: datetime
 
+# Speech-to-Plan Models
+class SpeechToPlanRequest(BaseModel):
+    transcript: str
+    token: str
+
+class SpeechToPlanResponse(BaseModel):
+    plan: str
+    generated_at: datetime
+
 # PDF related models
 class QuizPdfRequest(BaseModel):
     file: Optional[UploadFile] = None
@@ -144,6 +153,48 @@ Format the response in markdown."""
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/speech-to-plan", response_model=SpeechToPlanResponse)
+async def generate_speech_to_plan(request: SpeechToPlanRequest):
+    uid = await verify_token(request.token) # Verify token from request body
+    try:
+        prompt = f"""
+You are an expert instructional designer. A teacher has provided the following idea or topic for a lesson through a voice transcript:
+'{request.transcript}'
+
+Based on this, generate a comprehensive and structured lesson plan suitable for a classroom setting.
+If the transcript mentions a specific grade or subject, use that. Otherwise, try to infer it or make a general assumption (e.g., middle school general topic).
+
+The lesson plan should include, but not be limited to:
+1.  **Lesson Title:** (A concise and descriptive title)
+2.  **Learning Objectives:** (What students will know or be able to do - clear, measurable objectives)
+3.  **Target Audience/Grade Level:** (Specify or infer)
+4.  **Materials & Resources:** (List of necessary items, including any digital tools)
+5.  **Lesson Activities & Procedure:** (A step-by-step breakdown, including approximate timings for each section: Introduction, Main Activities, Conclusion)
+6.  **Differentiated Instruction:** (Suggestions for supporting diverse learners, e.g., for struggling students and for advanced learners)
+7.  **Assessment:** (How learning will be checked, e.g., questions to ask, a short activity, exit ticket)
+8.  **Estimated Total Duration:** (Approximate total time for the lesson)
+
+Format the entire response in Markdown.
+Ensure the plan is practical and engaging.
+If the transcript is too short, unclear, or lacks sufficient detail to create a meaningful lesson plan, please state that you need more information and suggest what kind of details would be helpful. Do not attempt to generate a plan from insufficient input.
+"""
+
+        gemini_response = model.generate_content(prompt)
+        generated_plan = gemini_response.text
+        generated_at = datetime.now()
+
+        # Optional: You could also save this generated plan to Firestore here if desired,
+        # similar to the other lesson plan endpoint, associating it with the user (uid).
+        # For now, just returning it as per the immediate requirement.
+
+        return SpeechToPlanResponse(
+            plan=generated_plan,
+            generated_at=generated_at
+        )
+    except Exception as e:
+        print(f"Error in generate_speech_to_plan: {e}") # Log the error server-side
+        raise HTTPException(status_code=500, detail=f"An error occurred while generating the lesson plan: {str(e)}")
 
 # Helper functions for RAG
 def extract_text_from_pdf(file_path):
