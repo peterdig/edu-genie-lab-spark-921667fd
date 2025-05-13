@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Smartphone, Download, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Layout } from "@/components/Layout";
 
 const APP_CONFIG = {
     version: "1.0.0",
@@ -56,8 +57,8 @@ export default function MobileDownload() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background p-4">
-            <div className="w-full max-w-3xl space-y-6">
+        <Layout>
+            <div className="w-full max-w-3xl mx-auto space-y-6">
                 {/* App Info Header */}
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold">EdGenie Mobile App</h1>
@@ -150,6 +151,6 @@ export default function MobileDownload() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </Layout>
     );
 }
