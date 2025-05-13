@@ -7,269 +7,224 @@ import {
   AssessmentPerformanceData,
   ContentDistributionData
 } from "@/types/analytics";
-import { format, subDays, subMonths } from "date-fns";
+import { format, subDays, subMonths, parseISO } from "date-fns";
+import { supabase } from "./supabase";
 
-// In-memory cache for real-time data
-let analyticsCache: AnalyticsData | null = null;
+// Cache mechanism to prevent excessive fetches
+let cachedAnalyticsData: AnalyticsData | null = null;
+let lastFetchTime = 0;
+let fetchErrors = 0;
+const CACHE_EXPIRY_MS = 60000; // 1 minute cache
+const MAX_CONSECUTIVE_ERRORS = 5; // After this many errors, fallback completely
+const ERROR_COOLDOWN_MS = 10000; // Wait at least this long after errors
+
+// Maintain lightweight subscription management
 let activeSubscriptions = 0;
-let updateInterval: NodeJS.Timeout | null = null;
+let subscribers: ((data: AnalyticsData) => void)[] = [];
 
-// Initial data for first load (to avoid a complete blank state)
-const initialData: AnalyticsData = {
-  studentEngagement: [
-    { date: format(subDays(new Date(), 6), 'yyyy-MM-dd'), active: 145 },
-    { date: format(subDays(new Date(), 5), 'yyyy-MM-dd'), active: 156 },
-    { date: format(subDays(new Date(), 4), 'yyyy-MM-dd'), active: 162 },
-    { date: format(subDays(new Date(), 3), 'yyyy-MM-dd'), active: 158 },
-    { date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), active: 172 },
-    { date: format(subDays(new Date(), 1), 'yyyy-MM-dd'), active: 168 },
-    { date: format(new Date(), 'yyyy-MM-dd'), active: 175 }
-  ],
-  contentUsage: [
-    { name: 'Lessons', value: 42, percentage: 42 },
-    { name: 'Assessments', value: 28, percentage: 28 },
-    { name: 'Labs', value: 15, percentage: 15 },
-    { name: 'Templates', value: 15, percentage: 15 },
-  ],
-  assessmentPerformance: [
-    { subject: 'Math', score: 78 },
-    { subject: 'Science', score: 82 },
-    { subject: 'English', score: 85 },
-    { subject: 'History', score: 76 },
-    { subject: 'Art', score: 90 },
-    { subject: 'Music', score: 88 },
-  ],
-  contentDistribution: [
-    { name: 'Math', value: 30, percentage: 30 },
-    { name: 'Science', value: 25, percentage: 25 },
-    { name: 'English', value: 20, percentage: 20 },
-    { name: 'History', value: 15, percentage: 15 },
-    { name: 'Art', value: 10, percentage: 10 },
-  ],
+// Function to generate mock data structure (not actual mock data, just the structure)
+function createEmptyAnalyticsData(): AnalyticsData {
+  return {
+    studentEngagement: [],
+    contentUsage: [],
+    assessmentPerformance: [],
+    contentDistribution: [],
   metrics: {
     totalStudents: {
       title: "Total Students",
-      value: 245,
-      changePercentage: 12,
+        value: 0,
+        changePercentage: 0,
       icon: "Users",
       timeframe: "from last month"
     },
     avgEngagementTime: {
       title: "Avg. Engagement Time",
-      value: "32.5 min",
-      changePercentage: 4,
+        value: "0 min",
+        changePercentage: 0,
       icon: "Clock",
       timeframe: "from last week"
     },
     contentCreated: {
       title: "Content Created",
-      value: 78,
-      changePercentage: 18,
+        value: 0,
+        changePercentage: 0,
       icon: "BookOpen",
       timeframe: "from last month"
     },
     avgAssessmentScore: {
       title: "Avg. Assessment Score",
-      value: "82%",
-      changePercentage: 3,
+        value: "0%",
+        changePercentage: 0,
       icon: "GraduationCap",
       timeframe: "from last week"
     }
   },
   lastUpdated: new Date().toISOString()
 };
-
-// Helper function to generate stable but realistic data variations
-function getStableRandomVariation(baseValue: number, variationPercent = 0.05): number {
-  const maxVariation = baseValue * variationPercent;
-  // Use a consistent seed for stability
-  const variation = Math.sin(Date.now() / 10000) * maxVariation;
-  return Math.round(baseValue + variation);
 }
 
-function generateAnalyticsUpdate(timeRange: TimeRange, prevData: AnalyticsData): AnalyticsData {
-  // Generate new data based on previous data to ensure stability and natural transitions
-  const newData = { ...prevData };
+// Function to fetch real analytics data from Supabase with error handling and caching
+export async function fetchAnalyticsData(filters: AnalyticsFilters): Promise<AnalyticsData> {
+  const now = Date.now();
   
-  // Update last updated timestamp
-  newData.lastUpdated = new Date().toISOString();
-  
-  // Update student engagement with smooth trends rather than random jumps
-  const newEngagement = [...newData.studentEngagement];
-  const latestEngagement = newEngagement[newEngagement.length - 1];
-  const newActiveValue = getStableRandomVariation(latestEngagement.active, 0.03);
-  
-  // Only add a new data point if it's a new day
-  const today = format(new Date(), 'yyyy-MM-dd');
-  if (latestEngagement.date !== today) {
-    newEngagement.push({
-      date: today,
-      active: newActiveValue,
-      previousActive: latestEngagement.active
-    });
-    
-    // Remove oldest entry if exceeding time range
-    if (timeRange === '7d' && newEngagement.length > 7) {
-      newEngagement.shift();
-    } else if (timeRange === '30d' && newEngagement.length > 30) {
-      newEngagement.shift();
-    }
-  } else {
-    // Update today's value with a slight variation
-    newEngagement[newEngagement.length - 1] = {
-      ...latestEngagement,
-      active: newActiveValue
-    };
+  // If we have cached data that's still fresh, return it
+  if (cachedAnalyticsData && now - lastFetchTime < CACHE_EXPIRY_MS) {
+    return cachedAnalyticsData;
   }
   
-  newData.studentEngagement = newEngagement;
+  // If we've had too many errors, wait for cooldown period
+  if (fetchErrors >= MAX_CONSECUTIVE_ERRORS && now - lastFetchTime < ERROR_COOLDOWN_MS) {
+    console.log(`Too many fetch errors (${fetchErrors}), using cached data during cooldown`);
+    return cachedAnalyticsData || createEmptyAnalyticsData();
+  }
   
-  // Update content metrics with slight variations
-  newData.contentUsage = newData.contentUsage.map(item => {
-    const newValue = getStableRandomVariation(item.value, 0.02);
-    return {
-      ...item,
-      value: newValue,
-      percentage: Math.round(newValue)
-    };
-  });
-  
-  // Recalculate percentages for content usage
-  const totalUsage = newData.contentUsage.reduce((sum, item) => sum + item.value, 0);
-  newData.contentUsage = newData.contentUsage.map(item => ({
-    ...item,
-    percentage: Math.round((item.value / totalUsage) * 100)
-  }));
-  
-  // Update assessment performance with gentle variations
-  newData.assessmentPerformance = newData.assessmentPerformance.map(item => {
-    const oldScore = typeof item.score === 'number' ? item.score : parseFloat(item.score.toString());
-    const newScore = Math.min(100, Math.max(0, getStableRandomVariation(oldScore, 0.01)));
-    return {
-      ...item,
-      previousScore: oldScore,
-      score: newScore,
-      change: newScore - oldScore
-    };
-  });
-  
-  // Update content distribution with slight variations
-  newData.contentDistribution = newData.contentDistribution.map(item => {
-    const newValue = getStableRandomVariation(item.value, 0.02);
-    return {
-      ...item,
-      value: newValue
-    };
-  });
-  
-  // Recalculate percentages for content distribution
-  const totalDistribution = newData.contentDistribution.reduce((sum, item) => sum + item.value, 0);
-  newData.contentDistribution = newData.contentDistribution.map(item => ({
-    ...item,
-    percentage: Math.round((item.value / totalDistribution) * 100)
-  }));
-  
-  // Update metrics with slight variations
-  const totalStudentsValue = typeof newData.metrics.totalStudents.value === 'number' 
-    ? newData.metrics.totalStudents.value 
-    : parseInt(newData.metrics.totalStudents.value.toString());
+  try {
+    // Create an empty data structure
+    const emptyData = createEmptyAnalyticsData();
+
+    // Fetch real analytics data from Supabase - use a simpler query that doesn't involve auth.users
+    const { data: analyticsData, error } = await supabase
+      .from('analytics')
+      .select('*');
+
+    if (error) {
+      console.error("Error fetching analytics data:", error);
+      fetchErrors++;
+      lastFetchTime = now;
+      
+      // If we have cached data, return it instead of error
+      if (cachedAnalyticsData) {
+        return cachedAnalyticsData;
+      }
+      
+      return emptyData;
+    }
+
+    // Reset error counter on success
+    fetchErrors = 0;
     
-  const contentCreatedValue = typeof newData.metrics.contentCreated.value === 'number'
-    ? newData.metrics.contentCreated.value
-    : parseInt(newData.metrics.contentCreated.value.toString());
-    
-  const avgTimeMatch = typeof newData.metrics.avgEngagementTime.value === 'string' 
-    ? newData.metrics.avgEngagementTime.value.match(/^([\d.]+)/)
-    : null;
-  const avgTimeValue = avgTimeMatch ? parseFloat(avgTimeMatch[1]) : 32.5;
-  
-  const scoreMatch = typeof newData.metrics.avgAssessmentScore.value === 'string'
-    ? newData.metrics.avgAssessmentScore.value.match(/^([\d.]+)/)
-    : null;
-  const scoreValue = scoreMatch ? parseFloat(scoreMatch[1]) : 82;
-  
-  newData.metrics = {
+    // Process analytics data to fill the required structure
+    if (analyticsData && analyticsData.length > 0) {
+      // Process data for insights
+      // This is a simplified example - in a real app, you'd process the data more thoroughly
+      
+      // Group by date for student engagement
+      const dateGroups = new Map();
+      analyticsData.forEach(item => {
+        const date = item.created_at.split('T')[0]; // YYYY-MM-DD
+        dateGroups.set(date, (dateGroups.get(date) || 0) + 1);
+      });
+      
+      const studentEngagement = Array.from(dateGroups)
+        .map(([date, active]) => ({ date, active }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      // Group by content type
+      const contentTypeGroups = new Map();
+      analyticsData.forEach(item => {
+        contentTypeGroups.set(
+          item.content_type, 
+          (contentTypeGroups.get(item.content_type) || 0) + 1
+        );
+      });
+      
+      const contentUsage = Array.from(contentTypeGroups)
+        .map(([name, value]) => ({ name, value }));
+      
+      // Calculate percentages
+      const totalUsage = contentUsage.reduce((sum, item) => sum + Number(item.value), 0);
+      const contentUsageWithPercentage = contentUsage.map(item => ({
+    ...item,
+        percentage: totalUsage ? Math.round((Number(item.value) / totalUsage) * 100) : 0
+      }));
+      
+      // Simple metrics - count unique user_ids without referencing auth table
+      const uniqueUserIds = new Set(analyticsData.map(item => item.user_id)).size;
+      
+      const metrics = {
     totalStudents: {
-      ...newData.metrics.totalStudents,
-      value: getStableRandomVariation(totalStudentsValue, 0.01),
-      changePercentage: getStableRandomVariation(newData.metrics.totalStudents.changePercentage, 0.05)
+          title: "Total Students",
+          value: uniqueUserIds,
+          changePercentage: 0,
+          icon: "Users",
+          timeframe: "current users"
     },
     avgEngagementTime: {
-      ...newData.metrics.avgEngagementTime,
-      value: `${getStableRandomVariation(avgTimeValue, 0.02).toFixed(1)} min`,
-      changePercentage: getStableRandomVariation(newData.metrics.avgEngagementTime.changePercentage, 0.05)
+          title: "Avg. Engagement Time",
+          value: "0 min", // Would need specific timing data
+          changePercentage: 0,
+          icon: "Clock",
+          timeframe: "current session"
     },
     contentCreated: {
-      ...newData.metrics.contentCreated,
-      value: getStableRandomVariation(contentCreatedValue, 0.02),
-      changePercentage: getStableRandomVariation(newData.metrics.contentCreated.changePercentage, 0.05)
+          title: "Content Created",
+          value: analyticsData.filter(item => item.action === 'create').length,
+          changePercentage: 0,
+          icon: "BookOpen",
+          timeframe: "total"
     },
     avgAssessmentScore: {
-      ...newData.metrics.avgAssessmentScore,
-      value: `${getStableRandomVariation(scoreValue, 0.01).toFixed(0)}%`,
-      changePercentage: getStableRandomVariation(newData.metrics.avgAssessmentScore.changePercentage, 0.05)
-    }
-  };
-  
-  return newData;
-}
-
-// Get data for the specified time range from cache or generate new
-export async function fetchAnalyticsData(filters: AnalyticsFilters): Promise<AnalyticsData> {
-  try {
-    // Only simulate a small delay on first fetch to mimic API
-    if (!analyticsCache) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      analyticsCache = initialData;
-    }
-    
-    // If we already have cached data, just transform it for the requested time range
-    const data = analyticsCache 
-      ? generateAnalyticsUpdate(filters.timeRange, analyticsCache)
-      : initialData;
+          title: "Avg. Assessment Score",
+          value: "N/A", // Would need specific score data
+          changePercentage: 0,
+          icon: "GraduationCap",
+          timeframe: "unavailable"
+        }
+      };
       
-    // Update cache
-    analyticsCache = data;
+      const result = {
+        studentEngagement,
+        contentUsage: contentUsageWithPercentage,
+        contentDistribution: contentUsageWithPercentage, // Reuse for simplicity
+        assessmentPerformance: [], // Would need specific data
+        metrics,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Cache the result
+      cachedAnalyticsData = result;
+      lastFetchTime = now;
+      
+      return result;
+    }
     
-    return data;
+    // If no data, return empty data structure but still update cache time
+    cachedAnalyticsData = emptyData;
+    lastFetchTime = now;
+    return emptyData;
   } catch (error) {
-    console.error("Error fetching analytics data:", error);
-    throw error;
+    console.error("Error in fetchAnalyticsData:", error);
+    fetchErrors++;
+    lastFetchTime = now;
+    
+    // If we have cached data, return it instead of error
+    if (cachedAnalyticsData) {
+      return cachedAnalyticsData;
+    }
+    
+    return createEmptyAnalyticsData();
   }
 }
 
-// Function to handle real-time updates more efficiently
+// Function to handle real-time updates with error handling
 export function subscribeToAnalyticsUpdates(
   callback: (data: AnalyticsData) => void,
   filters: AnalyticsFilters
 ): () => void {
+  try {
   activeSubscriptions++;
   
-  // Initial data fetch (guaranteed to be immediate if cache exists)
-  if (analyticsCache) {
-    // Use setTimeout to avoid React state update conflicts
-    setTimeout(() => callback(analyticsCache), 0);
+    // Use cached data if available for immediate response
+    if (cachedAnalyticsData) {
+      setTimeout(() => callback(cachedAnalyticsData!), 0);
   } else {
-    fetchAnalyticsData(filters).then(callback);
-  }
-  
-  // Start update interval if not already running
-  if (!updateInterval && activeSubscriptions > 0) {
-    updateInterval = setInterval(async () => {
-      if (activeSubscriptions === 0) return;
-      
-      try {
-        if (analyticsCache) {
-          const updatedData = generateAnalyticsUpdate(filters.timeRange, analyticsCache);
-          analyticsCache = updatedData;
-          
-          // Notify all subscribers
-          subscribers.forEach(subscriber => subscriber(updatedData));
-        }
-      } catch (error) {
-        console.error("Error updating analytics data:", error);
-      }
-    }, 10000); // Update every 10 seconds for smoother real-time experience
+      // Initial data fetch (wrapped in try/catch to prevent unhandled rejections)
+      fetchAnalyticsData(filters)
+        .then(callback)
+        .catch(err => {
+          console.error("Error in initial analytics fetch:", err);
+          callback(createEmptyAnalyticsData());
+        });
   }
   
   // Add to subscribers list
@@ -280,17 +235,12 @@ export function subscribeToAnalyticsUpdates(
   return () => {
     activeSubscriptions = Math.max(0, activeSubscriptions - 1);
     subscribers = subscribers.filter(sub => sub !== subscriberFunction);
-    
-    // Clear interval if no more subscribers
-    if (activeSubscriptions === 0 && updateInterval) {
-      clearInterval(updateInterval);
-      updateInterval = null;
-    }
-  };
+    };
+  } catch (err) {
+    console.error("Error setting up analytics subscription:", err);
+    return () => {}; // Empty cleanup function
+  }
 }
-
-// Subscriber management
-let subscribers: ((data: AnalyticsData) => void)[] = [];
 
 // Function to export analytics data
 export function exportAnalyticsData(data: AnalyticsData, format: 'csv' | 'json' = 'csv'): string {
@@ -354,40 +304,28 @@ export function getAnalyticsInsights(data: AnalyticsData): string[] {
     }
   }
   
-  // Assessment performance insights
-  const highestSubject = data.assessmentPerformance.reduce(
-    (prev, current) => (prev.score > current.score) ? prev : current
-  );
-  
-  const lowestSubject = data.assessmentPerformance.reduce(
-    (prev, current) => (prev.score < current.score) ? prev : current
-  );
-  
-  insights.push(`${highestSubject.subject} has the highest assessment score at ${highestSubject.score}%.`);
-  insights.push(`${lowestSubject.subject} has the lowest assessment score at ${lowestSubject.score}%.`);
-  
-  // Look for subjects with improvement
-  const improvingSubjects = data.assessmentPerformance
-    .filter(subject => subject.change && subject.change > 0)
-    .sort((a, b) => (b.change || 0) - (a.change || 0));
-    
-  if (improvingSubjects.length > 0) {
-    insights.push(`${improvingSubjects[0].subject} shows the most improvement with a ${improvingSubjects[0].change}% increase.`);
-  }
-  
   // Content usage insights
+  if (data.contentUsage.length > 0) {
   const mostUsedContent = data.contentUsage.reduce(
-    (prev, current) => (prev.value > current.value) ? prev : current
+      (prev, current) => {
+        const prevValue = typeof prev.value === 'string' ? parseInt(prev.value, 10) : prev.value;
+        const currValue = typeof current.value === 'string' ? parseInt(current.value, 10) : current.value;
+        return (prevValue > currValue) ? prev : current;
+      }
   );
   
   insights.push(`${mostUsedContent.name} is the most used content type at ${mostUsedContent.percentage}% of total usage.`);
+  } else {
+    insights.push("No content usage data available yet.");
+  }
   
-  // Add insight about the distribution
-  const subjectDistribution = data.contentDistribution.sort((a, b) => b.value - a.value);
-  if (subjectDistribution.length >= 2) {
-    insights.push(`${subjectDistribution[0].name} and ${subjectDistribution[1].name} make up over ${
-      (subjectDistribution[0].percentage || 0) + (subjectDistribution[1].percentage || 0)
-    }% of all content.`);
+  // Add basic user metrics
+  insights.push(`There are currently ${data.metrics.totalStudents.value} users on the platform.`);
+  
+  // Check if content created is greater than zero
+  const contentCreatedValue = Number(data.metrics.contentCreated.value);
+  if (contentCreatedValue > 0) {
+    insights.push(`${data.metrics.contentCreated.value} content items have been created so far.`);
   }
   
   return insights;

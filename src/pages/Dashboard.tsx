@@ -56,7 +56,7 @@ export default function Dashboard() {
   
   return (
     <Layout>
-      <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 w-full max-w-7xl mx-auto">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">

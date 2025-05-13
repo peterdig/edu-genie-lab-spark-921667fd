@@ -47,6 +47,12 @@
     --line-height: 1.5;
     --font-family: var(--default-font-family);
     --default-font-family: system-ui, sans-serif;
+    
+    /* Scrollbar variables */
+    --scrollbar-size: 0px;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: transparent;
+    --scrollbar-thumb-hover: transparent;
   }
 
   .dark {
@@ -86,6 +92,17 @@
     --sidebar-accent-foreground: 213 31% 91%; 
     --sidebar-border: 216 34% 17%;
     --sidebar-ring: 222 89% 57%;
+    
+    /* Dark mode scrollbar variables */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: transparent;
+    --scrollbar-thumb-hover: transparent;
+  }
+
+  /* Apply smooth scrolling to html element */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
   }
 }
 
@@ -98,6 +115,17 @@
     font-size: calc(1rem * var(--font-size-multiplier));
     line-height: var(--line-height);
     font-family: var(--font-family);
+    -ms-overflow-style: none;  /* Hide scrollbars: IE and Edge */
+    scrollbar-width: none;     /* Hide scrollbars: Firefox */
+    overflow-x: hidden;
+  }
+  
+  /* Hide scrollbars for WebKit browsers */
+  body::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
   
   /* Drag and drop styles */
@@ -107,6 +135,33 @@
   
   body.dragging * {
     @apply cursor-grabbing;
+  }
+  
+  /* Custom scrollbar styles - set to transparent */
+  
+  /* For Webkit browsers (Chrome, Safari, etc.) */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: transparent;
+  }
+  
+  /* For Firefox */
+  * {
+    scrollbar-width: none;
+    scrollbar-color: transparent transparent;
   }
 }
 
@@ -167,6 +222,29 @@
   
   .drop-target.active {
     @apply bg-primary/10 border-primary/30;
+  }
+  
+  /* Scrollbar utilities */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide-y::-webkit-scrollbar-vertical {
+    display: none;
+  }
+  
+  /* Responsive utilities */
+  .smooth-scroll {
+    scroll-behavior: smooth;
   }
 }
 

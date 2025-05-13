@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -165,8 +164,37 @@ export default {
 				'pulse': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
 				'enter': 'fade-in 0.3s ease-out, scale-in 0.2s ease-out',
 				'exit': 'fade-out 0.3s ease-out, scale-out 0.2s ease-out'
-			}
+			},
+			transitionProperty: {
+				'scroll': 'scroll-behavior',
+			},
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		function({ addUtilities }) {
+			const newUtilities = {
+				'.scrollbar-none': {
+					'-ms-overflow-style': 'none',
+					'scrollbar-width': 'none',
+					'&::-webkit-scrollbar': {
+						display: 'none',
+						width: '0',
+						height: '0',
+					},
+				},
+				'.smooth-scroll': {
+					'scroll-behavior': 'smooth',
+					'-webkit-overflow-scrolling': 'touch',
+				},
+				'.scroll-momentum': {
+					'-webkit-overflow-scrolling': 'touch',
+					'overscroll-behavior': 'auto',
+					'scroll-snap-type': 'proximity',
+				}
+			};
+			addUtilities(newUtilities);
+		},
+	],
 } satisfies Config;
+

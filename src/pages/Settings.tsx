@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,14 +8,64 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
-import { getNextModel } from "@/lib/openrouter";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/AuthContext.jsx";
+import { supabase } from "@/lib/supabase";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, CheckCircle2, AlertCircle, Info, Shield } from "lucide-react";
+import { useLocation, Navigate } from "react-router-dom";
+import { ProfileForm } from "@/components/auth/ProfileForm";
+import { PasswordUpdateForm } from "@/components/auth/PasswordUpdateForm";
+import { AvatarUpload } from "@/components/auth/AvatarUpload";
+
+// Define schemas for form validation
+const profileSchema = z.object({
+  full_name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  bio: z.string().optional(),
+  job_title: z.string().optional(),
+  school: z.string().optional()
+});
+
+const passwordSchema = z.object({
+  current_password: z.string().min(6, "Password must be at least 6 characters"),
+  new_password: z.string().min(8, "New password must be at least 8 characters"),
+  confirm_password: z.string().min(8, "Password must be at least 8 characters")
+}).refine(data => data.new_password === data.confirm_password, {
+  message: "Passwords don't match",
+  path: ["confirm_password"]
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function Settings() {
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [defaultModel, setDefaultModel] = useState("qwen");
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const location = useLocation();
+  
+  // Get the tab from URL query params if available
+  const getTabFromUrl = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'profile';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getTabFromUrl());
+  
+  useEffect(() => {
+    // Update active tab when URL changes
+    setActiveTab(getTabFromUrl());
+  }, [location]);
   
   useEffect(() => {
     // Check if dark mode is enabled
@@ -26,7 +75,37 @@ export default function Settings() {
     // Get default model preference
     const model = localStorage.getItem("defaultModel") || "qwen";
     setDefaultModel(model);
-  }, []);
+    
+    // Fetch avatar URL if user is logged in
+    if (user) {
+      const fetchAvatar = async () => {
+        try {
+          if (!user.isLocalOnly) {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('avatar_url')
+              .eq('id', user.id)
+              .single();
+              
+            if (data && !error) {
+              setAvatarUrl(data.avatar_url);
+            }
+          } else {
+            // Try to get from localStorage
+            const localUsers = JSON.parse(localStorage.getItem('localUsers') || '[]');
+            const localUser = localUsers.find((u: any) => u.email === user.email);
+            if (localUser && localUser.avatar_url) {
+              setAvatarUrl(localUser.avatar_url);
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching avatar:", err);
+        }
+      };
+      
+      fetchAvatar();
+    }
+  }, [user, profileRefreshKey]);
   
   const toggleDarkMode = () => {
     const newValue = !isDarkMode;
@@ -41,236 +120,295 @@ export default function Settings() {
     }
   };
   
-  const handleSave = () => {
-    setIsLoading(true);
+  const handleAvatarUploadComplete = (url: string) => {
+    setAvatarUrl(url);
+    // Refresh profile data
+    setProfileRefreshKey(prev => prev + 1);
+    
+    // Also update the UI immediately without waiting for the next render cycle
+    if (url) {
+      toast.success("Profile picture updated successfully");
+    } else {
+      toast.success("Profile picture removed successfully");
+    }
+  };
+  
+  const handleSavePreferences = () => {
+    setIsLoadingPrefs(true);
     
     // Save model preference
     localStorage.setItem("defaultModel", defaultModel);
     
+    // Save to Supabase if user is logged in
+    if (user && !user.isLocalOnly) {
+      const saveToSupabase = async () => {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              preferences: {
+                defaultModel,
+                darkMode: isDarkMode
+              }
+            })
+            .eq('id', user.id);
+            
+          if (error) throw error;
+        } catch (err) {
+          console.error("Error saving preferences:", err);
+        }
+      };
+      
+      saveToSupabase();
+    }
+    
     // Simulate API request
     setTimeout(() => {
-      setIsLoading(false);
-      toast.success("Settings saved successfully!");
-    }, 1500);
+      setIsLoadingPrefs(false);
+      setUpdateSuccess(true);
+      toast.success("Preferences saved successfully!");
+      
+      // Clear success indicator after 3 seconds
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    }, 500);
   };
   
+  // Redirect to login if not authenticated
+  if (!isLoading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your account and application preferences
-            </p>
-          </div>
-          <DarkModeToggle />
-        </div>
+      <div className="container py-6 max-w-5xl">
+        <h1 className="text-3xl font-bold mb-6">Settings</h1>
         
-        <Alert className="bg-primary/5 border-primary/20">
-          <AlertDescription>
-            We've updated our AI models to ensure more reliable content generation. If you experience any issues, try switching models in the AI Settings tab.
-          </AlertDescription>
-        </Alert>
-        
-        <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="api">AI Settings</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="profile" className="space-y-4">
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Your Avatar</CardTitle>
+                    <CardDescription>
+                      Add a profile picture to personalize your account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AvatarUpload 
+                      initialUrl={avatarUrl} 
+                      onUploadComplete={handleAvatarUploadComplete}
+                      className="py-4" 
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div>
+                <ProfileForm 
+                  key={profileRefreshKey}
+                  onSuccess={() => setProfileRefreshKey(prev => prev + 1)}
+                />
+              </div>
+            </div>
+          </TabsContent>
+          
+          {/* Account Tab */}
+          <TabsContent value="account">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <PasswordUpdateForm />
+              </div>
+              
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Account Management</CardTitle>
+                    <CardDescription>
+                      Manage your account and data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {user?.isLocalOnly && (
+                      <Alert className="mb-4">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Using Offline Mode</AlertTitle>
+                        <AlertDescription>
+                          You're currently using EdGenie in offline mode. Your data is stored locally on this device.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <div>
+                      <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive mb-2">
+                        Export your data
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
+                        Delete account
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+          
+          {/* Preferences Tab */}
+          <TabsContent value="preferences">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
+                <CardTitle>Application Preferences</CardTitle>
                 <CardDescription>
-                  Update your account details and profile settings.
+                  Customize how EdGenie works for you
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" defaultValue="Teacher User" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" defaultValue="teacher@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea id="bio" placeholder="Tell us about yourself..." />
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Password</CardTitle>
-                <CardDescription>
-                  Change your password to secure your account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input id="confirm-password" type="password" />
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button>Update Password</Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="preferences" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferences</CardTitle>
-                <CardDescription>
-                  Customize your app experience.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Email Notifications</Label>
+                    <h3 className="font-medium">Dark Mode</h3>
                     <p className="text-sm text-muted-foreground">
-                      Receive email updates about new features and resources.
+                      Toggle between light and dark themes
                     </p>
                   </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Dark Mode</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Switch between light and dark themes.
-                    </p>
-                  </div>
-                  <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Lab Narration</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Enable AI voice narration for labs by default.
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Auto-save Content</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically save your content as you work.
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Preferences"}
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="api" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Settings</CardTitle>
-                <CardDescription>
-                  Configure your AI models and defaults.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Default AI Model</Label>
-                  <div className="grid gap-2">
-                    <div 
-                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'qwen' ? 'bg-primary/10 border-primary' : ''}`}
-                      onClick={() => setDefaultModel('qwen')}
-                    >
-                      <div>
-                        <p className="font-medium">Claude Haiku</p>
-                        <p className="text-xs text-muted-foreground">Fast, reliable, balanced option</p>
-                      </div>
-                      <Switch checked={defaultModel === 'qwen'} />
-                    </div>
-                    <div 
-                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'mistral' ? 'bg-primary/10 border-primary' : ''}`}
-                      onClick={() => setDefaultModel('mistral')}
-                    >
-                      <div>
-                        <p className="font-medium">Mistral</p>
-                        <p className="text-xs text-muted-foreground">Great for detailed lesson plans</p>
-                      </div>
-                      <Switch checked={defaultModel === 'mistral'} />
-                    </div>
-                    <div 
-                      className={`flex items-center justify-between border p-3 rounded-md cursor-pointer ${defaultModel === 'deepseek' ? 'bg-primary/10 border-primary' : ''}`}
-                      onClick={() => setDefaultModel('deepseek')}
-                    >
-                      <div>
-                        <p className="font-medium">DeepSeek</p>
-                        <p className="text-xs text-muted-foreground">Best for code and technical content</p>
-                      </div>
-                      <Switch checked={defaultModel === 'deepseek'} />
-                    </div>
-                  </div>
+                  <Switch
+                    checked={isDarkMode}
+                    onCheckedChange={toggleDarkMode}
+                    aria-label="Toggle dark mode"
+                  />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="openai-key">Additional AI Settings</Label>
-                  <div className="grid gap-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label>Auto Retry Failed Generations</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Automatically try a different model if generation fails
-                        </p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label>Model Fallback Order</Label>
-                        <p className="text-sm text-muted-foreground">
-                          If primary model fails, try in this order
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">1. Claude</span>
-                        <span className="text-sm">→</span>
-                        <span className="text-sm">2. Mistral</span>
-                        <span className="text-sm">→</span>
-                        <span className="text-sm">3. DeepSeek</span>
-                      </div>
-                    </div>
+                  <h3 className="font-medium">Default AI Model</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Choose which AI model to use by default
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={defaultModel === "qwen" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDefaultModel("qwen")}
+                    >
+                      Qwen
+                    </Button>
+                    <Button
+                      variant={defaultModel === "gpt-4" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDefaultModel("gpt-4")}
+                    >
+                      GPT-4
+                    </Button>
+                    <Button
+                      variant={defaultModel === "gemini" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDefaultModel("gemini")}
+                    >
+                      Gemini
+                    </Button>
+                    <Button
+                      variant={defaultModel === "claude" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDefaultModel("claude")}
+                    >
+                      Claude
+                    </Button>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end">
-                <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save AI Settings"}
+                <Button onClick={handleSavePreferences} disabled={isLoadingPrefs}>
+                  {isLoadingPrefs ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : updateSuccess ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Saved
+                    </>
+                  ) : (
+                    "Save Preferences"
+                  )}
                 </Button>
               </CardFooter>
             </Card>
+          </TabsContent>
+          
+          {/* Security Tab */}
+          <TabsContent value="security">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security Settings</CardTitle>
+                  <CardDescription>
+                    Manage your account security
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">Two-Factor Authentication</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Add an extra layer of security to your account
+                      </p>
+                    </div>
+                    <Switch
+                      disabled={user?.isLocalOnly}
+                      aria-label="Toggle two-factor authentication"
+                    />
+                  </div>
+                  
+                  {user?.isLocalOnly && (
+                    <Alert variant="destructive">
+                      <Shield className="h-4 w-4" />
+                      <AlertTitle>Limited Security Features</AlertTitle>
+                      <AlertDescription>
+                        Advanced security features are only available when using EdGenie with an online account.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div>
+                    <h3 className="font-medium">Session Management</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Manage your active sessions
+                    </p>
+                    
+                    <div className="border rounded-md p-3 mb-2">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">Current Device</p>
+                          <p className="text-sm text-muted-foreground">
+                            Last active: Just now
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" disabled>
+                          Current
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

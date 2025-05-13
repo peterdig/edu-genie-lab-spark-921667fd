@@ -70,16 +70,16 @@ export function LabSimulation({ lab }: LabSimulationProps) {
                 <Badge variant="outline" className="backdrop-blur-md bg-background/70 shadow-sm border-primary/20">
                   {lab.gradeLevel}
                 </Badge>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+              <Button 
+                variant="outline" 
+                size="sm" 
                   className="flex items-center gap-2 backdrop-blur-sm"
-                  onClick={handleNarration}
-                  disabled={isNarrating}
-                >
-                  <Volume2 className="h-4 w-4" />
-                  <span>{isNarrating ? "Narrating..." : "Narrate Lab"}</span>
-                </Button>
+                onClick={handleNarration}
+                disabled={isNarrating}
+              >
+                <Volume2 className="h-4 w-4" />
+                <span>{isNarrating ? "Narrating..." : "Narrate Lab"}</span>
+              </Button>
               </div>
             </div>
             <CardDescription>{lab.description}</CardDescription>

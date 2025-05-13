@@ -324,7 +324,7 @@ export default function Analytics() {
 
   return (
     <Layout>
-      <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 w-full max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>

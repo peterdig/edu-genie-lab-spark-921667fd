@@ -3,6 +3,7 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": ["node", "@types/react", "@types/react-dom"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -21,10 +22,14 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
+    /* Resolve Module Imports */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "src/types"]
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSupabaseData } from './useSupabaseData';
+import { useSupabaseData } from './useSupabaseHook';
 import { AccessibilitySetting } from '@/lib/supabase';
 
 // Mock user for demo purposes

@@ -1,8 +1,10 @@
-import { useSupabaseData } from './useSupabaseData';
+import { useSupabaseData } from './useSupabaseHook';
 import { Template } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/lib/supabase';
 
-// Mock user for demo purposes
-const CURRENT_USER_ID = 'current-user-id';
+// Mock user for demo purposes - using a proper UUID format
+// const CURRENT_USER_ID = '00000000-0000-0000-0000-000000000000'; // Using a nil UUID for demo
 
 // Sample templates
 const DEFAULT_TEMPLATES: Template[] = [
@@ -22,7 +24,7 @@ const DEFAULT_TEMPLATES: Template[] = [
     },
     category: 'Science',
     tags: ['lab report', 'science', 'experiment'],
-    created_by: CURRENT_USER_ID,
+    created_by: 'anonymous',
     is_public: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -42,7 +44,7 @@ const DEFAULT_TEMPLATES: Template[] = [
     },
     category: 'English',
     tags: ['essay', 'writing', 'outline'],
-    created_by: CURRENT_USER_ID,
+    created_by: 'anonymous',
     is_public: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -65,7 +67,7 @@ const DEFAULT_TEMPLATES: Template[] = [
     },
     category: 'Math',
     tags: ['quiz', 'assessment', 'math'],
-    created_by: CURRENT_USER_ID,
+    created_by: 'anonymous',
     is_public: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -90,7 +92,7 @@ const DEFAULT_TEMPLATES: Template[] = [
     },
     category: 'Lesson Planning',
     tags: ['lesson plan', 'teaching'],
-    created_by: CURRENT_USER_ID,
+    created_by: 'anonymous',
     is_public: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -163,13 +165,21 @@ export function useTemplates() {
     tags: string[],
     isPublic: boolean = false
   ) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("User not authenticated. Cannot create template.");
+    }
+
+    const userId = user.id;
+
     return await addTemplate({
       name,
       description,
       content,
       category,
       tags,
-      created_by: CURRENT_USER_ID,
+      created_by: userId,
       is_public: isPublic
     });
   };
@@ -185,7 +195,7 @@ export function useTemplates() {
       content: JSON.parse(JSON.stringify(template.content)), // Deep copy
       category: template.category,
       tags: [...template.tags],
-      created_by: CURRENT_USER_ID,
+      created_by: 'anonymous',
       is_public: false
     });
   };
@@ -202,6 +212,11 @@ export function useTemplates() {
     };
   };
 
+  // Get templates created by the current user
+  const getUserTemplates = () => {
+    return templates.filter(t => t.created_by === 'anonymous');
+  };
+
   return {
     templates,
     loading,
@@ -216,6 +231,7 @@ export function useTemplates() {
     deleteTemplate,
     cloneTemplate,
     useTemplate,
+    getUserTemplates,
     isUsingFallback
   };
-} 
+}

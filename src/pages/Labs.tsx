@@ -7,7 +7,7 @@ import { Lab } from "@/types/labs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonVariant, ButtonSize } from "@/components/ui/button";
 import { 
   Loader, 
   Search, 

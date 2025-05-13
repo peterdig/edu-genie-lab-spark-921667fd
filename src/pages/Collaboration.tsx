@@ -1,437 +1,287 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import { Users, MessageSquare, Share2, FileText, Clock, Search, PlusCircle, UserPlus, Trash2, Edit, Check, X, Mail, AlertTriangle } from "lucide-react";
+import { useCollaboration } from "@/hooks/useCollaboration";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { 
-  Users, 
-  MessageSquare, 
-  Share2, 
-  FileText, 
-  Clock, 
-  Search, 
-  Plus, 
-  Settings, 
-  UserPlus, 
-  Mail, 
-  CheckCircle2,
-  X,
-  MoreHorizontal,
-  Send
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/lib/AuthContext.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-// Mock data for teams
-const mockTeams = [
-  { 
-    id: 1, 
-    name: "Science Department", 
-    members: 8, 
-    lastActive: "2 hours ago",
-    avatar: "/avatars/team-science.png"
-  },
-  { 
-    id: 2, 
-    name: "Math Teachers", 
-    members: 12, 
-    lastActive: "5 mins ago",
-    avatar: "/avatars/team-math.png"
-  },
-  { 
-    id: 3, 
-    name: "English Department", 
-    members: 6, 
-    lastActive: "Yesterday",
-    avatar: "/avatars/team-english.png"
-  },
-  { 
-    id: 4, 
-    name: "History Curriculum", 
-    members: 4, 
-    lastActive: "3 days ago",
-    avatar: "/avatars/team-history.png"
-  },
-];
+// Function to get initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+};
 
-// Mock data for shared content
-const mockSharedContent = [
-  {
-    id: 1,
-    title: "Algebra Lesson Plan",
-    type: "Lesson",
-    sharedBy: "Alex Johnson",
-    sharedDate: "2023-10-15",
-    avatar: "/avatars/01.png"
-  },
-  {
-    id: 2,
-    title: "Biology Quiz - Cellular Respiration",
-    type: "Assessment",
-    sharedBy: "Maria Garcia",
-    sharedDate: "2023-10-14",
-    avatar: "/avatars/02.png"
-  },
-  {
-    id: 3,
-    title: "Literary Analysis Template",
-    type: "Template",
-    sharedBy: "James Wilson",
-    sharedDate: "2023-10-12",
-    avatar: "/avatars/03.png"
-  },
-  {
-    id: 4,
-    title: "Chemistry Lab - Acid Base Reactions",
-    type: "Lab",
-    sharedBy: "Sarah Lee",
-    sharedDate: "2023-10-10",
-    avatar: "/avatars/04.png"
-  },
-];
-
-// Mock data for recent activity
-const mockActivity = [
-  {
-    id: 1,
-    user: "Alex Johnson",
-    action: "commented on",
-    item: "Algebra Lesson Plan",
-    time: "10 minutes ago",
-    avatar: "/avatars/01.png"
-  },
-  {
-    id: 2,
-    user: "Maria Garcia",
-    action: "shared",
-    item: "Biology Quiz - Cellular Respiration",
-    time: "2 hours ago",
-    avatar: "/avatars/02.png"
-  },
-  {
-    id: 3,
-    user: "James Wilson",
-    action: "edited",
-    item: "Literary Analysis Template",
-    time: "Yesterday at 3:45 PM",
-    avatar: "/avatars/03.png"
-  },
-  {
-    id: 4,
-    user: "Sarah Lee",
-    action: "created",
-    item: "Chemistry Lab - Acid Base Reactions",
-    time: "2 days ago",
-    avatar: "/avatars/04.png"
-  },
-];
-
-// Mock data for pending invites
-const mockInvites = [
-  {
-    id: 1,
-    email: "robert.smith@school.edu",
-    team: "Science Department",
-    sentDate: "2023-10-15"
-  },
-  {
-    id: 2,
-    email: "jennifer.davis@school.edu",
-    team: "Math Teachers",
-    sentDate: "2023-10-14"
+// Map role to badge color
+const getRoleBadgeVariant = (role: string) => {
+  switch (role) {
+    case 'owner': return 'default';
+    case 'admin': return 'secondary';
+    case 'member': return 'outline';
+    default: return 'outline';
   }
-];
+};
 
 export default function Collaboration() {
   const [activeTab, setActiveTab] = useState("teams");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateTeamDialogOpen, setIsCreateTeamDialogOpen] = useState(false);
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [teams, setTeams] = useState(mockTeams);
-  const [invites, setInvites] = useState(mockInvites);
-  const [sharedContent, setSharedContent] = useState(mockSharedContent);
+  const [newTeamOpen, setNewTeamOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamDescription, setNewTeamDescription] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [resourceType, setResourceType] = useState<'lesson' | 'assessment' | 'template' | 'rubric'>('lesson');
+  const [sharePermission, setSharePermission] = useState<'view' | 'edit'>('view');
+  const [shareOpen, setShareOpen] = useState(false);
   
-  // New team form state
-  const [newTeam, setNewTeam] = useState({
-    name: "",
-    description: ""
-  });
+  const {
+    teams,
+    teamMembers,
+    sharedResources,
+    loading,
+    error,
+    searchResults,
+    searchUsers,
+    getUserTeams,
+    getTeamMembers,
+    getTeamSharedResources,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    inviteToTeam,
+    shareResource,
+    unshareResource,
+    removeTeamMember,
+    usingFallback,
+    isAuthenticated
+  } = useCollaboration();
   
-  // Invite form state
-  const [inviteForm, setInviteForm] = useState({
-    email: "",
-    team: "",
-    message: ""
-  });
+  // Filtered user teams
+  const userTeams = getUserTeams();
   
-  // Share content form state
-  const [shareForm, setShareForm] = useState({
-    contentType: "lesson",
-    title: "",
-    recipients: "",
-    message: ""
-  });
-
-  // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, formType: string) => {
-    const { name, value } = e.target;
-    
-    switch (formType) {
-      case "team":
-        setNewTeam(prev => ({ ...prev, [name]: value }));
-        break;
-      case "invite":
-        setInviteForm(prev => ({ ...prev, [name]: value }));
-        break;
-      case "share":
-        setShareForm(prev => ({ ...prev, [name]: value }));
-        break;
+  // Get authentication status from AuthContext
+  const { isAuthenticated: authContextStatus } = useAuth();
+  
+  // Set the first team as selected if none is selected and teams are loaded
+  useEffect(() => {
+    if (!loading && userTeams.length > 0 && !selectedTeam) {
+      setSelectedTeam(userTeams[0].id);
     }
-  };
-
+  }, [loading, userTeams, selectedTeam]);
+  
+  // Filter members of the selected team
+  const teamMembersList = selectedTeam 
+    ? getTeamMembers(selectedTeam)
+    : [];
+  
+  // Get shared resources for the selected team
+  const teamResources = selectedTeam
+    ? getTeamSharedResources(selectedTeam)
+    : [];
+  
   // Handle team creation
-  const handleCreateTeam = () => {
-    // Validate form
-    if (!newTeam.name.trim()) {
-      toast.error("Please enter a team name");
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) {
+      toast.error("Team name is required");
       return;
     }
     
-    // Create new team object
-    const newTeamObj = {
-      id: Date.now(),
-      name: newTeam.name,
-      members: 1,
-      lastActive: "Just now",
-      avatar: "/avatars/team-default.png"
-    };
-    
-    // Add to teams
-    setTeams(prev => [newTeamObj, ...prev]);
-    
-    // Show success message
-    toast.success(`Team "${newTeam.name}" created successfully`);
-    
-    // Reset form
-    setNewTeam({
-      name: "",
-      description: ""
-    });
-    
-    // Close dialog
-    setIsCreateTeamDialogOpen(false);
+    try {
+      await createTeam(newTeamName, newTeamDescription);
+      toast.success("Team created successfully");
+      setNewTeamName("");
+      setNewTeamDescription("");
+      setNewTeamOpen(false);
+    } catch (error) {
+      console.error("Error creating team:", error);
+      toast.error("Failed to create team");
+    }
   };
-
-  // Handle sending invite
-  const handleSendInvite = () => {
-    // Validate form
-    if (!inviteForm.email.trim()) {
-      toast.error("Please enter an email address");
+  
+  // Handle user invitation
+  const handleInviteUser = async (userId: string) => {
+    if (!selectedTeam) {
+      toast.error("No team selected");
       return;
     }
     
-    if (!inviteForm.team) {
-      toast.error("Please select a team");
+    try {
+      await inviteToTeam(selectedTeam, userId, inviteRole);
+      toast.success("User invited successfully");
+      setInviteOpen(false);
+    } catch (error) {
+      console.error("Error inviting user:", error);
+      toast.error("Failed to invite user");
+    }
+  };
+  
+  // Handle resource sharing
+  const handleShareResource = async () => {
+    if (!selectedTeam || !selectedResource) {
+      toast.error("Team and resource are required");
       return;
     }
     
-    // Create new invite object
-    const newInvite = {
-      id: Date.now(),
-      email: inviteForm.email,
-      team: inviteForm.team,
-      sentDate: new Date().toISOString().split('T')[0]
-    };
-    
-    // Add to invites
-    setInvites(prev => [newInvite, ...prev]);
-    
-    // Show success message
-    toast.success(`Invite sent to ${inviteForm.email}`);
-    
-    // Reset form
-    setInviteForm({
-      email: "",
-      team: "",
-      message: ""
-    });
-    
-    // Close dialog
-    setIsInviteDialogOpen(false);
-    
-    // Switch to Invites tab
-    setActiveTab("invites");
-  };
-
-  // Handle sharing content
-  const handleShareContent = () => {
-    // Validate form
-    if (!shareForm.title.trim()) {
-      toast.error("Please enter a content title");
-      return;
+    try {
+      await shareResource(selectedResource, resourceType, selectedTeam, sharePermission);
+      toast.success("Resource shared successfully");
+      setShareOpen(false);
+    } catch (error) {
+      console.error("Error sharing resource:", error);
+      toast.error("Failed to share resource");
     }
-    
-    if (!shareForm.recipients.trim()) {
-      toast.error("Please enter recipients");
-      return;
+  };
+  
+  // Handle team deletion
+  const handleDeleteTeam = async (teamId: string) => {
+    try {
+      await deleteTeam(teamId);
+      toast.success("Team deleted successfully");
+      
+      // If the deleted team was selected, clear the selection
+      if (selectedTeam === teamId) {
+        setSelectedTeam(null);
+      }
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast.error("Failed to delete team");
     }
-    
-    // Create new shared content object
-    const newSharedContent = {
-      id: Date.now(),
-      title: shareForm.title,
-      type: shareForm.contentType.charAt(0).toUpperCase() + shareForm.contentType.slice(1),
-      sharedBy: "You",
-      sharedDate: new Date().toISOString().split('T')[0],
-      avatar: "/avatars/you.png"
-    };
-    
-    // Add to shared content
-    setSharedContent(prev => [newSharedContent, ...prev]);
-    
-    // Show success message
-    toast.success(`Content shared with ${shareForm.recipients.split(',').length} recipient(s)`);
-    
-    // Reset form
-    setShareForm({
-      contentType: "lesson",
-      title: "",
-      recipients: "",
-      message: ""
-    });
-    
-    // Close dialog
-    setIsShareDialogOpen(false);
-    
-    // Switch to Shared Content tab
-    setActiveTab("shared");
   };
-
-  // Handle canceling an invite
-  const handleCancelInvite = (inviteId: number) => {
-    setInvites(prev => prev.filter(invite => invite.id !== inviteId));
-    toast.success("Invite canceled");
+  
+  // Handle removing a team member
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      await removeTeamMember(memberId);
+      toast.success("Member removed successfully");
+    } catch (error) {
+      console.error("Error removing member:", error);
+      toast.error("Failed to remove member");
+    }
   };
-
-  // Handle resending an invite
-  const handleResendInvite = (inviteId: number) => {
-    toast.success("Invite resent");
+  
+  // Handle unsharing a resource
+  const handleUnshareResource = async (shareId: string) => {
+    try {
+      await unshareResource(shareId);
+      toast.success("Resource unshared successfully");
+    } catch (error) {
+      console.error("Error unsharing resource:", error);
+      toast.error("Failed to unshare resource");
+    }
   };
+  
+  // Update search results when search term changes
+  useEffect(() => {
+    searchUsers(searchTerm);
+  }, [searchTerm]);
 
-  // Filter teams based on search
-  const filteredTeams = teams.filter(team => 
-    team.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Filter shared content based on search
-  const filteredSharedContent = sharedContent.filter(content => 
-    content.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    content.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    content.sharedBy.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full p-8">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-center text-red-500">Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center">
+                An error occurred while loading collaboration data.
+              </p>
+              <p className="text-muted-foreground text-sm text-center mt-2">
+                {error.message || "Please try again later."}
+              </p>
+            </CardContent>
+            <CardFooter className="flex justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+  
+  // Authentication check for non-fallback mode
+  if (!isAuthenticated && !usingFallback) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full p-8">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-center">Authentication Required</CardTitle>
+              <CardDescription className="text-center">
+                Please log in to access collaboration features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button 
+                onClick={() => window.location.href = '/login'}
+                className="mt-2"
+              >
+                Log In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6 w-full max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Collaboration</h1>
             <p className="text-muted-foreground mt-1">
-              Work together with your colleagues and share educational content
+              Work with other teachers and share resources
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Invite Colleagues
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[525px]">
-                <DialogHeader>
-                  <DialogTitle>Invite Colleagues</DialogTitle>
-                  <DialogDescription>
-                    Invite colleagues to collaborate on your educational content
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      placeholder="colleague@school.edu"
-                      value={inviteForm.email}
-                      onChange={(e) => handleInputChange(e, "invite")}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="team">Select Team</Label>
-                    <Select 
-                      name="team" 
-                      value={inviteForm.team} 
-                      onValueChange={(value) => 
-                        setInviteForm(prev => ({ ...prev, team: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a team" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teams.map(team => (
-                          <SelectItem key={team.id} value={team.name}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="message">Personal Message (Optional)</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Add a personal message to your invitation..."
-                      value={inviteForm.message}
-                      onChange={(e) => handleInputChange(e, "invite")}
-                      className="min-h-[100px]"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSendInvite}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Send Invite
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Input
-            placeholder="Search teams, shared content, or colleagues..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
-          <Button variant="outline" size="icon">
-            <Search className="h-4 w-4" />
-          </Button>
+          {usingFallback && (
+            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-300">
+              Using localStorage (Offline Mode)
+            </Badge>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -448,227 +298,434 @@ export default function Collaboration() {
               <Clock className="mr-2 h-4 w-4" />
               Recent Activity
             </TabsTrigger>
-            <TabsTrigger value="invites">
-              <Mail className="mr-2 h-4 w-4" />
-              Invites
-            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="teams" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Your Teams</h2>
-              <Dialog open={isCreateTeamDialogOpen} onOpenChange={setIsCreateTeamDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Team
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[525px]">
-                  <DialogHeader>
-                    <DialogTitle>Create New Team</DialogTitle>
-                    <DialogDescription>
-                      Create a team to collaborate with your colleagues
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name">Team Name</Label>
+            {/* Create Team Dialog */}
+            <Dialog open={newTeamOpen} onOpenChange={setNewTeamOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Team</DialogTitle>
+                  <DialogDescription>
+                    Create a new collaboration team with other teachers
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Team Name</Label>
+                    <Input
+                      id="name"
+                      placeholder="Science Department"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Collaboration team for science teachers"
+                      value={newTeamDescription}
+                      onChange={(e) => setNewTeamDescription(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setNewTeamOpen(false)}>Cancel</Button>
+                  <Button onClick={handleCreateTeam}>Create Team</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Invite User Dialog */}
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Invite Team Members</DialogTitle>
+                  <DialogDescription>
+                    Search and invite other teachers to collaborate
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Member Role</Label>
+                    <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Search Users</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="name"
-                        name="name"
-                        placeholder="Enter team name"
-                        value={newTeam.name}
-                        onChange={(e) => handleInputChange(e, "team")}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">Description (Optional)</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        placeholder="Enter team description"
-                        value={newTeam.description}
-                        onChange={(e) => handleInputChange(e, "team")}
-                        className="min-h-[100px]"
+                        id="search"
+                        placeholder="Name, email or role"
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateTeamDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateTeam}>Create Team</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTeams.map((team) => (
-                <Card key={team.id}>
-                  <CardHeader className="flex flex-row items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={team.avatar} alt={team.name} />
-                      <AvatarFallback>{team.name.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle>{team.name}</CardTitle>
-                      <CardDescription>{team.members} members</CardDescription>
+                  
+                  <div className="rounded-md border h-[200px]">
+                    <ScrollArea className="h-full scrollbar-none smooth-scroll">
+                      {searchResults.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                          <p className="text-sm text-muted-foreground">No users found</p>
+                        </div>
+                      ) : (
+                        <div className="p-1">
+                          {searchResults.map((user) => (
+                            <div key={user.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-sm">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                              </div>
+                              <Button size="sm" onClick={() => handleInviteUser(user.id)}>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Invite
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setInviteOpen(false)}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Teams content */}
+            <div className="grid gap-4 md:grid-cols-7">
+              {/* Teams List */}
+              <Card className="md:col-span-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Your Teams
+                  </CardTitle>
+                  <Button size="sm" variant="ghost" onClick={() => setNewTeamOpen(true)}>
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex items-center justify-center h-40">
+                      <div className="animate-spin w-6 h-6 border-2 border-primary border-opacity-50 border-t-primary rounded-full" />
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="mr-2 h-4 w-4" />
-                      Active {team.lastActive}
+                  ) : userTeams.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 space-y-2">
+                      <p className="text-sm text-muted-foreground text-center">
+                        You don't have any teams yet
+                      </p>
+                      <Button size="sm" onClick={() => setNewTeamOpen(true)}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Create Team
+                      </Button>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" size="sm" onClick={() => toast.success("Chat opened")}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Chat
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => toast.success("Team content opened")}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Content
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => toast.success("Team settings opened")}>
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-              <Card 
-                className="flex flex-col items-center justify-center h-[200px] border-dashed cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setIsCreateTeamDialogOpen(true)}
-              >
-                <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">Create a new team</p>
+                  ) : (
+                    <ScrollArea className="h-[300px] scrollbar-none smooth-scroll">
+                      <div className="space-y-1">
+                        {userTeams.map((team) => (
+                          <div
+                            key={team.id}
+                            className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
+                              team.id === selectedTeam ? 'bg-muted' : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => setSelectedTeam(team.id)}
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{team.name}</p>
+                              {team.description && (
+                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                  {team.description}
+                                </p>
+                              )}
+                            </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8">
+                                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete the team and remove all members.
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteTeam(team.id)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Team Details */}
+              <Card className="md:col-span-5">
+                <CardHeader>
+                  <CardTitle>
+                    {selectedTeam ? userTeams.find(t => t.id === selectedTeam)?.name || 'Team Details' : 'Team Details'}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedTeam 
+                      ? userTeams.find(t => t.id === selectedTeam)?.description || 'Manage team members and resources'
+                      : 'Select a team to view details'}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent>
+                  {!selectedTeam ? (
+                    <div className="flex flex-col items-center justify-center h-40 space-y-2">
+                      <p className="text-sm text-muted-foreground text-center">
+                        Select a team to view details
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Team Members */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm">Team Members</h3>
+                          <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Invite
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {teamMembersList.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No members found
+                            </p>
+                          ) : (
+                            <div className="divide-y">
+                              {teamMembersList.map((member) => {
+                                const user = searchResults.find(u => u.id === member.user_id) || {
+                                  name: 'Unknown User',
+                                  email: 'unknown@example.com',
+                                  role: 'Unknown'
+                                };
+                                
+                                return (
+                                  <div key={member.id} className="flex items-center justify-between py-2">
+                                    <div className="flex items-center space-x-3">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="text-sm font-medium">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <Badge variant={getRoleBadgeVariant(member.role)}>{member.role}</Badge>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleRemoveMember(member.id)}>
+                                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      {/* Shared Resources */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm">Shared Resources</h3>
+                          <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {teamResources.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No shared resources
+                            </p>
+                          ) : (
+                            <div className="divide-y">
+                              {teamResources.map((resource) => (
+                                <div key={resource.id} className="flex items-center justify-between py-2">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="bg-muted rounded-md h-9 w-9 flex items-center justify-center">
+                                      <FileText className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">{resource.resource_id}</p>
+                                      <div className="flex items-center space-x-2">
+                                        <Badge variant="outline" className="text-xs">
+                                          {resource.resource_type}
+                                        </Badge>
+                                        <Badge variant={resource.permission === 'edit' ? 'default' : 'secondary'} className="text-xs">
+                                          {resource.permission}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleUnshareResource(resource.id)}>
+                                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Share Resource Dialog */}
+                      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Share a Resource</DialogTitle>
+                            <DialogDescription>
+                              Share lessons, assessments and other content with your team
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="resource-id">Resource ID</Label>
+                              <Input
+                                id="resource-id"
+                                placeholder="Enter resource ID"
+                                value={selectedResource || ''}
+                                onChange={(e) => setSelectedResource(e.target.value)}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="resource-type">Resource Type</Label>
+                              <Select value={resourceType} onValueChange={(value: any) => setResourceType(value)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="lesson">Lesson</SelectItem>
+                                  <SelectItem value="assessment">Assessment</SelectItem>
+                                  <SelectItem value="template">Template</SelectItem>
+                                  <SelectItem value="rubric">Rubric</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="permission">Permission</Label>
+                              <Select value={sharePermission} onValueChange={(value: any) => setSharePermission(value)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select permission" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="view">View Only</SelectItem>
+                                  <SelectItem value="edit">Edit</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setShareOpen(false)}>Cancel</Button>
+                            <Button onClick={handleShareResource}>Share Resource</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
+                </CardContent>
               </Card>
             </div>
           </TabsContent>
           
           <TabsContent value="shared" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Shared Content</h2>
-              <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share Content
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[525px]">
-                  <DialogHeader>
-                    <DialogTitle>Share Content</DialogTitle>
-                    <DialogDescription>
-                      Share your educational content with colleagues
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="contentType">Content Type</Label>
-                      <Select 
-                        name="contentType" 
-                        value={shareForm.contentType} 
-                        onValueChange={(value) => 
-                          setShareForm(prev => ({ ...prev, contentType: value }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select content type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="lesson">Lesson</SelectItem>
-                          <SelectItem value="assessment">Assessment</SelectItem>
-                          <SelectItem value="lab">Lab</SelectItem>
-                          <SelectItem value="template">Template</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="title">Content Title</Label>
-                      <Input
-                        id="title"
-                        name="title"
-                        placeholder="Enter content title"
-                        value={shareForm.title}
-                        onChange={(e) => handleInputChange(e, "share")}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="recipients">Recipients</Label>
-                      <Input
-                        id="recipients"
-                        name="recipients"
-                        placeholder="Enter email addresses (comma separated)"
-                        value={shareForm.recipients}
-                        onChange={(e) => handleInputChange(e, "share")}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="shareMessage">Message (Optional)</Label>
-                      <Textarea
-                        id="shareMessage"
-                        name="message"
-                        placeholder="Add a message..."
-                        value={shareForm.message}
-                        onChange={(e) => handleInputChange(e, "share")}
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleShareContent}>Share</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
             <Card>
               <CardHeader>
-                <CardTitle>Recently Shared With You</CardTitle>
-                <CardDescription>Content shared by your colleagues</CardDescription>
+                <CardTitle>Shared with You</CardTitle>
+                <CardDescription>Content shared with you from other teachers</CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[300px]">
-                  {filteredSharedContent.map((content) => (
-                    <div key={content.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={content.avatar} alt={content.sharedBy} />
-                          <AvatarFallback>{content.sharedBy.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">{content.title}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="outline">{content.type}</Badge>
-                            <span>Shared by {content.sharedBy}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => toast.success("Content opened")}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => toast.success("Options opened")}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
+                <div className="space-y-4">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-40">
+                      <div className="animate-spin w-6 h-6 border-2 border-primary border-opacity-50 border-t-primary rounded-full" />
                     </div>
-                  ))}
-                </ScrollArea>
+                  ) : sharedResources.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 space-y-2 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No content has been shared with you yet
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        When other teachers share content with you, it will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {sharedResources.map((resource) => (
+                        <Card key={resource.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline">{resource.resource_type}</Badge>
+                              <Badge variant={resource.permission === 'edit' ? 'default' : 'secondary'} className="ml-auto">
+                                {resource.permission}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <h3 className="font-medium text-sm">{resource.resource_id}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Shared by: {resource.shared_by}
+                            </p>
+                          </CardContent>
+                          <CardFooter className="flex justify-between pt-0">
+                            <Button size="sm" variant="outline">
+                              <FileText className="h-4 w-4 mr-2" />
+                              View
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -677,93 +734,43 @@ export default function Collaboration() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>See what's happening in your teams</CardDescription>
+                <CardDescription>Your team's recent collaboration activity</CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
-                  {mockActivity.map((activity) => (
-                    <div key={activity.id} className="mb-4 last:mb-0">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={activity.avatar} alt={activity.user} />
-                          <AvatarFallback>{activity.user.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm">
-                            <span className="font-medium">{activity.user}</span>{" "}
-                            {activity.action}{" "}
-                            <span 
-                              className="font-medium cursor-pointer hover:underline"
-                              onClick={() => toast.success(`Opening ${activity.item}`)}
-                            >
-                              {activity.item}
-                            </span>
-                          </p>
-                          <p className="text-xs text-muted-foreground">{activity.time}</p>
-                        </div>
-                      </div>
-                      <Separator className="my-3" />
-                    </div>
-                  ))}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="invites" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Invites</CardTitle>
-                <CardDescription>Colleagues you've invited to collaborate</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {invites.length > 0 ? (
-                  <div className="space-y-4">
-                    {invites.map((invite) => (
-                      <div key={invite.id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{invite.email}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Invited to {invite.team} on {invite.sentDate}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => handleResendInvite(invite.id)}
-                          >
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => handleCancelInvite(invite.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                {loading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="animate-spin w-6 h-6 border-2 border-primary border-opacity-50 border-t-primary rounded-full" />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No pending invites</p>
+                  <div className="relative space-y-4">
+                    <div className="flex flex-col space-y-2">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-start space-x-4 p-2 rounded-md hover:bg-muted/50">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>{getInitials(searchResults[i % searchResults.length]?.name || 'User')}</AvatarFallback>
+                          </Avatar>
+                          <div className="space-y-1">
+                            <p className="text-sm">
+                              <span className="font-medium">{searchResults[i % searchResults.length]?.name || 'User'}</span>
+                              {' '}
+                              {i === 0 ? 'shared a lesson plan' : i === 1 ? 'commented on your assessment' : i === 2 ? 'joined your team' : i === 3 ? 'edited a shared document' : 'added a new resource'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {`${i * 2 + 1} ${i === 0 ? 'hour' : 'hours'} ago`}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background to-transparent h-full w-full" style={{ top: '70%' }}></div>
+                    <div className="flex justify-center">
+                      <Button variant="outline" size="sm">
+                        View All Activity
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full"
-                  onClick={() => setIsInviteDialogOpen(true)}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Send New Invite
-                </Button>
-              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>

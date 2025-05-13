@@ -1,5 +1,6 @@
 import * as React from "react"
 
+// Update to match Tailwind's md breakpoint (768px)
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {

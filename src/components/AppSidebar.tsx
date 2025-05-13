@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   Book, 
   Calendar, 
   Home, 
   LogOut, 
-  Settings, 
   User, 
   FolderOpen, 
   PanelLeft, 
@@ -14,7 +13,10 @@ import {
   BarChart,
   FileText,
   Accessibility as AccessibilityIcon,
-  Share2
+  Share2,
+  X,
+  MessageSquare,
+  Link
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,9 +30,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useAuth } from "@/lib/AuthContext.jsx";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -41,6 +44,14 @@ interface NavItemProps {
 const NavItem = ({ icon: Icon, label, to }: NavItemProps) => {
   const location = useLocation();
   const isActive = location.pathname === to;
+  const { isMobile, setOpenMobile } = useSidebar();
+  
+  const handleClick = () => {
+    // Close mobile sidebar when item is clicked
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
   
   return (
     <SidebarMenuItem>
@@ -51,6 +62,7 @@ const NavItem = ({ icon: Icon, label, to }: NavItemProps) => {
             "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
             isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )}
+          onClick={handleClick}
         >
           <Icon className="h-5 w-5" />
           <span>{label}</span>
@@ -61,15 +73,22 @@ const NavItem = ({ icon: Icon, label, to }: NavItemProps) => {
 };
 
 export function AppSidebar() {
-  const [user] = useState({
-    name: "Teacher User",
-    avatar: "/placeholder.svg",
-    role: "Teacher"
-  });
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { isMobile, setOpenMobile } = useSidebar();
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center">
             <Book className="h-5 w-5 text-primary" />
@@ -79,14 +98,25 @@ export function AppSidebar() {
             <p className="text-xs text-muted-foreground">AI-Powered Education</p>
           </div>
         </div>
+        {isMobile && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setOpenMobile(false)}
+            className="lg:hidden"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="overflow-y-auto">
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItem icon={Home} label="Dashboard" to="/" />
+              <NavItem icon={Home} label="Dashboard" to="/dashboard" />
               <NavItem icon={Book} label="Lessons" to="/lessons" />
               <NavItem icon={Calendar} label="Assessments" to="/assessments" />
               <NavItem icon={User} label="Labs" to="/labs" />
@@ -100,7 +130,6 @@ export function AppSidebar() {
             <SidebarMenu>
               <NavItem icon={FolderOpen} label="My Library" to="/my-library" />
               <NavItem icon={PanelLeft} label="Curriculum Planner" to="/curriculum-planner" />
-              <NavItem icon={FileText} label="Templates" to="/templates" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -122,34 +151,20 @@ export function AppSidebar() {
             <SidebarMenu>
               <NavItem icon={BarChart} label="Analytics" to="/analytics" />
               <NavItem icon={Share2} label="Collaboration" to="/collaboration" />
+              <NavItem icon={MessageSquare} label="Collaborative Workspace" to="/collaborative-workspace" />
+              <NavItem icon={Link} label="Integrations" to="/integrations" />
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="px-4 py-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center overflow-hidden">
-                  <User className="h-5 w-5 text-secondary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.role}</p>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <NavItem icon={Settings} label="Settings" to="/settings" />
-                <ThemeToggle />
-              </div>
-            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="p-4">
-        <Button variant="outline" className="w-full flex items-center gap-2" size="sm">
+      <SidebarFooter className="p-4 mt-auto">
+        <Button 
+          variant="outline" 
+          className="w-full flex items-center gap-2" 
+          size="sm"
+          onClick={handleLogout}
+        >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>
         </Button>

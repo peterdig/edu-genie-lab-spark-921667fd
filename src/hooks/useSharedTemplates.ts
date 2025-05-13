@@ -4,8 +4,8 @@ import { useCollaboration } from './useCollaboration';
 import { Template } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 
-// Mock user for demo purposes
-const CURRENT_USER_ID = 'current-user-id';
+// Mock user for demo purposes - using a proper UUID format
+const CURRENT_USER_ID = '00000000-0000-0000-0000-000000000000'; // Using a nil UUID for demo
 
 export function useSharedTemplates() {
   const { templates, isUsingFallback } = useTemplates();

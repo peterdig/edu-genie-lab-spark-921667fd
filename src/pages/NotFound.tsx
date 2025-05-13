@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import * as React from "react";
 import { useTheme } from "@/lib/theme-provider";
 import { FuzzyText } from "@/components/ui/fuzzy-text";
+import { useAuth } from "@/lib/AuthContext.jsx";
 
 const NotFound = () => {
   const location = useLocation();
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     console.error(
@@ -15,6 +17,10 @@ const NotFound = () => {
       location.pathname
     );
   }, [location.pathname]);
+
+  // Determine where to redirect based on authentication status
+  const redirectPath = isAuthenticated ? "/dashboard" : "/";
+  const buttonText = isAuthenticated ? "Return to Dashboard" : "Return to Home";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background">
@@ -35,7 +41,7 @@ const NotFound = () => {
           The page you're looking for doesn't exist or has been moved.
         </p>
         <Button asChild size="lg" className="font-medium">
-          <Link to="/">Return to Dashboard</Link>
+          <Link to={redirectPath}>{buttonText}</Link>
         </Button>
       </div>
     </div>

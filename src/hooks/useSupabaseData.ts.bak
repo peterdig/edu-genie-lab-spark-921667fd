@@ -73,12 +73,19 @@ export function useSupabaseData<T extends { id: string }>(
         return newItem;
       } else {
         // Use Supabase
+        console.log(`Attempting to insert into ${tableName}:`, newItem);
+        
         const { data: insertedData, error } = await supabase
           .from(tableName)
           .insert(newItem)
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error(`Error details for ${tableName} insert:`, error);
+          throw error;
+        }
+
+        console.log(`Successfully inserted into ${tableName}:`, insertedData);
         
         const updatedData = [...data, insertedData[0] as T];
         setData(updatedData);

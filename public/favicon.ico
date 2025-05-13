@@ -1,0 +1,5 @@
+This is a placeholder for a PNG favicon.
+
+The actual PNG favicon should be created by converting the SVG version (favicon.svg) to PNG format.
+
+You can use online tools like https://svgtopng.com/ to convert the SVG to a 32x32 PNG icon, then replace this file with the converted PNG. 

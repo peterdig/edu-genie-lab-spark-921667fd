@@ -1,63 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSupabaseData } from './useSupabaseData';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSupabaseData } from './useSupabaseHook';
 import { Analytics } from '@/lib/supabase';
 import { format, subDays, parseISO, isAfter, isBefore, isEqual } from 'date-fns';
+import { supabase } from '@/lib/supabase';
+import { createRealtimeSubscription } from './use-analytics-utils';
 
-// Mock user for demo purposes
-const CURRENT_USER_ID = 'current-user-id';
-
-// Generate sample analytics data
-const generateSampleData = (): Analytics[] => {
-  const actions = ['view', 'edit', 'create', 'delete', 'share', 'download', 'print', 'comment'];
-  const contentTypes = ['lesson', 'assessment', 'lab', 'rubric', 'template'];
-  const result: Analytics[] = [];
-
-  // Generate data for last 60 days
-  for (let i = 0; i < 60; i++) {
-    const date = subDays(new Date(), i);
-    
-    // More events for recent days, fewer for older days
-    const numEvents = Math.max(1, Math.floor(Math.random() * (20 - i * 0.3)));
-    
-    for (let j = 0; j < numEvents; j++) {
-      const contentType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
-      const action = actions[Math.floor(Math.random() * actions.length)];
-      const contentId = `${contentType}-${Math.floor(Math.random() * 100) + 1}`;
-      
-      // Time spent for view actions (in seconds)
-      let timeSpent = 0;
-      if (action === 'view') {
-        timeSpent = Math.floor(Math.random() * 600) + 30; // 30 seconds to 10 minutes
-      }
-      
-      // Success rate for assessments (in percent)
-      let successRate = 0;
-      if (contentType === 'assessment' && action === 'view') {
-        successRate = Math.floor(Math.random() * 101); // 0 to 100
-      }
-      
-      result.push({
-        id: `analytics-${result.length + 1}`,
-        user_id: CURRENT_USER_ID,
-        content_id: contentId,
-        content_type: contentType,
-        action: action,
-        metadata: {
-          timeSpent: timeSpent,
-          successRate: successRate,
-          browser: ['Chrome', 'Firefox', 'Safari', 'Edge'][Math.floor(Math.random() * 4)],
-          device: ['Desktop', 'Mobile', 'Tablet'][Math.floor(Math.random() * 3)],
-          os: ['Windows', 'MacOS', 'iOS', 'Android', 'Linux'][Math.floor(Math.random() * 5)]
-        },
-        created_at: date.toISOString()
-      });
-    }
-  }
-  
-  return result;
-};
-
-const DEFAULT_ANALYTICS = generateSampleData();
+// Rate limiter settings
+const EVENT_THROTTLE_MS = 1000; // Minimum 1 second between same events
+const MAX_EVENTS_PER_MINUTE = 60; // Maximum events per minute
+const RETRY_INTERVAL = 30000; // 30 seconds between retry attempts for missing table
 
 export type AnalyticsFilters = {
   startDate?: Date;
@@ -78,16 +29,107 @@ export function useAnalytics() {
     isUsingFallback
   } = useSupabaseData<Analytics>(
     'analytics', 
-    'edgenie_analytics', 
-    DEFAULT_ANALYTICS
+    'edgenie_analytics'
   );
   
+  const [realtimeData, setRealtimeData] = useState<Analytics[]>([]);
   const [filters, setFilters] = useState<AnalyticsFilters>({
     startDate: subDays(new Date(), 30),
     endDate: new Date()
   });
   
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [errorState, setErrorState] = useState<boolean>(false);
+  
+  // Rate limiting state
+  const eventThrottleMap = useRef<Record<string, number>>({});
+  const eventCountRef = useRef<number>(0);
+  const lastMinuteResetRef = useRef<number>(Date.now());
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastErrorTime = useRef<number>(0);
+  const errorCount = useRef<number>(0);
+
+  // Subscribe to realtime analytics updates - with error handling
+  useEffect(() => {
+    // Skip subscription if we've seen multiple errors
+    if (errorCount.current > 3) {
+      console.log('Skipping realtime subscription due to previous errors');
+      return () => {};
+    }
+    
+    try {
+      // Use our utility to create a safe subscription
+      const { unsubscribe } = createRealtimeSubscription(
+        'analytics-changes',
+        'analytics',
+        'INSERT',
+        'public',
+        (payload) => {
+          // Add new analytics event to our realtime data
+          const newData = payload.new as Analytics;
+          if (newData) {
+            setRealtimeData(prev => [...prev, newData]);
+          }
+        }
+      );
+      
+      // Store unsubscribe function for cleanup
+      unsubscribeRef.current = unsubscribe;
+
+      // Cleanup subscription on unmount  
+      return () => {
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+        }
+      };
+    } catch (err) {
+      console.error('Error setting up realtime subscription:', err);
+      errorCount.current++;
+      lastErrorTime.current = Date.now();
+      setErrorState(true);
+      return () => {}; // Empty cleanup
+    }
+  }, []);
+
+  // Handle errors gracefully
+  useEffect(() => {
+    if (error) {
+      // Increment error counter
+      errorCount.current++;
+      lastErrorTime.current = Date.now(); 
+      
+      // Set error state to trigger UI changes if needed
+      setErrorState(true);
+      
+      // Log error (once, not repeatedly)
+      if (errorCount.current === 1 || errorCount.current % 5 === 0) {
+        console.warn(`Analytics error (${errorCount.current} occurrences):`, error);
+      }
+    }
+  }, [error]);
+
+  // Combine database data with realtime data
+  const combinedData = useMemo(() => {
+    // If there's a table error, return empty data to avoid flickering
+    if (errorState && errorCount.current > 3) {
+      return [];
+    }
+    
+    // De-duplicate by ID
+    const idMap = new Map<string, Analytics>();
+    
+    // Add all database records
+    analyticsData.forEach(item => {
+      idMap.set(item.id, item);
+    });
+    
+    // Add all realtime records (overriding duplicates)
+    realtimeData.forEach(item => {
+      idMap.set(item.id, item);
+    });
+    
+    return Array.from(idMap.values());
+  }, [analyticsData, realtimeData, errorState]);
 
   // Apply date filter based on time range selection
   useEffect(() => {
@@ -122,7 +164,7 @@ export function useAnalytics() {
 
   // Filter analytics data based on current filters
   const filteredData = useMemo(() => {
-    return analyticsData.filter(item => {
+    return combinedData.filter(item => {
       const itemDate = parseISO(item.created_at);
       
       // Date filter
@@ -156,7 +198,7 @@ export function useAnalytics() {
       
       return true;
     });
-  }, [analyticsData, filters]);
+  }, [combinedData, filters]);
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<AnalyticsFilters>) => {
@@ -168,35 +210,111 @@ export function useAnalytics() {
     }
   }, []);
 
-  // Track a new analytics event
+  // Rate-limited track analytics event
   const trackAnalyticsEvent = useCallback(async (
     contentId: string,
     contentType: string,
     action: string,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    userId?: string
   ) => {
-    return await trackEvent({
-      user_id: CURRENT_USER_ID,
+    // Don't attempt to track if we've seen multiple table errors
+    if (errorState && errorCount.current > 3) {
+      console.log('Skipping analytics tracking due to server errors');
+      return null;
+    }
+    
+    // Create a unique key for this event type
+    const eventKey = `${contentId}-${contentType}-${action}`;
+    const now = Date.now();
+    
+    // Check for throttling of this specific event type
+    if (eventThrottleMap.current[eventKey] && 
+        (now - eventThrottleMap.current[eventKey]) < EVENT_THROTTLE_MS) {
+      console.log(`Throttled event: ${eventKey}`);
+      return null;
+    }
+    
+    // Check for overall rate limiting
+    if (now - lastMinuteResetRef.current > 60000) {
+      // Reset counter if it's been more than a minute
+      eventCountRef.current = 0;
+      lastMinuteResetRef.current = now;
+    }
+    
+    if (eventCountRef.current >= MAX_EVENTS_PER_MINUTE) {
+      console.warn(`Rate limit exceeded: ${MAX_EVENTS_PER_MINUTE} events per minute`);
+      return null;
+    }
+    
+    // Update throttle map and counter
+    eventThrottleMap.current[eventKey] = now;
+    eventCountRef.current += 1;
+    
+    // Get current user ID or use provided one
+    let currentUserId = userId || 'anonymous';
+    
+    try {
+      // Try to get user from Supabase if available and no userId provided
+      if (!userId && typeof supabase.auth.getUser === 'function') {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          currentUserId = data.user.id;
+        }
+      }
+    } catch (err) {
+      console.warn("Could not get current user, analytics will be anonymous");
+    }
+    
+    try {
+      // Track the event
+      const result = await trackEvent({
+        user_id: currentUserId,
       content_id: contentId,
       content_type: contentType,
       action,
-      metadata
-    });
-  }, [trackEvent]);
+        metadata: {
+          ...metadata,
+          timestamp: now,
+          clientTime: new Date().toISOString()
+        }
+      });
+      
+      // Check for errors in the response
+      if (result && 'error' in result && result.error) {
+        // Update error count if we get a error
+        errorCount.current++;
+        lastErrorTime.current = Date.now();
+        
+        // Check for specific error code indicating missing table
+        const errorCode = (result.error as any)?.code;
+        if (errorCode === '42P01') { // Table doesn't exist
+          setErrorState(true);
+        }
+      }
+      
+      return result;
+    } catch (err) {
+      console.error('Error tracking analytics event:', err);
+      errorCount.current++;
+      lastErrorTime.current = Date.now();
+      return null;
+    }
+  }, [trackEvent, errorState]);
 
   // Get unique content types from data
   const getContentTypes = useMemo(() => {
     const types = new Set<string>();
-    analyticsData.forEach(item => types.add(item.content_type));
+    combinedData.forEach(item => types.add(item.content_type));
     return Array.from(types);
-  }, [analyticsData]);
+  }, [combinedData]);
 
   // Get unique actions from data
   const getActions = useMemo(() => {
     const actions = new Set<string>();
-    analyticsData.forEach(item => actions.add(item.action));
+    combinedData.forEach(item => actions.add(item.action));
     return Array.from(actions);
-  }, [analyticsData]);
+  }, [combinedData]);
 
   // Get data grouped by date for charts
   const getDataByDate = useMemo(() => {
@@ -259,73 +377,24 @@ export function useAnalytics() {
         count
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10
-  }, [filteredData]);
-
-  // Get device distribution
-  const getDeviceDistribution = useMemo(() => {
-    const groupedData: Record<string, number> = {};
-    
-    filteredData.forEach(item => {
-      if (item.metadata && item.metadata.device) {
-        groupedData[item.metadata.device] = (groupedData[item.metadata.device] || 0) + 1;
-      }
-    });
-    
-    return Object.entries(groupedData).map(([device, count]) => ({
-      name: device,
-      value: count
-    }));
-  }, [filteredData]);
-
-  // Get total engagement time (for view actions)
-  const getTotalEngagementTime = useMemo(() => {
-    return filteredData.reduce((total, item) => {
-      if (item.action === 'view' && item.metadata && item.metadata.timeSpent) {
-        return total + item.metadata.timeSpent;
-      }
-      return total;
-    }, 0);
-  }, [filteredData]);
-
-  // Get average success rate (for assessments)
-  const getAverageSuccessRate = useMemo(() => {
-    let totalRate = 0;
-    let count = 0;
-    
-    filteredData.forEach(item => {
-      if (
-        item.content_type === 'assessment' && 
-        item.metadata && 
-        typeof item.metadata.successRate === 'number'
-      ) {
-        totalRate += item.metadata.successRate;
-        count++;
-      }
-    });
-    
-    return count > 0 ? Math.round(totalRate / count) : 0;
+      .slice(0, 10); // Get top 10
   }, [filteredData]);
 
   return {
-    data: analyticsData,
-    filteredData,
+    analyticsData: filteredData,
     loading,
-    error,
+    error: error || errorState ? { message: "Analytics data unavailable" } : null,
     filters,
+    updateFilters,
+    trackEvent: trackAnalyticsEvent,
     timeRange,
     setTimeRange,
-    updateFilters,
-    trackAnalyticsEvent,
-    contentTypes: getContentTypes,
-    actions: getActions,
-    dataByDate: getDataByDate,
-    dataByContentType: getDataByContentType,
-    dataByAction: getDataByAction,
-    mostActiveContent: getMostActiveContent,
-    deviceDistribution: getDeviceDistribution,
-    totalEngagementTime: getTotalEngagementTime,
-    averageSuccessRate: getAverageSuccessRate,
-    isUsingFallback
+    getContentTypes,
+    getActions,
+    getDataByDate,
+    getDataByContentType,
+    getDataByAction,
+    getMostActiveContent,
+    isUsingFallback: isUsingFallback || errorState
   };
 } 

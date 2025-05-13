@@ -1,7 +1,11 @@
-import { ReactNode } from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import React, { ReactNode } from 'react';
+import { AppSidebar } from './AppSidebar';
+import { AccountMenu } from './auth/AccountMenu';
+import { SidebarProvider, useSidebar } from './ui/sidebar';
+import { ThemeToggle } from './ui/theme-toggle';
+import { Separator } from './ui/separator';
+import { Menu } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,23 +14,42 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <div className="flex-1 overflow-auto">
-          <div className="flex items-center justify-between p-4 border-b">
-            <SidebarTrigger />
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-muted-foreground">
-                AI-Powered Educator Companion
-              </span>
-              <ThemeToggle />
-            </div>
-          </div>
-          <main className="p-4 md:p-6">
-            {children}
-          </main>
-        </div>
-      </div>
+      <LayoutContent children={children} />
     </SidebarProvider>
+  );
+}
+
+// Separate component to use the useSidebar hook
+function LayoutContent({ children }: LayoutProps) {
+  const { toggleSidebar, isMobile } = useSidebar();
+  
+  return (
+    <div className="flex min-h-screen w-full overflow-hidden bg-background">
+      <AppSidebar />
+      <div className="flex-1 flex flex-col w-full">
+        <header className="flex h-14 items-center border-b px-4 lg:px-6 bg-background/90 backdrop-blur-sm sticky top-0 z-10">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              aria-label="Toggle sidebar"
+              className="mr-2"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <div className="flex-1"></div>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Separator orientation="vertical" className="h-6" />
+            <AccountMenu />
+          </div>
+        </header>
+        <main className="flex-1 px-4 py-6 lg:px-6 lg:py-8 overflow-y-auto scrollbar-none smooth-scroll">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

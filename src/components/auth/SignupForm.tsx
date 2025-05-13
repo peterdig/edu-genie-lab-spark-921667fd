@@ -1,156 +1,366 @@
-
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, Fragment } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  Loader2, 
+  Eye, 
+  EyeOff, 
+  AlertCircle, 
+  Lock, 
+  Mail, 
+  User, 
+  CheckCircle2 
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+import { signUp } from "@/lib/auth";
+import { logAuthEvent } from "@/lib/auth-events";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+// Signup form schema
+const signupSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["teacher", "student", "admin"], {
-    required_error: "Please select a role",
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+  terms: z.boolean().refine(val => val === true, {
+    message: "You must accept the terms and conditions",
   }),
 });
 
-type FormData = z.infer<typeof formSchema>;
+// Add validation for password confirmation
+const signupFormSchema = signupSchema.refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  }
+);
 
-export function SignupForm() {
+type SignupFormValues = z.infer<typeof signupFormSchema>;
+
+interface SignupFormProps {
+  onSuccess?: () => void;
+  className?: string;
+}
+
+export function SignupForm({ onSuccess, className }: SignupFormProps) {
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  // Set up the form with react-hook-form and zod validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupFormSchema),
     defaultValues: {
-      name: "",
+      fullName: "",
       email: "",
       password: "",
-      role: "teacher",
+      confirmPassword: "",
+      terms: false,
     },
   });
 
-  async function onSubmit(data: FormData) {
-    setIsLoading(true);
+  // Handle form submission
+  const onSubmit = async (data: SignupFormValues) => {
+    setIsSubmitting(true);
+    setError(null);
     
-    try {
-      // This is just a mock signup for now
-      // In a real app, this would connect to Supabase
-      console.log("Signing up with:", data);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes, we'll just navigate to the login page
-      toast.success("Account created! Please sign in.");
-      navigate("/login");
-    } catch (error) {
-      console.error("Signup failed:", error);
-      toast.error("Signup failed. Please try again.");
-    } finally {
-      setIsLoading(false);
+    // Log form data to verify terms value
+    console.log("Form submission data:", data);
+    
+    // Ensure terms is explicitly true before proceeding
+    if (!data.terms) {
+      setError("You must accept the terms and conditions");
+      setIsSubmitting(false);
+      return;
     }
-  }
+
+    try {
+      // Use the auth module's signUp function instead of direct Supabase call
+      const { success, user, error } = await signUp({
+        email: data.email,
+        password: data.password,
+        name: data.fullName,
+        terms: data.terms
+      });
+
+      if (!success) {
+        console.error("Signup error details:", error);
+        throw error;
+      }
+
+      // Log signup event in Supabase if successful
+      if (user?.id) {
+        await logAuthEvent(user.id, 'signup', {
+          provider: 'email',
+          terms_accepted: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      setSignupSuccess(true);
+      
+      // Store the email to help with error handling during login
+      localStorage.setItem("recentSignup", data.email);
+      
+      toast({
+        title: "Account created successfully!",
+        description: "You need to verify your email before logging in. Please check your inbox for a confirmation link.",
+      });
+      
+      console.log("Signup successful. User data:", user);
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/login', { 
+            state: { 
+              message: "Please verify your email before logging in. Check your inbox for a verification link." 
+            }
+          });
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Signup error:", error);
+      
+      let errorMessage = (error as Error).message || "Failed to create account. Please try again.";
+      
+      // Make error messages more user-friendly
+      if (errorMessage.includes("already registered")) {
+        errorMessage = "This email is already registered. Please use a different email or try logging in.";
+      } else if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (errorMessage.includes("Password should be")) {
+        errorMessage = "Password should be at least 8 characters with one uppercase letter, one lowercase letter, and one number.";
+      } else if (errorMessage.includes("policy") || errorMessage.includes("terms")) {
+        errorMessage = `Terms acceptance error: ${errorMessage}. Please try again and ensure you've checked the terms checkbox.`;
+        console.warn("Terms error details:", error);
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className={cn("grid gap-6")}>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+    <Card className={className}>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+        <CardDescription>
+          Enter your information to create your account
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        {signupSuccess && (
+          <Alert className="mb-4 bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Account created successfully! {supabase.auth.getUserIdentities ? 
+                "Please check your email to confirm your account." : 
+                "You can now sign in with your credentials."}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="fullName"
+                placeholder="John Doe"
+                className="pl-10"
+                {...register("fullName")}
+                disabled={isSubmitting || signupSuccess}
+              />
+            </div>
+            {errors.fullName && <p className="text-sm text-destructive">{errors.fullName.message}</p>}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                className="pl-10"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect="off"
+                {...register("email")}
+                disabled={isSubmitting || signupSuccess}
+              />
+            </div>
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                className="pl-10"
+                {...register("password")}
+                disabled={isSubmitting || signupSuccess}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting || signupSuccess}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+              </Button>
+            </div>
+            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Password must be at least 8 characters and include uppercase, lowercase, and numbers
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="••••••••"
+                className="pl-10"
+                {...register("confirmPassword")}
+                disabled={isSubmitting || signupSuccess}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isSubmitting || signupSuccess}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                <span className="sr-only">
+                  {showConfirmPassword ? "Hide password" : "Show password"}
+                </span>
+              </Button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="teacher@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="terms" 
+              {...register("terms")} 
+              defaultChecked={false}
+              onCheckedChange={(checked) => {
+                // Force the checkbox to be true/false, not indeterminate
+                const value = checked === true;
+                register("terms").onChange({
+                  target: { name: "terms", value },
+                  type: "change"
+                });
+              }}
+              disabled={isSubmitting || signupSuccess}
+            />
+            <Label htmlFor="terms" className="text-sm">
+              I agree to the{" "}
+              <Link to="/terms" className="text-primary hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="text-primary hover:underline">
+                Privacy Policy
+              </Link>
+            </Label>
+          </div>
+          {errors.terms && <p className="text-sm text-destructive">{errors.terms.message}</p>}
+          
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isSubmitting || signupSuccess}
+          >
+            {isSubmitting ? (
+              <Fragment>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating account...
+              </Fragment>
+            ) : signupSuccess ? (
+              <Fragment>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Account created!
+              </Fragment>
+            ) : (
+              "Create account"
             )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-col space-y-1"
-                  >
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="teacher" />
-                      </FormControl>
-                      <FormLabel className="font-normal">Teacher</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="student" />
-                      </FormControl>
-                      <FormLabel className="font-normal">Student</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="admin" />
-                      </FormControl>
-                      <FormLabel className="font-normal">Administrator</FormLabel>
-                    </FormItem>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Create Account"}
           </Button>
         </form>
-      </Form>
-      <div className="text-center text-sm">
-        <p className="text-muted-foreground">
+        
+        <div className="mt-4 text-center text-sm">
           Already have an account?{" "}
-          <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
+          <Link to="/login" className="text-primary hover:underline">
             Sign in
-          </Button>
-        </p>
+          </Link>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

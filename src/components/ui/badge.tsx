@@ -23,9 +23,13 @@ const badgeVariants = cva(
   }
 )
 
+export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  variant?: BadgeVariant;
+}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
