@@ -15,7 +15,7 @@ export function NotificationTest() {
   const [message, setMessage] = useState('This is a test notification message');
   const [type, setType] = useState<NotificationType>('info');
   const [link, setLink] = useState('/dashboard');
-  const [icon, setIcon] = useState('');
+  const [icon, setIcon] = useState('none');
 
   const handleAddNotification = () => {
     if (!title.trim()) {
@@ -28,7 +28,8 @@ export function NotificationTest() {
       return;
     }
 
-    addNotification(title, message, type, link || undefined, icon || undefined);
+    const iconValue = icon === 'none' ? undefined : icon;
+    addNotification(title, message, type, link || undefined, iconValue);
     toast.success('Notification added successfully');
   };
 
@@ -92,7 +93,7 @@ export function NotificationTest() {
               <SelectValue placeholder="Select icon" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="none">None</SelectItem>
               <SelectItem value="BookOpen">Book</SelectItem>
               <SelectItem value="FileText">Document</SelectItem>
               <SelectItem value="CheckCircle">Check</SelectItem>
