@@ -24,7 +24,6 @@ import { Loader2, Eye, EyeOff, AlertCircle, Lock, Mail, InfoIcon } from "lucide-
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
-  rememberMe: z.boolean().optional().default(false)
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -68,9 +67,8 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: localStorage.getItem('rememberedEmail') || "",
+      email: "",
       password: "",
-      rememberMe: Boolean(localStorage.getItem('rememberedEmail'))
     },
   });
 
@@ -89,13 +87,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
     setError(null);
     setEmailForResend(data.email);  // Save email for potential instructions
     
-    // Handle remember me functionality
-    if (data.rememberMe) {
-      localStorage.setItem('rememberedEmail', data.email);
-    } else {
-      localStorage.removeItem('rememberedEmail');
-    }
-
     // Show initial feedback immediately
     toast({
       title: "Signing in",
@@ -309,17 +300,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="rememberMe" 
-              {...register("rememberMe")}
-              onCheckedChange={(checked) => {
-                setValue("rememberMe", checked === true);
-              }}
-          />
-            <Label htmlFor="rememberMe" className="text-sm">Remember me</Label>
-          </div>
-          
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <Fragment>
@@ -337,6 +317,9 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           <Link to="/signup" className="text-primary hover:underline">
             Sign up
           </Link>
+          <div className="flex items-center space-x-2">
+            Ignore if Authentication failed toggle appears after confirming email
+          </div>
       </div>
       </CardContent>
     </Card>
