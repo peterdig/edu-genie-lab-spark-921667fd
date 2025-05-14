@@ -3,7 +3,7 @@ import { Layout } from "@/components/Layout";
 import { AssessmentGenerator } from "@/components/assessments/AssessmentGenerator";
 import { AssessmentDisplay } from "@/components/assessments/AssessmentDisplay";
 import { AssessmentResult } from "@/types/assessments";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
@@ -74,12 +74,14 @@ const CardDecorator = () => (
 
 export default function Assessments() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("create");
+  const { id: assessmentId } = useParams<{ id: string }>();
+  const [activeTab, setActiveTab] = useState(assessmentId ? "view" : "create");
   const [generatedAssessment, setGeneratedAssessment] = useState<AssessmentResult | null>(null);
   
   // State for saved assessments with caching
   const [savedAssessments, setSavedAssessments] = useState<AssessmentResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentResult | null>(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,6 +109,20 @@ export default function Assessments() {
         if (cachedData) {
           const parsedData = JSON.parse(cachedData);
           setSavedAssessments(parsedData);
+          
+          // If we have an assessmentId from the URL, find that assessment
+          if (assessmentId) {
+            const found = parsedData.find((a: AssessmentResult) => a.id === assessmentId);
+            if (found) {
+              setSelectedAssessment(found);
+              setActiveTab("view");
+            } else {
+              // Assessment not found, redirect to main assessments page
+              navigate('/assessments');
+              toast.error("Assessment not found");
+            }
+          }
+          
           setIsLoading(false);
           return;
         }
@@ -123,6 +139,19 @@ export default function Assessments() {
         
         setSavedAssessments(assessmentsWithDate);
         
+        // If we have an assessmentId, find that assessment
+        if (assessmentId) {
+          const found = assessmentsWithDate.find((a: AssessmentResult) => a.id === assessmentId);
+          if (found) {
+            setSelectedAssessment(found);
+            setActiveTab("view");
+          } else {
+            // Assessment not found, redirect to main assessments page
+            navigate('/assessments');
+            toast.error("Assessment not found");
+          }
+        }
+        
         // Cache the result
         localStorage.setItem('savedAssessments', JSON.stringify(assessmentsWithDate));
       } catch (error) {
@@ -134,7 +163,7 @@ export default function Assessments() {
     };
     
     loadAssessments();
-  }, []);
+  }, [assessmentId, navigate]);
   
   // Handle assessment generation
   const handleAssessmentGenerated = (assessment: AssessmentResult) => {
@@ -284,7 +313,21 @@ export default function Assessments() {
           </p>
         </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(value) => {
+            setActiveTab(value);
+            // Clear selected assessment if switching to a different tab
+            if (value !== "view" && selectedAssessment) {
+              setSelectedAssessment(null);
+              // Update URL if switching from view mode
+              if (assessmentId) {
+                navigate('/assessments');
+              }
+            }
+          }}
+          className="space-y-6"
+        >
           <div className="flex justify-between items-center overflow-x-auto">
             <TabsList className="mb-2">
               <TabsTrigger value="create" className="data-[state=active]:bg-primary/10 text-sm sm:text-base">
@@ -295,6 +338,10 @@ export default function Assessments() {
                 Saved Assessments
                 <kbd className="ml-2 bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded hidden sm:inline-block">Alt+2</kbd>
               </TabsTrigger>
+              {/* Add the hidden tab for viewing individual assessments inside the TabsList */}
+              {selectedAssessment && (
+                <TabsTrigger value="view" className="hidden">View Assessment</TabsTrigger>
+              )}
             </TabsList>
           </div>
           
@@ -303,6 +350,40 @@ export default function Assessments() {
               <AssessmentDisplay assessment={generatedAssessment} onReset={handleReset} />
             ) : (
               <AssessmentGenerator onAssessmentGenerated={handleAssessmentGenerated} />
+            )}
+          </TabsContent>
+          
+          {/* View individual assessment tab */}
+          <TabsContent value="view" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+            {selectedAssessment ? (
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mr-4"
+                    onClick={() => {
+                      setSelectedAssessment(null);
+                      setActiveTab("saved");
+                      navigate('/assessments');
+                    }}
+                  >
+                    ← Back to Assessments
+                  </Button>
+                </div>
+                <AssessmentDisplay 
+                  assessment={selectedAssessment} 
+                  onReset={() => {
+                    setSelectedAssessment(null);
+                    setActiveTab("saved");
+                    navigate('/assessments');
+                  }} 
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center p-8">
+                <p>No assessment selected. Please select an assessment from the saved list.</p>
+              </div>
             )}
           </TabsContent>
           

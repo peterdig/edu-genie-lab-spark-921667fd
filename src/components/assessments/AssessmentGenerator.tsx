@@ -25,6 +25,7 @@ const questionTypes = [
 
 const formSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters"),
+  subject: z.string().min(1, "Please select a subject"),
   gradeLevel: z.string().min(1, "Please select a grade level"),
   numberOfQuestions: z.string().min(1, "Please select number of questions"),
   questionTypes: z.array(z.string()).min(1, "Select at least one question type"),
@@ -46,6 +47,7 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
     resolver: zodResolver(formSchema),
     defaultValues: {
       topic: "",
+      subject: "",
       gradeLevel: "",
       numberOfQuestions: "5",
       questionTypes: ["multiple-choice"],
@@ -103,6 +105,34 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
             />
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select subject" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent position="popper">
+                        <SelectItem value="Math">Math</SelectItem>
+                        <SelectItem value="Science">Science</SelectItem>
+                        <SelectItem value="History">History</SelectItem>
+                        <SelectItem value="English">English</SelectItem>
+                        <SelectItem value="Languages">Languages</SelectItem>
+                        <SelectItem value="Arts">Arts</SelectItem>
+                        <SelectItem value="Physical Education">Physical Education</SelectItem>
+                        <SelectItem value="Computer Science">Computer Science</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
               <FormField
                 control={form.control}
                 name="gradeLevel"

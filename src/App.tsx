@@ -14,7 +14,7 @@ import { ThemeProvider } from "./lib/theme-provider";
 import { useLocalStorageFallback, checkConnectivity } from "./lib/supabase";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { initializeDatabase } from "./lib/database";
-import { NotificationsProvider } from "@/lib/NotificationContext.tsx";
+import { NotificationsProvider } from "@/lib/NotificationContext";
 import OnlineProvider from '@/contexts/OnlineContext';
 import AccessibilityProvider from '@/contexts/AccessibilityContext';
 import { AccessibilitySettingsButton } from '@/components/accessibility/AccessibilitySettings';
@@ -250,6 +250,13 @@ const App = () => {
                             </AuthGuard>
                           } />
                           <Route path="/assessments" element={
+                            <AuthGuard>
+                              <Suspense fallback={<LoadingFallback />}>
+                                <Assessments />
+                              </Suspense>
+                            </AuthGuard>
+                          } />
+                          <Route path="/assessments/:id" element={
                             <AuthGuard>
                               <Suspense fallback={<LoadingFallback />}>
                                 <Assessments />

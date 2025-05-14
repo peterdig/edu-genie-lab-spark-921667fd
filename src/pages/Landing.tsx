@@ -265,17 +265,17 @@ export default function Landing() {
         >
           {features.map((feature) => (
             <motion.div key={feature.id} variants={itemVariants}>
-              <Card
+            <Card
                 className="p-4 md:p-6 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20 border-border text-card-foreground"
-              >
-                <div className="flex flex-col h-full">
+            >
+              <div className="flex flex-col h-full">
                   <div className="p-2 md:p-3 rounded-full w-fit mb-3 md:mb-4 bg-primary/15 text-primary">
-                    {feature.icon}
-                  </div>
+                  {feature.icon}
+                </div>
                   <h3 className="text-base md:text-lg font-semibold mb-1 md:mb-2 text-foreground">{feature.title}</h3>
                   <p className="text-xs md:text-sm text-muted-foreground">{feature.description}</p>
-                </div>
-              </Card>
+              </div>
+            </Card>
             </motion.div>
           ))}
         </motion.div>

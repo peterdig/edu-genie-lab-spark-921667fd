@@ -374,3 +374,57 @@ export async function getModelStats(): Promise<any> {
     };
   }
 }
+
+export async function backendGenerateAssessment(data: any, modelId: string): Promise<any> {
+  try {
+    // Simulate API call with a delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Generate a deterministic ID based on the topic
+    const id = `assessment-${Date.now()}`;
+    
+    // Here we would normally call an actual API, but we're mocking the response
+    // In a real implementation, this would be a fetch call to the backend
+    
+    const questions = [];
+    const numQuestions = parseInt(data.numberOfQuestions) || 5;
+    
+    // Generate fake questions based on input parameters
+    for (let i = 0; i < numQuestions; i++) {
+      const questionType = data.questionTypes[i % data.questionTypes.length];
+      const bloomsLevel = data.bloomsLevels[i % data.bloomsLevels.length];
+      
+      // Capitalize the first letter of Bloom's level
+      const capitalizedBloomsLevel = bloomsLevel.charAt(0).toUpperCase() + bloomsLevel.slice(1);
+      
+      questions.push({
+        text: `Sample ${questionType} question ${i + 1} about ${data.topic} (${capitalizedBloomsLevel})`,
+        type: questionType,
+        options: questionType === 'multiple-choice' ? [
+          `Option A for question ${i + 1}`,
+          `Option B for question ${i + 1}`,
+          `Option C for question ${i + 1}`,
+          `Option D for question ${i + 1}`
+        ] : undefined,
+        answer: questionType === 'multiple-choice' ? `Option A for question ${i + 1}` : 
+                questionType === 'true-false' ? 'True' : 
+                `Sample answer for question ${i + 1}`,
+        bloomsLevel: capitalizedBloomsLevel
+      });
+    }
+    
+    return {
+      id,
+      title: `${data.topic} Assessment`,
+      gradeLevel: data.gradeLevel,
+      subject: data.subject || "General", // Include subject field
+      instructions: `Complete all questions on ${data.topic}. Read each question carefully before answering.`,
+      questions,
+      tags: [data.topic.split(" ")[0], data.gradeLevel],
+      createdAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error generating assessment:", error);
+    throw error;
+  }
+}

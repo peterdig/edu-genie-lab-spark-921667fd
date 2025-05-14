@@ -44,7 +44,10 @@ export function useNotificationsContext() {
   const context = useContext(NotificationsContext);
   
   if (context === undefined) {
-    throw new Error('useNotificationsContext must be used within a NotificationsProvider');
+    throw new Error(
+      'useNotificationsContext must be used within a NotificationsProvider. ' +
+      'Make sure the component is wrapped in NotificationsProvider.'
+    );
   }
   
   return context;

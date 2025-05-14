@@ -165,6 +165,7 @@ export const assessments: AssessmentResult[] = [
     id: "assessment-1",
     title: "Photosynthesis Quiz",
     gradeLevel: "6-8",
+    subject: "Science",
     instructions: "Answer all questions to the best of your ability. You have 30 minutes to complete this assessment.",
     questions: [
       {
@@ -213,6 +214,7 @@ export const assessments: AssessmentResult[] = [
     id: "assessment-2",
     title: "American Revolution Assessment",
     gradeLevel: "9-12",
+    subject: "History",
     instructions: "Complete all questions. Essay responses should be thorough and include specific historical examples.",
     questions: [
       {
