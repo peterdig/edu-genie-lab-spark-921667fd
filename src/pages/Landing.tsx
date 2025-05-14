@@ -378,31 +378,53 @@ export default function Landing() {
             </div>
             
             <div className="order-1 lg:order-2 flex justify-center">
-              <motion.div 
+              <motion.div
                 className="relative"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                <div className="absolute -top-8 -right-8 w-16 sm:w-24 h-16 sm:h-24 bg-primary/10 rounded-full"></div>
-                <div className="absolute -bottom-4 -left-4 w-12 sm:w-16 h-12 sm:h-16 bg-secondary/10 rounded-full"></div>
-                <motion.div 
-                  className="relative bg-gradient-to-br from-background to-primary/5 rounded-[2.5rem] p-3 md:p-4 border-8 border-background shadow-xl" 
+                <div className="absolute -top-8 -right-8 w-16 sm:w-24 h-16 sm:h-24 bg-primary/10 rounded-full blur-lg"></div>
+                <div className="absolute -bottom-4 -left-4 w-12 sm:w-16 h-12 sm:h-16 bg-secondary/10 rounded-full blur-lg"></div>
+                
+                {/* 3D Mobile device container with hover effect */}
+                <motion.div
+                  className="relative bg-gradient-to-br from-background to-primary/5 rounded-[2.5rem] p-3 md:p-4 border-8 border-background shadow-xl"
                   style={{maxWidth: "260px"}}
-                  whileHover={{ y: -5 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                  whileHover={{ 
+                    y: -8,
+                    rotateY: "-15deg",
+                    transition: { duration: 0.3 }
+                  }}
+                  animate={{
+                    y: [0, -5, 0],
+                    rotateY: ["-5deg", "-8deg", "-5deg"]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    duration: 4
+                  }}
                 >
                   {/* Mobile device mockup */}
-                  <div className="rounded-[2rem] overflow-hidden bg-black">
-                    <img 
-                      src="public\mob.jpg" 
-                      alt="EduGenie Mobile App" 
+                  <div className="rounded-[2rem] overflow-hidden bg-black shadow-2xl"
+                    style={{
+                      transform: "perspective(1000px)",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                    }}
+                  >
+                    <img
+                      src="/mob.png"
+                      alt="EduGenie Mobile App"
                       className="w-full h-auto"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='500' viewBox='0 0 250 500' fill='none'%3E%3Crect width='250' height='500' fill='%231a1a2e'/%3E%3Ctext x='125' y='250' font-family='Arial' font-size='18' fill='white' text-anchor='middle'%3EEduGenie Mobile%3C/text%3E%3C/svg%3E";
                         target.onerror = null;
+                      }}
+                      style={{
+                        transition: "all 0.3s ease"
                       }}
                     />
                   </div>
