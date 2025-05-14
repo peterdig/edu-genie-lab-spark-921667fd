@@ -18,77 +18,51 @@ export async function generateLesson(data: any, modelId: string): Promise<Lesson
     return await backendGenerateLesson(data, modelId);
   } catch (error) {
     console.error("Failed to generate lesson:", error);
-    toast.error(`Failed to generate lesson plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
     
-    // If we've reached a retry limit, throw the error to be handled by the component
-    if (data._retryCount && data._retryCount >= 2) {
-      throw error;
-    }
-    
-    // Try with a different model
-    try {
-      const nextModelId = await getNextRecommendedModel(modelId);
+    let errorMsg = "Unknown error";
+    if (error instanceof Error) {
+      // Get a cleaner error message without the nested stack traces
+      const errorParts = error.message.split(':');
+      errorMsg = errorParts[errorParts.length - 1].trim();
       
-      if (nextModelId !== modelId) {
-        toast.info(`Automatically retrying with ${nextModelId}...`);
-        return await generateLesson({
-          ...data,
-          _retryCount: (data._retryCount || 0) + 1
-        }, nextModelId);
+      // Truncate if too long
+      if (errorMsg.length > 100) {
+        errorMsg = errorMsg.substring(0, 100) + "...";
       }
-    } catch (retryError) {
-      console.error("Failed to retry with different model:", retryError);
     }
     
-    // Return a minimal valid lesson plan as a fallback
-    return {
-      id: `lesson-${Date.now()}`,
-      title: `${data.topic} - Draft Lesson Plan`,
-      gradeLevel: data.gradeLevel,
-      subject: data.topic.split(" ")[0],
-      duration: data.duration,
-      overview: "This is a draft lesson plan. The AI encountered an error during generation.",
-      objectives: ["Review and edit this draft lesson"],
-      materials: ["Materials to be added"],
-      plan: "The AI was unable to generate a complete lesson plan. Please try again or edit this draft manually.",
-      assessment: "Assessment to be added",
-      questions: [],
-      tags: [data.topic.split(" ")[0], data.gradeLevel, "Draft"],
-      createdAt: new Date().toISOString()
-    };
+    toast.error(`Failed to generate lesson plan: ${errorMsg}`);
+    
+    // Simply rethrow the error to be handled by the component
+    throw new Error(`Failed to generate lesson plan: ${errorMsg}`);
   }
 }
 
-export async function generateAssessment(data: any, modelId: string): Promise<AssessmentResult> {
+export async function generateAssessment(data: any, modelId: string): Promise<any> {
   toast.info(`Generating assessment with ${modelId}...`);
   
   try {
+    // Call the backend API through our openrouter integration
     return await backendGenerateAssessment(data, modelId);
   } catch (error) {
     console.error("Failed to generate assessment:", error);
-    toast.error(`Failed to generate assessment: ${error instanceof Error ? error.message : 'Unknown error'}`);
     
-    // If we've reached a retry limit, throw the error to be handled by the component
-    if (data._retryCount && data._retryCount >= 2) {
-      throw error;
-    }
-    
-    // Try with a different model
-    try {
-      const nextModelId = await getNextRecommendedModel(modelId);
+    let errorMsg = "Unknown error";
+    if (error instanceof Error) {
+      // Get a cleaner error message without the nested stack traces
+      const errorParts = error.message.split(':');
+      errorMsg = errorParts[errorParts.length - 1].trim();
       
-      if (nextModelId !== modelId) {
-        toast.info(`Automatically retrying with ${nextModelId}...`);
-        return await generateAssessment({
-          ...data,
-          _retryCount: (data._retryCount || 0) + 1
-        }, nextModelId);
+      // Truncate if too long
+      if (errorMsg.length > 100) {
+        errorMsg = errorMsg.substring(0, 100) + "...";
       }
-    } catch (retryError) {
-      console.error("Failed to retry with different model:", retryError);
     }
     
-    throw error;
+    toast.error(`Failed to generate assessment: ${errorMsg}`);
+    
+    // Simply rethrow the error to be handled by the component
+    throw new Error(`Failed to generate assessment: ${errorMsg}`);
   }
 }
 

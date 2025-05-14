@@ -215,6 +215,9 @@ const createSupabaseClient = () => {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
+        storage: window.localStorage,
+        storageKey: 'supabase.auth.token',
+        debug: process.env.NODE_ENV === 'development'
       },
     });
   } catch (error) {

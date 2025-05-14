@@ -13,6 +13,7 @@ export interface LessonResult {
     text: string;
     options?: string[];
     answer?: string;
+    bloomsLevel?: string;  // Added bloomsLevel property
   }[];
   tags: string[];
   createdAt: string;

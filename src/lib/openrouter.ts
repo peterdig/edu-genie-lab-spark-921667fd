@@ -112,53 +112,32 @@ export async function getModelById(modelId: string): Promise<OpenRouterModel | u
  * @returns The API response as JSON
  */
 export async function generateContent(endpoint: string, data: any): Promise<any> {
+  const modelId = data.model;
+  
+  console.log(`Making API request to ${endpoint} with model: ${modelId}`);
+  
   try {
-    console.log(`Making API request to ${endpoint} with model: ${data.model}`);
-    
+    // Make the API request
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(data)
     });
-
+    
+    // Handle non-200 response
     if (!response.ok) {
-      let errorMessage = `Error: ${response.status} ${response.statusText}`;
-      let errorDetail = '';
-      
-      try {
-        const errorData = await response.json();
-        console.error(`API error (${response.status}):`, errorData);
-        
-        if (errorData.detail) {
-          errorDetail = errorData.detail;
-          errorMessage = errorData.detail;
-        }
-      } catch (parseError) {
-        console.error("Failed to parse error response:", parseError);
-        errorDetail = 'Unable to parse error response';
-      }
-      
-      // Create a detailed error object
-      const error = new Error(errorMessage);
-      (error as any).status = response.status;
-      (error as any).endpoint = endpoint;
-      (error as any).detail = errorDetail;
-      (error as any).model = data.model;
-      
-      throw error;
-    }
-
-    const result = await response.json();
-    
-    // Validate the response has data
-    if (!result) {
-      throw new Error(`Received empty response from ${endpoint}`);
+      const errorData = await response.json();
+      console.log(`API error (${response.status}):`, errorData);
+      throw new Error(`Failed to generate ${endpoint.replace('/generate/', '')}: ${response.status}: ${errorData.detail || response.statusText}`);
     }
     
-    return result;
+    // Parse the response
+    const responseData = await response.json();
+    return responseData;
   } catch (error) {
+    // Log the error and rethrow
     console.error(`Failed to generate content from ${endpoint}:`, error);
     throw error;
   }
@@ -372,59 +351,5 @@ export async function getModelStats(): Promise<any> {
       usage: {},
       errors: {}
     };
-  }
-}
-
-export async function backendGenerateAssessment(data: any, modelId: string): Promise<any> {
-  try {
-    // Simulate API call with a delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate a deterministic ID based on the topic
-    const id = `assessment-${Date.now()}`;
-    
-    // Here we would normally call an actual API, but we're mocking the response
-    // In a real implementation, this would be a fetch call to the backend
-    
-    const questions = [];
-    const numQuestions = parseInt(data.numberOfQuestions) || 5;
-    
-    // Generate fake questions based on input parameters
-    for (let i = 0; i < numQuestions; i++) {
-      const questionType = data.questionTypes[i % data.questionTypes.length];
-      const bloomsLevel = data.bloomsLevels[i % data.bloomsLevels.length];
-      
-      // Capitalize the first letter of Bloom's level
-      const capitalizedBloomsLevel = bloomsLevel.charAt(0).toUpperCase() + bloomsLevel.slice(1);
-      
-      questions.push({
-        text: `Sample ${questionType} question ${i + 1} about ${data.topic} (${capitalizedBloomsLevel})`,
-        type: questionType,
-        options: questionType === 'multiple-choice' ? [
-          `Option A for question ${i + 1}`,
-          `Option B for question ${i + 1}`,
-          `Option C for question ${i + 1}`,
-          `Option D for question ${i + 1}`
-        ] : undefined,
-        answer: questionType === 'multiple-choice' ? `Option A for question ${i + 1}` : 
-                questionType === 'true-false' ? 'True' : 
-                `Sample answer for question ${i + 1}`,
-        bloomsLevel: capitalizedBloomsLevel
-      });
-    }
-    
-    return {
-      id,
-      title: `${data.topic} Assessment`,
-      gradeLevel: data.gradeLevel,
-      subject: data.subject || "General", // Include subject field
-      instructions: `Complete all questions on ${data.topic}. Read each question carefully before answering.`,
-      questions,
-      tags: [data.topic.split(" ")[0], data.gradeLevel],
-      createdAt: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error("Error generating assessment:", error);
-    throw error;
   }
 }

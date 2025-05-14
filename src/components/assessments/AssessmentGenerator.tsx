@@ -12,9 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader } from "lucide-react";
+import { Loader, AlertCircle } from "lucide-react";
 import { AssessmentResult } from "@/types/assessments";
 import { generateAssessment } from "@/lib/api";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const questionTypes = [
   { id: "multiple-choice", label: "Multiple Choice" },
@@ -42,6 +43,7 @@ interface AssessmentGeneratorProps {
 
 export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,18 +61,54 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
 
   async function onSubmit(data: FormData) {
     setIsGenerating(true);
+    setError(null);
     
     try {
-      toast.info("Generating assessment...");
+      toast.info(`Generating assessment with ${data.model}...`);
       
-      const assessment = await generateAssessment(data, data.model);
+      // Map the model selection to the actual model ID expected by the API
+      const modelIdMap: Record<string, string> = {
+        'qwen': 'qwen/qwen-14b',
+        'deepseek': 'deepseek/deepseek-chat:free',
+        'mistral': 'mistralai/mistral-7b-instruct:free'
+      };
       
-      onAssessmentGenerated(assessment);
+      const modelId = modelIdMap[data.model] || 'meta-llama/llama-3.1-8b-instruct:free';
+      
+      const assessment = await generateAssessment({
+        ...data,
+        model: modelId,
+        // Convert array values to proper format
+        questionTypes: data.questionTypes,
+        bloomsLevels: data.bloomsLevels
+      }, modelId);
+      
       toast.success("Assessment generated successfully!");
+      onAssessmentGenerated(assessment);
     } catch (error) {
-      console.error("Failed to generate assessment:", error);
-      toast.error("Failed to generate assessment. Please try again.");
-    } finally {
+      console.error("Error generating assessment:", error);
+      
+      let errorMessage = "Unknown error occurred";
+      
+      if (error instanceof Error) {
+        // Clean up and simplify the error message
+        const errorParts = error.message.split(':');
+        const simplifiedError = errorParts[errorParts.length - 1].trim();
+        
+        if (simplifiedError.includes("model unavailable") || simplifiedError.includes("experimental")) {
+          errorMessage = "The selected model is currently unavailable. Please select a different model.";
+        } else if (simplifiedError.includes("timeout") || simplifiedError.includes("Timeout")) {
+          errorMessage = "The AI is taking too long to respond. Please try again or use a different model.";
+        } else if (simplifiedError.includes("NetworkError") || simplifiedError.includes("Failed to fetch")) {
+          errorMessage = "Network error - Please check your internet connection and try again.";
+        } else {
+          errorMessage = simplifiedError.length > 100 ? 
+            simplifiedError.substring(0, 100) + "..." : 
+            simplifiedError;
+        }
+      }
+      
+      setError(errorMessage);
       setIsGenerating(false);
     }
   }
@@ -359,6 +397,14 @@ export function AssessmentGenerator({ onAssessmentGenerated }: AssessmentGenerat
             </div>
           </form>
         </Form>
+
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );

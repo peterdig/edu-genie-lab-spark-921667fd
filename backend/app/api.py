@@ -113,9 +113,17 @@ async def get_model_stats():
 async def generate_lesson(request: LessonRequest):
     """Generate a lesson plan based on the provided parameters"""
     try:
+        # Add flags for assessment and activities in the prompt
+        assessment_instruction = "Include assessment questions with answers." if request.includeAssessment else "Do not include assessment questions."
+        activities_instruction = "Include engaging student activities in the lesson plan." if request.includeActivities else "No need to include student activities."
+        
         prompt = f"""
         Create a detailed lesson plan about "{request.topic}" for grade level "{request.gradeLevel}" with a duration of "{request.duration}".
         {f"Additional context: {request.additionalNotes}" if request.additionalNotes else ""}
+        
+        IMPORTANT INSTRUCTIONS:
+        {assessment_instruction}
+        {activities_instruction}
         
         Format your response as a JSON object with the following structure:
         {{
@@ -132,7 +140,8 @@ async def generate_lesson(request: LessonRequest):
                 {{
                     "text": "Question text",
                     "options": ["option 1", "option 2", "option 3", "option 4"],
-                    "answer": "Correct answer"
+                    "answer": "Correct answer",
+                    "bloomsLevel": "Knowledge/Comprehension/Application/Analysis/Synthesis/Evaluation"
                 }},
                 ...
             ],

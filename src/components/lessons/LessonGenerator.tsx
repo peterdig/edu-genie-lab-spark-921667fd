@@ -171,14 +171,15 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
         toast.info(`Generating lesson plan with ${data.model}...`);
       }
       
-      // Call the API with the selected model
-      const lesson = await generateLesson(data, data.model);
-      
-      // AI validation already done in the API layer, but double-check
-      // critical fields here as well for defense in depth
-      if (!lesson || !lesson.title || !lesson.plan) {
-        throw new Error("Received incomplete lesson plan from AI. Please try again.");
-      }
+      // Call the API with the selected model, explicitly including assessment and activities flags
+      const lesson = await generateLesson({
+        topic: data.topic,
+        gradeLevel: data.gradeLevel,
+        duration: data.duration,
+        additionalNotes: data.additionalNotes || '',
+        includeAssessment: data.includeAssessment,
+        includeActivities: data.includeActivities
+      }, data.model);
       
       setRetries(0);
       onGenerate(lesson);
@@ -190,59 +191,60 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
       let errorMessage = "Unknown error occurred";
       
       if (error instanceof Error) {
-        // Clean up common API error messages
-        errorMessage = error.message
-          .replace("Error: ", "")
-          .replace(/^\d{3} /, ""); // Remove status code prefix
+        // Clean up and simplify the error message
+        const errorParts = error.message.split(':');
+        const simplifiedError = errorParts[errorParts.length - 1].trim();
         
-        // Add more context for network errors
-        if (error.message.includes("NetworkError") || error.message.includes("Failed to fetch")) {
-          errorMessage = "Network error - Please check your internet connection and try again.";
-        }
-        
-        // Add more context for timeout errors
-        if (error.message.includes("timeout") || error.message.includes("Timeout")) {
+        if (simplifiedError.includes("model unavailable") || simplifiedError.includes("experimental")) {
+          errorMessage = "The selected model is currently unavailable. Please select a different model.";
+        } else if (simplifiedError.includes("timeout") || simplifiedError.includes("Timeout")) {
           errorMessage = "The AI is taking too long to respond. Please try again or use a different model.";
-        }
-        
-        // Handle rate limits
-        if (error.message.includes("rate limit") || error.message.includes("429")) {
-          errorMessage = "Rate limit exceeded. Please wait a moment before trying again or select a different model.";
+        } else if (simplifiedError.includes("NetworkError") || simplifiedError.includes("Failed to fetch")) {
+          errorMessage = "Network error - Please check your internet connection and try again.";
+        } else {
+          // Keep error message brief and easy to understand
+          errorMessage = simplifiedError.length > 100 ? 
+            simplifiedError.substring(0, 100) + "..." : 
+            simplifiedError;
         }
       }
       
       setError(errorMessage);
+      setIsGenerating(false);
       
-      // Only auto-retry if we haven't reached max retries
-      if (retries < maxRetries) {
-        setRetries(prev => prev + 1);
+      // Suggest a different model if we've encountered a problem
+      if (error instanceof Error && 
+          (error.message.includes("unavailable") || 
+           error.message.includes("experimental"))) {
         
-        // Get a different model from our recommended models
+        // Try to suggest a reliable alternative model
         try {
-          const currentIndex = recommendedModels.indexOf(form.getValues("model"));
-          const nextIndex = (currentIndex + 1) % recommendedModels.length;
-          const nextModel = recommendedModels[nextIndex];
+          const alternativeModels = recommendedModels.filter(m => 
+            m !== data.model && 
+            !m.includes("exp-")
+          );
           
-          form.setValue("model", nextModel);
-          
-          // Auto-retry with next model after a short delay
-          setTimeout(() => {
-            form.handleSubmit(onSubmit)();
-          }, 1500);
-          
-          toast.error(`Failed with current model. Automatically trying ${nextModel} instead...`, {
-            duration: 4000
-          });
+          if (alternativeModels.length > 0) {
+            const suggestedModel = alternativeModels[0];
+            toast.info(`Try using ${availableModels.find(m => m.id === suggestedModel)?.name || suggestedModel} instead`, {
+              duration: 6000,
+              action: {
+                label: "Switch Model",
+                onClick: () => {
+                  form.setValue("model", suggestedModel);
+                  toast.info(`Switched to ${availableModels.find(m => m.id === suggestedModel)?.name || suggestedModel}`);
+                }
+              }
+            });
+          } else {
+            // If no other models are available, suggest trying again later
+            toast.info("All models are currently busy. Please try again in a few minutes.", {
+              duration: 5000
+            });
+          }
         } catch (e) {
-          console.error("Error finding next model:", e);
-          setIsGenerating(false);
+          console.error("Error suggesting alternative model:", e);
         }
-      } else {
-        toast.error("Failed to generate lesson plan after multiple attempts. Please try again later.", {
-          duration: 5000
-        });
-        setIsGenerating(false);
-        setRetries(0);
       }
     }
   }
@@ -266,12 +268,10 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
 
   // Organize models into categories
   const getModelByType = (type: string) => {
-    const filtered = availableModels.filter(model => {
+    return availableModels.filter(model => {
       const name = model.name.toLowerCase();
       return name.includes(type.toLowerCase());
     });
-    // Return a string for the model name, not the array of models
-    return filtered.length > 0 ? filtered[0].name : type.split('/')[1] || type;
   };
 
   // Get status badge for model
@@ -337,30 +337,31 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
   }, [form, isGenerating, onSubmit]);
 
   return (
-    <Card className="animate-fade-in border-primary/10 hover:shadow-md transition-all duration-300">
+    <TooltipProvider>
+      <Card className="animate-fade-in border-primary/10 hover:shadow-md transition-all duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
-          <span>Create a Lesson Plan</span>
-          <Badge variant="outline" className="ml-2 font-normal">
-            Alt+G to generate
-          </Badge>
-        </CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Create a Lesson Plan</span>
+            <Badge variant="outline" className="ml-2 font-normal">
+              Alt+G to generate
+            </Badge>
+          </CardTitle>
         <CardDescription>
           Provide details about your lesson, and our AI will generate a complete lesson plan.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
-          <Alert variant="destructive" className="mb-6 animate-pulse">
+            <Alert variant="destructive" className="mb-6 animate-pulse">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleRetry}
                 disabled={isGenerating || retries >= maxRetries}
-                className="whitespace-nowrap"
+                  className="ml-2 whitespace-nowrap"
               >
                 Try with a different model
               </Button>
@@ -377,45 +378,45 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 <FormItem>
                   <FormLabel>Lesson Topic</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g. Photosynthesis, World War II, Fractions..." 
-                      {...field} 
-                      className="focus-visible:ring-primary/50"
-                      autoFocus 
-                    />
+                      <Input 
+                        placeholder="e.g. Photosynthesis, World War II, Fractions..." 
+                        {...field} 
+                        className="focus-visible:ring-primary/50"
+                        autoFocus 
+                      />
                   </FormControl>
-                  <FormDescription>
-                    Enter the main topic for your lesson plan
-                  </FormDescription>
+                    <FormDescription>
+                      Enter the main topic for your lesson plan
+                    </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="gradeLevel"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Grade Level</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="focus-visible:ring-primary/50">
-                          <SelectValue placeholder="Select a grade level" />
+                          <SelectTrigger className="focus-visible:ring-primary/50">
+                            <SelectValue placeholder="Select a grade level" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent position="popper" className="max-h-[200px]">
-                        <SelectItem value="K-2">Elementary (K-2)</SelectItem>
-                        <SelectItem value="3-5">Elementary (3-5)</SelectItem>
-                        <SelectItem value="6-8">Middle School (6-8)</SelectItem>
-                        <SelectItem value="9-12">High School (9-12)</SelectItem>
+                        <SelectContent position="popper" className="max-h-[200px]">
+                          <SelectItem value="k-2">Elementary (K-2)</SelectItem>
+                          <SelectItem value="3-5">Elementary (3-5)</SelectItem>
+                          <SelectItem value="6-8">Middle School (6-8)</SelectItem>
+                          <SelectItem value="9-12">High School (9-12)</SelectItem>
                         <SelectItem value="college">College</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Select the grade level for your students
-                    </FormDescription>
+                      <FormDescription className="text-xs">
+                        Select the grade level for your students
+                      </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -427,13 +428,13 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lesson Duration</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="focus-visible:ring-primary/50">
+                          <SelectTrigger className="focus-visible:ring-primary/50">
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent position="popper">
+                        <SelectContent position="popper">
                         <SelectItem value="15min">15 minutes</SelectItem>
                         <SelectItem value="30min">30 minutes</SelectItem>
                         <SelectItem value="45min">45 minutes</SelectItem>
@@ -441,9 +442,9 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                         <SelectItem value="90min">90 minutes</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      How long will this lesson take?
-                    </FormDescription>
+                      <FormDescription className="text-xs">
+                        How long will this lesson take?
+                      </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -455,68 +456,125 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               name="model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      AI Model
-                      <Badge variant="outline" className="ml-2 font-normal text-xs">
-                        Alt+M to focus
-                      </Badge>
-                    </span>
-                    <TooltipProvider>
+                    <FormLabel className="flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        AI Model
+                        <Badge variant="outline" className="ml-2 font-normal text-xs">
+                          Alt+M to focus
+                        </Badge>
+                      </span>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-5 w-5" type="button">
-                            <HelpCircle className="h-4 w-4" />
+                      <HelpCircle className="h-4 w-4" />
                             <span className="sr-only">AI Model info</span>
-                          </Button>
+                    </Button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm" align="end">
                           <p>Select the AI model to use for generation. Models with larger context windows can generate more detailed content.</p>
                         </TooltipContent>
                       </Tooltip>
-                    </TooltipProvider>
-                  </FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      // Save to localStorage
-                      localStorage.setItem("defaultModel", value);
-                    }}
-                    defaultValue={field.value}
-                    disabled={isLoadingModels}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="focus-visible:ring-primary/50">
-                        {isLoadingModels ? (
-                          <div className="flex items-center">
-                            <Loader className="h-3.5 w-3.5 mr-2 animate-spin" />
-                            <span>Loading models...</span>
-                          </div>
-                        ) : (
-                          <SelectValue placeholder="Select a model" />
-                        )}
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="max-h-[240px]" position="popper">
-                      {recommendedModels.map(modelId => (
-                        <SelectItem 
-                          key={modelId} 
-                          value={modelId}
-                          disabled={modelStatus[modelId] === 'unavailable'}
-                          className={modelStatus[modelId] === 'unavailable' ? 'opacity-50' : ''}
-                        >
-                          <div className="flex flex-col">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">{modelId.split('/')[1]}</span>
-                              {getModelStatusBadge(modelId)}
+                    </FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Save to localStorage
+                        localStorage.setItem("defaultModel", value);
+                      }}
+                      defaultValue={field.value}
+                      disabled={isLoadingModels}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="focus-visible:ring-primary/50">
+                          {isLoadingModels ? (
+                            <div className="flex items-center">
+                              <Loader className="h-3.5 w-3.5 mr-2 animate-spin" />
+                              <span>Loading models...</span>
                             </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          ) : (
+                            <SelectValue placeholder="Select a model" />
+                          )}
+                      </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-[240px] w-full md:min-w-[320px]" position="popper">
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="recommended">
+                            <AccordionTrigger className="py-2 text-sm font-semibold">
+                              Recommended Models
+                            </AccordionTrigger>
+                            <AccordionContent className="pb-2">
+                              {recommendedModels.map(modelId => {
+                                const model = availableModels.find(m => m.id === modelId);
+                                if (!model) return null;
+                                
+                                return (
+                                  <SelectItem key={model.id} value={model.id} className="flex flex-col">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="truncate">{model.name}</span>
+                                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        {formatContextLength(model.context_length)}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </AccordionContent>
+                          </AccordionItem>
+                          
+                          {['Meta', 'Google', 'Mistral', 'DeepSeek'].map(provider => (
+                            <AccordionItem key={provider} value={provider.toLowerCase()}>
+                              <AccordionTrigger className="py-2 text-sm font-semibold">
+                                {provider} Models
+                              </AccordionTrigger>
+                              <AccordionContent className="pb-2">
+                                {getModelByType(provider).map(model => (
+                                  <SelectItem key={model.id} value={model.id} className="flex flex-col">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="truncate">{model.name}</span>
+                                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        {formatContextLength(model.context_length)}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </SelectContent>
+                    </Select>
                   <FormDescription>
-                    Select an AI model to generate your lesson plan
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-sm">Select an AI model</span>
+                        {field.value && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center cursor-help">
+                                <Info className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                                <span className="text-xs">Model Info</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" align="end" className="p-3 max-w-[200px] md:max-w-[300px]">
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm">{availableModels.find(m => m.id === field.value)?.name || field.value}</p>
+                                <div className="grid grid-cols-1 gap-1 text-xs">
+                                  <div className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                                    <span className="truncate">Context: {formatContextLength(availableModels.find(m => m.id === field.value)?.context_length || 0)}</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <div className={`h-2 w-2 rounded-full mr-1.5 flex-shrink-0 ${
+                                      modelStatus[field.value] === 'available' ? 'bg-green-500' :
+                                      modelStatus[field.value] === 'limited' ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`} />
+                                    <span>Status: {modelStatus[field.value] || 'Unknown'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -528,32 +586,32 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               name="additionalNotes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Additional Notes</FormLabel>
+                    <FormLabel>Additional Notes</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Any specific requirements or topics to focus on?" 
-                      className="min-h-[100px] focus-visible:ring-primary/50" 
+                        placeholder="Any specific requirements or topics to focus on?" 
+                        className="min-h-[100px] focus-visible:ring-primary/50" 
                       {...field} 
                     />
                   </FormControl>
-                  <FormDescription>
-                    Optional: Provide any specific requirements or focus areas
-                  </FormDescription>
+                    <FormDescription>
+                      Optional: Provide any specific requirements or focus areas
+                    </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+              <div className="flex flex-col sm:flex-row gap-4">
               <FormField
                 control={form.control}
                 name="includeAssessment"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors w-full">
                     <div className="space-y-0.5">
                       <FormLabel>Include Assessment</FormLabel>
-                      <FormDescription>
-                        Generate assessment questions
+                      <FormDescription className="text-xs">
+                          Generate assessment questions
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -569,11 +627,11 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
                 control={form.control}
                 name="includeActivities"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:border-primary/30 transition-colors w-full">
                     <div className="space-y-0.5">
                       <FormLabel>Include Activities</FormLabel>
-                      <FormDescription>
-                        Generate in-class activities
+                      <FormDescription className="text-xs">
+                          Generate in-class activities
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -587,52 +645,51 @@ export function LessonGenerator({ onGenerate }: LessonGeneratorProps) {
               />
             </div>
             
-            <div className="flex justify-between items-center pt-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => form.reset()}
-                className="text-xs gap-1"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                  <path d="M3 3v5h5"></path>
-                </svg>
-                Reset Form
-              </Button>
-              <TooltipProvider>
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => form.reset()}
+                  className="text-xs gap-1 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                  </svg>
+                  Reset Form
+                </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
                       type="submit" 
                       disabled={isGenerating} 
-                      className="min-w-[140px] relative font-medium"
+                      className="min-w-[140px] relative font-medium w-full sm:w-auto"
                     >
-                      {isGenerating ? (
-                        <>
-                          <Loader className="mr-2 h-4 w-4 animate-spin" />
+              {isGenerating ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
                           <span>Generating...</span>
                           <span className="absolute -bottom-5 right-0 text-[10px] text-muted-foreground">
                             {retries > 0 ? `Attempt ${retries+1}/${maxRetries+1}` : ''}
                           </span>
-                        </>
-                      ) : (
+                </>
+              ) : (
                         <>
                           <span>Generate Lesson</span>
                           <span className="absolute -bottom-5 right-0 text-[10px] text-muted-foreground">Alt+G</span>
                         </>
-                      )}
-                    </Button>
+              )}
+            </Button>
                   </TooltipTrigger>
                   <TooltipContent side="left" align="center">
                     This will generate a complete lesson plan
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
-            </div>
+              </div>
           </form>
         </Form>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 }
