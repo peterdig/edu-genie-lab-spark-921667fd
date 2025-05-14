@@ -9,20 +9,41 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const { success, error } = await handleOAuthCallback();
+      try {
+        const { success, error } = await handleOAuthCallback();
 
-      if (success) {
-        toast({
-          title: "Email verified successfully",
-          description: "You can now sign in with your credentials.",
-        });
-        navigate('/login');
-      } else {
-        console.error('Auth callback error:', error);
+        if (success) {
+          toast({
+            title: "Email verified successfully",
+            description: "Your account has been verified. Welcome to EduGenie!",
+          });
+          
+          // Force redirect to production dashboard
+          const isProd = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+          
+          if (isProd) {
+            // Use absolute URL for production
+            window.location.href = 'https://edu-genie-lab--five.vercel.app/dashboard';
+          } else {
+            // Use react-router for local development
+            navigate('/dashboard', { replace: true });
+          }
+        } else {
+          console.error('Auth callback error:', error);
+          toast({
+            variant: "destructive",
+            title: "Authentication failed",
+            description: "Please try signing in again.",
+          });
+          navigate('/login');
+        }
+      } catch (err) {
+        console.error('Unexpected error during auth callback:', err);
         toast({
           variant: "destructive",
-          title: "Authentication failed",
-          description: "Please try signing in again.",
+          title: "Authentication error",
+          description: "An unexpected error occurred. Please try again.",
         });
         navigate('/login');
       }

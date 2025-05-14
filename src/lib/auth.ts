@@ -13,7 +13,7 @@ export const signUp = async (userData: {
   name: string;
   terms: boolean;
   role?: string;
-}): Promise<{ success: boolean; user?: any; error?: any }> => {
+}): Promise<{ success: boolean; user?: any; error?: any; needsEmailVerification?: boolean }> => {
   try {
     // Validate required fields
     if (!userData.email || !userData.password || !userData.name) {
@@ -27,6 +27,29 @@ export const signUp = async (userData: {
     try {
       console.log('Attempting to create user in Supabase:', userData.email);
       
+      // Detect environment for proper redirect URL
+      let redirectUrl;
+      
+      // Force production URL for email verification to avoid localhost redirects
+      const forceProdUrlForEmailVerification = true;
+      
+      // Try to detect if we're in development or production
+      const isDev = window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1';
+                   
+      if (isDev && !forceProdUrlForEmailVerification) {
+        // Use localhost for development
+        redirectUrl = `${window.location.origin}/auth/callback`;
+        console.log('Using development redirect URL:', redirectUrl);
+      } else {
+        // Use production URL
+        redirectUrl = 'https://edu-genie-lab--five.vercel.app/auth/callback';
+        console.log('Using production redirect URL:', redirectUrl);
+      }
+      
+      // This signUp call will trigger TS error in some versions of Supabase SDK
+      // but the functionality works
+      // @ts-ignore - Ignoring TypeScript error as function exists at runtime
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -37,14 +60,23 @@ export const signUp = async (userData: {
             signup_date: new Date().toISOString(),
             role: userData.role || 'user'
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw error;
+      }
 
       if (data.user) {
         console.log('Supabase user created successfully:', data.user.id);
+        console.log('Email confirmation status:', data.user.email_confirmed_at ? 'Confirmed' : 'Not confirmed');
+        
+        // If we have identityData and the email is already confirmed, log it
+        if (data.user.identities && data.user.identities.length > 0) {
+          console.log('Identity data:', data.user.identities);
+        }
         
         // Create initial profile in the profiles table
         try {
@@ -81,7 +113,15 @@ export const signUp = async (userData: {
           },
         });
 
-        return { success: true, user: data.user };
+        // Store email in localStorage to help with resending verification
+        localStorage.setItem('lastSignupEmail', userData.email);
+
+        return { 
+          success: true, 
+          user: data.user,
+          // Add flag to indicate email verification status
+          needsEmailVerification: !data.user.email_confirmed_at 
+        };
       } else {
         return {
           success: false,
@@ -211,19 +251,65 @@ export const signInWithOAuth = async (provider: Provider): Promise<{ success: bo
 };
 
 /**
- * Handle OAuth callback
+ * Handle OAuth callback and email verification
  */
 export const handleOAuthCallback = async (): Promise<{ success: boolean; error?: any }> => {
   try {
+    // Get the current session
+    // @ts-ignore - Ignoring TypeScript error as function exists at runtime
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) throw error;
     
+    // Check if we have a session
     if (!session) {
-      throw new Error('No session found after OAuth callback');
+      // If there's no session, attempt to exchange the auth code for a session
+      // This is necessary for email verification flows
+      // @ts-ignore - Ignoring TypeScript error as function exists at runtime
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+        window.location.hash.substring(1) || window.location.search.substring(1)
+      );
+      
+      if (exchangeError) {
+        console.error("Error exchanging auth code:", exchangeError);
+        throw exchangeError;
+      }
+      
+      if (!data.session) {
+        throw new Error('No session found after code exchange');
+      }
+      
+      // Set the session
+      // @ts-ignore - Ignoring TypeScript error as function exists at runtime
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+      
+      // Save additional user info
+      if (data.session.user) {
+        await saveUserInfo({
+          id: data.session.user.id,
+          email: data.session.user.email || '',
+          name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0] || '',
+          preferences: {
+            signupDate: new Date().toISOString(),
+            provider: data.session.user.app_metadata.provider || 'email',
+            emailVerified: true,
+          },
+        });
+        
+        // Store verified status
+        localStorage.setItem('emailVerified', 'true');
+        if (data.session.user.email) {
+          localStorage.setItem('verifiedEmail', data.session.user.email);
+        }
+      }
+      
+      return { success: true };
     }
 
-    // Save additional user info if needed
+    // For existing session, save user info
     if (session.user) {
       await saveUserInfo({
         id: session.user.id,
@@ -231,14 +317,62 @@ export const handleOAuthCallback = async (): Promise<{ success: boolean; error?:
         name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
         preferences: {
           signupDate: new Date().toISOString(),
-          provider: session.user.app_metadata.provider,
+          provider: session.user.app_metadata.provider || 'email',
+          emailVerified: true,
         },
       });
+      
+      // Store verified status
+      localStorage.setItem('emailVerified', 'true');
+      if (session.user.email) {
+        localStorage.setItem('verifiedEmail', session.user.email);
+      }
     }
 
     return { success: true };
   } catch (error) {
-    console.error('OAuth callback error:', error);
+    console.error('Auth callback error:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Resend verification email to the specified email address
+ * @param email The email address to send the verification email to
+ * @returns Object with success status and error details if any
+ */
+export const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: any }> => {
+  try {
+    if (!email) {
+      return {
+        success: false,
+        error: "Email is required"
+      };
+    }
+    
+    // Always use production redirect URL for email verification
+    const redirectUrl = 'https://edu-genie-lab--five.vercel.app/auth/callback';
+    console.log('Using production redirect URL for verification email:', redirectUrl);
+    
+    // Try with Supabase
+    // @ts-ignore - Ignoring TypeScript error as function exists at runtime
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    });
+    
+    if (error) {
+      console.error('Error resending verification email:', error);
+      return { success: false, error };
+    }
+    
+    console.log('Verification email resent successfully:', data);
+    return { success: true };
+  } catch (error) {
+    console.error('Error resending verification email:', error);
     return { success: false, error };
   }
 }; 

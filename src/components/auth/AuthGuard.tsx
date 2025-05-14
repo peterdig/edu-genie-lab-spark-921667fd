@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext.jsx';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -22,6 +23,14 @@ export function AuthGuard({
   useEffect(() => {
     const verifyAuth = async () => {
       setIsChecking(true);
+      
+      // Double-check the session first - important for email verification flows
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If we have a session but isAuthenticated is false, force auth check
+      if (session && !isAuthenticated) {
+        await checkAuth();
+      }
       
       // If already authenticated, check role requirements
       if (isAuthenticated && user) {

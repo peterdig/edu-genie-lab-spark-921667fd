@@ -314,57 +314,62 @@ export function AuthProvider({ children }) {
     }
   };
   
-  // Fetch additional profile data from the profiles table
+  // Fetch additional user profile data from database
   const fetchAdditionalProfileData = async (userId) => {
     try {
-      // Only select fields that we know exist in the database
-      const { data, error } = await supabase
+      // Fetch more user data from the profiles table
+      const { data: profile, error } = await supabase
         .from('profiles')
-        .select('avatar_url, role')
+        .select('*')
         .eq('id', userId)
         .single();
       
       if (error) {
-        console.error('Error fetching profile data:', error);
+        console.warn('Error fetching profile:', error);
+      } else if (profile) {
+        console.log('Fetched additional profile data:', profile);
         
-        // Check if error is due to missing profile
-        if (error.code === 'PGRST116' || error.message.includes('rows returned')) {
-          console.log('No profile found for user, creating one...');
-          
-          // Create a new profile for this user
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert([
-              { 
-                id: userId, 
-                avatar_url: null,
-                role: user?.role || 'user',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }
-            ]);
-            
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-          } else {
-            console.log('Profile created successfully');
-            // Don't need to update user state as the new profile has default values
-          }
+        // Get current session for email verification status
+        const { data: { session } } = await supabase.auth.getSession();
+        const emailVerified = session?.user?.email_confirmed_at ? true : false;
+        
+        // Merge profile data with user data
+        const enrichedUser = {
+          ...user,
+          ...profile,
+          // Add these fields explicitly to ensure they're set
+          full_name: profile.full_name || user?.full_name,
+          avatar_url: profile.avatar_url,
+          role: profile.role || user?.role || 'user',
+          email_verified: emailVerified,
+          updated_at: profile.updated_at
+        };
+        
+        setUser(enrichedUser);
+        
+        // Also store in localStorage for fallback
+        try {
+          localStorage.setItem('user', JSON.stringify(enrichedUser));
+        } catch (e) {
+          console.error('Error storing user in localStorage:', e);
         }
         
-        return;
+        // Log the login event if this was triggered by login
+        if (session) {
+          logAuthEvent(userId, 'login', {
+            timestamp: new Date().toISOString(),
+            method: 'email',
+          }).catch(err => console.warn('Error logging auth event:', err));
+          
+          // Update last login time and stats
+          updateLastLogin(userId).catch(err => console.warn('Error updating last login:', err));
+          updateLoginStats(userId).catch(err => console.warn('Error updating login stats:', err));
+        }
+      } else {
+        console.warn('No profile found for user:', userId);
       }
-      
-      if (data) {
-        // Update user with additional profile data
-        setUser(prevUser => ({
-          ...prevUser,
-          avatar_url: data.avatar_url,
-          role: data.role || prevUser.role,
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching profile data:', error);
+    } catch (e) {
+      console.error('Error in fetchAdditionalProfileData:', e);
     }
   };
   
@@ -472,10 +477,16 @@ export function AuthProvider({ children }) {
   );
 }
 
+/**
+ * Custom hook for using the auth context
+ * @returns {Object} The auth context value
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
   return context;
 }; 

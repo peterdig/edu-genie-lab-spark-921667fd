@@ -396,12 +396,13 @@ export default function Landing() {
                   {/* Mobile device mockup */}
                   <div className="rounded-[2rem] overflow-hidden bg-black">
                     <img 
-                      src="/mobile-app-mockup.png" 
+                      src="public\mob.jpg" 
                       alt="EduGenie Mobile App" 
                       className="w-full h-auto"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = "https://via.placeholder.com/250x500/1a1a2e/FFFFFF?text=EduGenie+Mobile";
+                        target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='500' viewBox='0 0 250 500' fill='none'%3E%3Crect width='250' height='500' fill='%231a1a2e'/%3E%3Ctext x='125' y='250' font-family='Arial' font-size='18' fill='white' text-anchor='middle'%3EEduGenie Mobile%3C/text%3E%3C/svg%3E";
+                        target.onerror = null;
                       }}
                     />
                   </div>

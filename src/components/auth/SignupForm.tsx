@@ -39,7 +39,13 @@ import { cn } from "@/lib/utils";
 // Signup form schema
 const signupSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .refine((email) => {
+      // Basic email validation - no need to be too strict as zod already handles most cases
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }, "Please enter a valid email address")
+    .transform(email => email.toLowerCase().trim()), // Normalize email to lowercase and trim
   role: z.string().optional(),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -66,9 +72,10 @@ type SignupFormValues = z.infer<typeof signupFormSchema>;
 interface SignupFormProps {
   onSuccess?: () => void;
   className?: string;
+  onEmailChange?: (email: string) => void;
 }
 
-export function SignupForm({ onSuccess, className }: SignupFormProps) {
+export function SignupForm({ onSuccess, className, onEmailChange }: SignupFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,6 +106,16 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
 
   // Watch the password field to calculate strength
   const watchPassword = watch("password");
+
+  // Watch the email field for changes
+  const watchEmail = watch("email");
+  
+  // Notify parent component when email changes
+  useEffect(() => {
+    if (onEmailChange && watchEmail) {
+      onEmailChange(watchEmail);
+    }
+  }, [watchEmail, onEmailChange]);
 
   // Calculate password strength
   useEffect(() => {
@@ -155,13 +172,15 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
 
     try {
       // Use the auth module's signUp function instead of direct Supabase call
-      const { success, user, error } = await signUp({
+      const result = await signUp({
         email: data.email,
         password: data.password,
         name: data.fullName,
         terms: data.terms,
         role: data.role || 'teacher' // Default role
       });
+
+      const { success, user, error, needsEmailVerification = true } = result;
 
       if (!success) {
         console.error("Signup error details:", error);
@@ -181,11 +200,19 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
       
       // Store the email to help with error handling during login
       localStorage.setItem("recentSignup", data.email);
+      localStorage.setItem("lastSignupEmail", data.email);
       
-      toast({
-        title: "Account created successfully!",
-        description: "You need to verify your email before logging in. Please check your inbox for a confirmation link.",
-      });
+      if (needsEmailVerification) {
+        toast({
+          title: "Account created successfully!",
+          description: "You need to verify your email before logging in. Please check your inbox (and spam folder) for a confirmation link.",
+        });
+      } else {
+        toast({
+          title: "Account created successfully!",
+          description: "Your account has been created and you can now log in.",
+        });
+      }
       
       // Redirect after a short delay
       setTimeout(() => {
@@ -194,7 +221,9 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
         } else {
           navigate('/login', { 
             state: { 
-              message: "Please verify your email before logging in. Check your inbox for a verification link." 
+              message: needsEmailVerification 
+                ? "Please verify your email before logging in. Check your inbox for a verification link." 
+                : "Your account has been created successfully. You can now log in."
             }
           });
         }
