@@ -317,7 +317,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           <Link to="/signup" className="text-primary hover:underline">
             Sign up
           </Link>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
             Ignore if Authentication failed toggle appears after confirming email
           </div>
       </div>
