@@ -100,6 +100,12 @@ const Signup = () => {
               <h2 className="text-xl font-bold text-foreground">Create account</h2>
               <p className="text-muted-foreground text-sm mt-1">
                 Sign up to start using EdGenie
+                <p  style={{color: "red"}} className="text-l text-foreground font-bold ">
+                **Mail rate limit reached. Please use the following credentials to sign in:, 
+                Email: raazi4722@gmail.com 
+                Password: Raazi@234**
+                
+              </p>
               </p>
             </div>
             

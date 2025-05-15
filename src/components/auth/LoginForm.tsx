@@ -318,7 +318,12 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
             Sign up
           </Link>
           <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-            Ignore if Authentication failed toggle appears after confirming email
+          <p  style={{color: "red"}} className="flex items-center text-l text-foreground font-bold ">
+                **Mail rate limit reached. Please use the following credentials to sign in:, 
+                Email: raazi4722@gmail.com 
+                Password: Raazi@234**
+                
+              </p>
           </div>
       </div>
       </CardContent>
